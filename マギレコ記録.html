@@ -165,12 +165,18 @@
   }
   .tag.BIG { background: var(--big); }
   .tag.みたま { background: var(--charge); }
+  .tag.マギチャレ当選 { background: var(--reg); }
   .tag.AT { background: var(--at); }
   .tag.メモ { background: var(--memo); color: #000; }
   .entry .tags { display: flex; flex-direction: column; gap: 4px; }
   .entry .body { flex: 1; min-width: 0; }
   .entry .nums { font-size: 15px; font-weight: 700; }
   .entry .note { font-size: 13px; color: var(--sub); margin-top: 2px; word-break: break-word; }
+  .entry .reorder { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+  .entry .reorder button {
+    background: none; border: none; color: var(--sub); font-size: 13px; cursor: pointer; padding: 2px 4px; line-height: 1;
+  }
+  .entry .reorder button:disabled { opacity: 0.25; }
   .entry .del {
     background: none; border: none; color: var(--sub); font-size: 18px; cursor: pointer; padding: 0 4px;
   }
@@ -348,10 +354,11 @@
       </div>
     </div>
     <div class="field">
-      <label>結果</label>
+      <label>結果(複数選択可)</label>
       <div class="cat-select" id="e-result">
         <button type="button" data-v="BIG">BIG</button>
         <button type="button" data-v="みたま">みたま</button>
+        <button type="button" data-v="マギチャレ当選">マギチャレ当選</button>
       </div>
     </div>
     <div class="field">
@@ -390,23 +397,30 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResult: null };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [] };
 
-  // 古い形式(cat/g/p/note)で保存されたデータを新形式(game/point/result/atWin/atMemo)に変換する
+  // 古い形式のデータを新形式(game/point/results[]/atWin/atMemo)に変換する
+  // - 最も古い形式: cat/g/p/note
+  // - ひとつ前の形式: game/point/result(単一の文字列)/atWin/atMemo
   function normalizeEntry(e) {
-    if (e.game !== undefined || e.point !== undefined || e.result !== undefined || e.atWin !== undefined || e.atMemo !== undefined) {
-      return e;
+    if (Array.isArray(e.results)) return e;
+
+    var results = [];
+    if (e.result) {
+      results = [e.result];
+    } else if (e.cat === 'BIG' || e.cat === 'REG') {
+      results = ['BIG'];
+    } else if (e.cat === 'マギチャレ成功') {
+      results = ['みたま'];
     }
-    var result = null;
-    if (e.cat === 'BIG' || e.cat === 'REG') result = 'BIG';
-    else if (e.cat === 'マギチャレ成功') result = 'みたま';
+
     return {
       id: e.id,
-      game: (typeof e.g === 'number') ? e.g : null,
-      point: (typeof e.p === 'number') ? e.p : null,
-      result: result,
-      atWin: e.cat === 'AT当選',
-      atMemo: e.note || ''
+      game: (e.game !== undefined) ? e.game : ((typeof e.g === 'number') ? e.g : null),
+      point: (e.point !== undefined) ? e.point : ((typeof e.p === 'number') ? e.p : null),
+      results: results,
+      atWin: (e.atWin !== undefined) ? e.atWin : (e.cat === 'AT当選'),
+      atMemo: (e.atMemo !== undefined) ? e.atMemo : (e.note || '')
     };
   }
 
@@ -440,7 +454,7 @@
     var point = 0, hits = 0;
     (visit.entries || []).forEach(function (e) {
       if (typeof e.point === 'number') point += e.point;
-      if (e.result === 'BIG' || e.result === 'みたま') hits++;
+      if (e.results && e.results.length) hits++;
     });
     return { point: point, hits: hits, count: (visit.entries || []).length };
   }
@@ -550,15 +564,16 @@
     elDPoint.textContent = s.point;
 
     elEntryList.innerHTML = '';
-    (v.entries || []).forEach(function (e) {
+    (v.entries || []).forEach(function (e, idx) {
       var row = document.createElement('div');
       row.className = 'entry';
       var gameText = (typeof e.game === 'number') ? e.game + 'G' : '';
       var pointText = (typeof e.point === 'number') ? e.point + 'pt' : '';
       var numsText = [gameText, pointText].filter(Boolean).join(' / ');
 
-      var tags = [];
-      if (e.result) tags.push('<span class="tag ' + e.result + '">' + e.result + '</span>');
+      var tags = (e.results || []).map(function (r) {
+        return '<span class="tag ' + r + '">' + r + '</span>';
+      });
       if (e.atWin) tags.push('<span class="tag AT">at当選</span>');
       if (!tags.length) tags.push('<span class="tag メモ">メモ</span>');
 
@@ -568,12 +583,28 @@
           '<div class="nums"></div>' +
           '<div class="note"></div>' +
         '</div>' +
+        '<div class="reorder">' +
+          '<button type="button" class="move-up">▲</button>' +
+          '<button type="button" class="move-down">▼</button>' +
+        '</div>' +
         '<button class="del">×</button>';
       row.querySelector('.nums').textContent = numsText;
       row.querySelector('.nums').style.display = numsText ? '' : 'none';
       row.querySelector('.note').textContent = e.atMemo || '';
       row.querySelector('.note').style.display = e.atMemo ? '' : 'none';
       row.querySelector('.body').addEventListener('click', function () { openEntrySheet(e.id); });
+      var upBtn = row.querySelector('.move-up');
+      var downBtn = row.querySelector('.move-down');
+      upBtn.disabled = (idx === 0);
+      downBtn.disabled = (idx === v.entries.length - 1);
+      upBtn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        moveEntry(v, idx, -1);
+      });
+      downBtn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        moveEntry(v, idx, 1);
+      });
       row.querySelector('.del').addEventListener('click', function (ev) {
         ev.stopPropagation();
         if (confirm('この記録を削除しますか？')) {
@@ -584,6 +615,17 @@
       });
       elEntryList.appendChild(row);
     });
+  }
+
+  // 記録の並び順を1つ前後に入れ替える(direction: -1で上へ、+1で下へ)
+  function moveEntry(visit, index, direction) {
+    var newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= visit.entries.length) return;
+    var tmp = visit.entries[index];
+    visit.entries[index] = visit.entries[newIndex];
+    visit.entries[newIndex] = tmp;
+    save();
+    renderDetail();
   }
 
   // --- 来店 追加/編集シート ---
@@ -659,9 +701,15 @@
 
   resultButtons.forEach(function (btn) {
     btn.addEventListener('click', function () {
-      // 選択中のボタンをもう一度押したら選択解除する
-      state.selectedResult = (state.selectedResult === btn.dataset.v) ? null : btn.dataset.v;
-      resultButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedResult); });
+      // BIG/みたま/マギチャレ当選はそれぞれ独立してON/OFFできる(同時選択OK)
+      var v = btn.dataset.v;
+      var idx = state.selectedResults.indexOf(v);
+      if (idx === -1) {
+        state.selectedResults.push(v);
+      } else {
+        state.selectedResults.splice(idx, 1);
+      }
+      btn.classList.toggle('active', state.selectedResults.indexOf(v) !== -1);
     });
   });
 
@@ -672,7 +720,7 @@
       var v = currentVisit();
       var e = v.entries.find(function (x) { return x.id === entryId; });
       title.textContent = '記録を編集';
-      state.selectedResult = e.result || null;
+      state.selectedResults = (e.results || []).slice();
       eGame.value = (typeof e.game === 'number') ? e.game : '';
       ePoint.value = (typeof e.point === 'number') ? e.point : '';
       eAtWin.checked = !!e.atWin;
@@ -680,14 +728,14 @@
       eDeleteBtn.style.display = '';
     } else {
       title.textContent = '記録を追加';
-      state.selectedResult = null;
+      state.selectedResults = [];
       eGame.value = '';
       ePoint.value = '';
       eAtWin.checked = false;
       eAtMemo.value = '';
       eDeleteBtn.style.display = 'none';
     }
-    resultButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedResult); });
+    resultButtons.forEach(function (b) { b.classList.toggle('active', state.selectedResults.indexOf(b.dataset.v) !== -1); });
     overlayEntry.classList.remove('hidden');
   }
   document.getElementById('e-cancel').addEventListener('click', function () {
@@ -698,14 +746,14 @@
     if (!v) return;
     var game = eGame.value === '' ? null : Number(eGame.value);
     var point = ePoint.value === '' ? null : Number(ePoint.value);
-    var result = state.selectedResult;
+    var results = state.selectedResults.slice();
     var atWin = eAtWin.checked;
     var atMemo = eAtMemo.value.trim();
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
-      e.game = game; e.point = point; e.result = result; e.atWin = atWin; e.atMemo = atMemo;
+      e.game = game; e.point = point; e.results = results; e.atWin = atWin; e.atMemo = atMemo;
     } else {
-      v.entries.push({ id: uid(), game: game, point: point, result: result, atWin: atWin, atMemo: atMemo });
+      v.entries.push({ id: uid(), game: game, point: point, results: results, atWin: atWin, atMemo: atMemo });
     }
     save();
     overlayEntry.classList.add('hidden');
