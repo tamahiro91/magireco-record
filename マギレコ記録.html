@@ -129,29 +129,31 @@
   .visit-card .stats { display: flex; gap: 12px; margin-top: 8px; font-size: 13px; }
   .visit-card .stats span b { color: var(--text); }
 
-  .counters { display: flex; gap: 10px; margin-top: 10px; }
+  .counters { display: flex; gap: 8px; margin-top: 10px; }
   .counter-card {
     flex: 1;
+    min-width: 0;
     background: var(--panel2);
     border-radius: 12px;
-    padding: 10px;
+    padding: 8px 6px;
     text-align: center;
   }
-  .counter-card .counter-label { font-size: 12px; color: var(--sub); margin-bottom: 6px; }
-  .counter-controls { display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .counter-card .counter-label { font-size: 11px; color: var(--sub); margin-bottom: 6px; white-space: nowrap; }
+  .counter-controls { display: flex; align-items: center; justify-content: center; gap: 6px; }
   .counter-controls .counter-btn {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
     border-radius: 8px;
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--text);
-    font-size: 18px;
+    font-size: 16px;
     cursor: pointer;
     padding: 0;
   }
   .counter-controls .counter-btn:active { opacity: 0.6; }
-  .counter-value { font-size: 20px; font-weight: 700; min-width: 26px; }
+  .counter-value { font-size: 18px; font-weight: 700; min-width: 20px; }
 
   .empty {
     text-align: center;
@@ -361,6 +363,14 @@
             <button type="button" class="counter-btn" id="d-cz-minus">−</button>
             <div class="counter-value" id="d-cz-value">0</div>
             <button type="button" class="counter-btn" id="d-cz-plus">＋</button>
+          </div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">CZ成功</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="d-czwin-minus">−</button>
+            <div class="counter-value" id="d-czwin-value">0</div>
+            <button type="button" class="counter-btn" id="d-czwin-plus">＋</button>
           </div>
         </div>
       </div>
@@ -609,13 +619,14 @@
   var elDTotal = document.getElementById('d-total');
   var elDSuikaValue = document.getElementById('d-suika-value');
   var elDCzValue = document.getElementById('d-cz-value');
+  var elDCzWinValue = document.getElementById('d-czwin-value');
   var elEntryList = document.getElementById('entry-list');
 
-  // スイカ/CZのタップカウンター(来店ごとに保持)
+  // スイカ/CZ/CZ成功のタップカウンター(来店ごとに保持)
   function changeCounter(key, delta) {
     var v = currentVisit();
     if (!v) return;
-    if (!v.counters) v.counters = { suika: 0, cz: 0 };
+    if (!v.counters) v.counters = { suika: 0, cz: 0, czWin: 0 };
     v.counters[key] = Math.max(0, (v.counters[key] || 0) + delta);
     save();
     renderDetail();
@@ -624,6 +635,8 @@
   document.getElementById('d-suika-minus').addEventListener('click', function () { changeCounter('suika', -1); });
   document.getElementById('d-cz-plus').addEventListener('click', function () { changeCounter('cz', 1); });
   document.getElementById('d-cz-minus').addEventListener('click', function () { changeCounter('cz', -1); });
+  document.getElementById('d-czwin-plus').addEventListener('click', function () { changeCounter('czWin', 1); });
+  document.getElementById('d-czwin-minus').addEventListener('click', function () { changeCounter('czWin', -1); });
 
   function currentVisit() {
     return state.visits.find(function (v) { return v.id === state.currentVisitId; });
@@ -656,9 +669,10 @@
     elDMitama.textContent = s.mitama;
     elDTotal.textContent = s.total;
 
-    var counters = v.counters || { suika: 0, cz: 0 };
+    var counters = v.counters || { suika: 0, cz: 0, czWin: 0 };
     elDSuikaValue.textContent = counters.suika || 0;
     elDCzValue.textContent = counters.cz || 0;
+    elDCzWinValue.textContent = counters.czWin || 0;
 
     elEntryList.innerHTML = '';
     (v.entries || []).forEach(function (e, idx) {
@@ -766,7 +780,7 @@
     var machine = vMachine.value.trim();
     var note = vNote.value.trim();
     if (state.editingVisitMode === 'new') {
-      var v = { id: uid(), store: store, date: date, machine: machine, note: note, createdAt: Date.now().toString(), entries: [], counters: { suika: 0, cz: 0 } };
+      var v = { id: uid(), store: store, date: date, machine: machine, note: note, createdAt: Date.now().toString(), entries: [], counters: { suika: 0, cz: 0, czWin: 0 } };
       state.visits.push(v);
       save();
       overlayVisit.classList.add('hidden');
