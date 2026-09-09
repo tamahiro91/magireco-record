@@ -164,14 +164,12 @@
     margin-top: 1px;
   }
   .tag.BIG { background: var(--big); }
-  .tag.REG { background: var(--reg); }
-  .tag.マギチャレ成功 { background: var(--charge); }
-  .tag.AT当選 { background: var(--at); }
+  .tag.みたま { background: var(--charge); }
+  .tag.AT { background: var(--at); }
   .tag.メモ { background: var(--memo); color: #000; }
+  .entry .tags { display: flex; flex-direction: column; gap: 4px; }
   .entry .body { flex: 1; min-width: 0; }
   .entry .nums { font-size: 15px; font-weight: 700; }
-  .entry .nums .g.plus { color: var(--big); }
-  .entry .nums .g.minus { color: var(--sub); }
   .entry .note { font-size: 13px; color: var(--sub); margin-top: 2px; word-break: break-word; }
   .entry .del {
     background: none; border: none; color: var(--sub); font-size: 18px; cursor: pointer; padding: 0 4px;
@@ -238,6 +236,17 @@
     cursor: pointer;
   }
   .cat-select button.active { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .check-row input[type="checkbox"] { width: 20px; height: 20px; }
+  .check-row label { margin: 0; font-size: 15px; color: var(--text); }
   .sheet-actions { display: flex; gap: 10px; margin-top: 16px; }
   .sheet-actions button { flex: 1; padding: 12px; font-size: 15px; }
 
@@ -258,7 +267,7 @@
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
       <div class="card"><div class="label">当り回数</div><div class="value" id="sum-hits">0</div></div>
-      <div class="card"><div class="label">差枚合計</div><div class="value" id="sum-g">0</div></div>
+      <div class="card"><div class="label">ポイント合計</div><div class="value" id="sum-point">0</div></div>
     </div>
 
     <div class="search-row">
@@ -283,7 +292,7 @@
       <div class="summary" style="margin-top:10px;">
         <div class="card"><div class="label">回数</div><div class="value" id="d-count">0</div></div>
         <div class="card"><div class="label">当り</div><div class="value" id="d-hits">0</div></div>
-        <div class="card"><div class="label">差枚</div><div class="value" id="d-g">0</div></div>
+        <div class="card"><div class="label">ポイント</div><div class="value" id="d-point">0</div></div>
       </div>
     </div>
 
@@ -328,29 +337,32 @@
 <div class="overlay hidden" id="overlay-entry">
   <div class="sheet">
     <h2 id="entry-sheet-title">記録を追加</h2>
-    <div class="field">
-      <label>種別</label>
-      <div class="cat-select" id="e-cat">
-        <button type="button" data-v="BIG">BIG</button>
-        <button type="button" data-v="REG">REG</button>
-        <button type="button" data-v="マギチャレ成功">マギチャレ成功</button>
-        <button type="button" data-v="AT当選">AT当選</button>
-        <button type="button" data-v="メモ">メモのみ</button>
-      </div>
-    </div>
     <div class="row2">
       <div class="field">
-        <label>差枚 (g)</label>
-        <input type="number" id="e-g" placeholder="例: 407">
+        <label>ゲーム数</label>
+        <input type="number" inputmode="numeric" id="e-game" placeholder="例: 650">
       </div>
       <div class="field">
-        <label>G数 (p)</label>
-        <input type="number" id="e-p" placeholder="例: 650">
+        <label>ポイント</label>
+        <input type="number" inputmode="numeric" id="e-point" placeholder="例: 350">
       </div>
     </div>
     <div class="field">
-      <label>詳細メモ</label>
-      <textarea id="e-note" placeholder="例: atストーリー4.1 / みたま、緑、穢れ / きゅうべえ会話 など"></textarea>
+      <label>結果</label>
+      <div class="cat-select" id="e-result">
+        <button type="button" data-v="BIG">BIG</button>
+        <button type="button" data-v="みたま">みたま</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="check-row">
+        <input type="checkbox" id="e-atwin">
+        <label for="e-atwin">at当選</label>
+      </div>
+    </div>
+    <div class="field">
+      <label>at中身のメモ</label>
+      <textarea id="e-atmemo" placeholder="例: ストーリー4.1 / きゅうべえ会話 / 黒江モード? など"></textarea>
     </div>
     <div class="sheet-actions">
       <button class="ghost-btn" id="e-cancel">キャンセル</button>
@@ -378,7 +390,25 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedCat: null };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResult: null };
+
+  // 古い形式(cat/g/p/note)で保存されたデータを新形式(game/point/result/atWin/atMemo)に変換する
+  function normalizeEntry(e) {
+    if (e.game !== undefined || e.point !== undefined || e.result !== undefined || e.atWin !== undefined || e.atMemo !== undefined) {
+      return e;
+    }
+    var result = null;
+    if (e.cat === 'BIG' || e.cat === 'REG') result = 'BIG';
+    else if (e.cat === 'マギチャレ成功') result = 'みたま';
+    return {
+      id: e.id,
+      game: (typeof e.g === 'number') ? e.g : null,
+      point: (typeof e.p === 'number') ? e.p : null,
+      result: result,
+      atWin: e.cat === 'AT当選',
+      atMemo: e.note || ''
+    };
+  }
 
   function load() {
     try {
@@ -387,6 +417,9 @@
     } catch (e) {
       state.visits = [];
     }
+    state.visits.forEach(function (v) {
+      v.entries = (v.entries || []).map(normalizeEntry);
+    });
   }
   function save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.visits));
@@ -403,19 +436,13 @@
     var p = s.split('-');
     return p.length === 3 ? p[0] + '/' + p[1] + '/' + p[2] : s;
   }
-  function isHit(cat) {
-    return cat === 'BIG' || cat === 'REG' || cat === 'マギチャレ成功' || cat === 'AT当選';
-  }
   function visitStats(visit) {
-    var g = 0, hits = 0;
+    var point = 0, hits = 0;
     (visit.entries || []).forEach(function (e) {
-      if (typeof e.g === 'number') g += e.g;
-      if (isHit(e.cat)) hits++;
+      if (typeof e.point === 'number') point += e.point;
+      if (e.result === 'BIG' || e.result === 'みたま') hits++;
     });
-    return { g: g, hits: hits, count: (visit.entries || []).length };
-  }
-  function fmtG(g) {
-    return (g > 0 ? '+' : '') + g;
+    return { point: point, hits: hits, count: (visit.entries || []).length };
   }
 
   // --- 要素参照 ---
@@ -426,7 +453,7 @@
   var elSearch = document.getElementById('search');
   var elSumVisits = document.getElementById('sum-visits');
   var elSumHits = document.getElementById('sum-hits');
-  var elSumG = document.getElementById('sum-g');
+  var elSumPoint = document.getElementById('sum-point');
 
   function renderList() {
     var q = (elSearch.value || '').trim();
@@ -439,15 +466,15 @@
       });
     }
 
-    var totalG = 0, totalHits = 0;
+    var totalPoint = 0, totalHits = 0;
     state.visits.forEach(function (v) {
       var s = visitStats(v);
-      totalG += s.g;
+      totalPoint += s.point;
       totalHits += s.hits;
     });
     elSumVisits.textContent = state.visits.length;
     elSumHits.textContent = totalHits;
-    elSumG.textContent = fmtG(totalG);
+    elSumPoint.textContent = totalPoint;
 
     elVisitList.innerHTML = '';
     elEmptyMsg.hidden = state.visits.length > 0;
@@ -462,14 +489,14 @@
         '<div class="stats">' +
           '<span>回数 <b class="c-count"></b></span>' +
           '<span>当り <b class="c-hits"></b></span>' +
-          '<span>差枚 <b class="c-g"></b></span>' +
+          '<span>ポイント <b class="c-point"></b></span>' +
         '</div>';
       card.querySelector('.store').textContent = v.store || '(店舗名未設定)';
       card.querySelector('.date').textContent = fmtDate(v.date);
       card.querySelector('.meta').textContent = v.machine ? (v.machine + ' 番台') : '';
       card.querySelector('.c-count').textContent = s.count;
       card.querySelector('.c-hits').textContent = s.hits;
-      card.querySelector('.c-g').textContent = fmtG(s.g);
+      card.querySelector('.c-point').textContent = s.point;
       card.addEventListener('click', function () { openDetail(v.id); });
       elVisitList.appendChild(card);
     });
@@ -488,7 +515,7 @@
   var elDMemo = document.getElementById('d-memo');
   var elDCount = document.getElementById('d-count');
   var elDHits = document.getElementById('d-hits');
-  var elDG = document.getElementById('d-g');
+  var elDPoint = document.getElementById('d-point');
   var elEntryList = document.getElementById('entry-list');
 
   function currentVisit() {
@@ -520,26 +547,32 @@
     var s = visitStats(v);
     elDCount.textContent = s.count;
     elDHits.textContent = s.hits;
-    elDG.textContent = fmtG(s.g);
+    elDPoint.textContent = s.point;
 
     elEntryList.innerHTML = '';
     (v.entries || []).forEach(function (e) {
       var row = document.createElement('div');
       row.className = 'entry';
-      var gText = (typeof e.g === 'number') ? (e.g > 0 ? '+' + e.g + 'g' : e.g + 'g') : '';
-      var pText = (typeof e.p === 'number') ? e.p + 'G' : '';
-      var numsText = [gText, pText].filter(Boolean).join(' / ');
+      var gameText = (typeof e.game === 'number') ? e.game + 'G' : '';
+      var pointText = (typeof e.point === 'number') ? e.point + 'pt' : '';
+      var numsText = [gameText, pointText].filter(Boolean).join(' / ');
+
+      var tags = [];
+      if (e.result) tags.push('<span class="tag ' + e.result + '">' + e.result + '</span>');
+      if (e.atWin) tags.push('<span class="tag AT">at当選</span>');
+      if (!tags.length) tags.push('<span class="tag メモ">メモ</span>');
+
       row.innerHTML =
-        '<span class="tag ' + e.cat + '"></span>' +
+        '<div class="tags">' + tags.join('') + '</div>' +
         '<div class="body">' +
           '<div class="nums"></div>' +
           '<div class="note"></div>' +
         '</div>' +
         '<button class="del">×</button>';
-      row.querySelector('.tag').textContent = e.cat;
-      row.querySelector('.nums').textContent = numsText || (e.cat === 'メモ' ? 'メモ' : e.cat);
-      row.querySelector('.note').textContent = e.note || '';
-      row.querySelector('.note').style.display = e.note ? '' : 'none';
+      row.querySelector('.nums').textContent = numsText;
+      row.querySelector('.nums').style.display = numsText ? '' : 'none';
+      row.querySelector('.note').textContent = e.atMemo || '';
+      row.querySelector('.note').style.display = e.atMemo ? '' : 'none';
       row.querySelector('.body').addEventListener('click', function () { openEntrySheet(e.id); });
       row.querySelector('.del').addEventListener('click', function (ev) {
         ev.stopPropagation();
@@ -617,16 +650,18 @@
 
   // --- 記録 追加/編集シート ---
   var overlayEntry = document.getElementById('overlay-entry');
-  var eG = document.getElementById('e-g');
-  var eP = document.getElementById('e-p');
-  var eNote = document.getElementById('e-note');
+  var eGame = document.getElementById('e-game');
+  var ePoint = document.getElementById('e-point');
+  var eAtWin = document.getElementById('e-atwin');
+  var eAtMemo = document.getElementById('e-atmemo');
   var eDeleteBtn = document.getElementById('e-delete');
-  var catButtons = document.querySelectorAll('#e-cat button');
+  var resultButtons = document.querySelectorAll('#e-result button');
 
-  catButtons.forEach(function (btn) {
+  resultButtons.forEach(function (btn) {
     btn.addEventListener('click', function () {
-      state.selectedCat = btn.dataset.v;
-      catButtons.forEach(function (b) { b.classList.toggle('active', b === btn); });
+      // 選択中のボタンをもう一度押したら選択解除する
+      state.selectedResult = (state.selectedResult === btn.dataset.v) ? null : btn.dataset.v;
+      resultButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedResult); });
     });
   });
 
@@ -637,20 +672,22 @@
       var v = currentVisit();
       var e = v.entries.find(function (x) { return x.id === entryId; });
       title.textContent = '記録を編集';
-      state.selectedCat = e.cat;
-      eG.value = (typeof e.g === 'number') ? e.g : '';
-      eP.value = (typeof e.p === 'number') ? e.p : '';
-      eNote.value = e.note || '';
+      state.selectedResult = e.result || null;
+      eGame.value = (typeof e.game === 'number') ? e.game : '';
+      ePoint.value = (typeof e.point === 'number') ? e.point : '';
+      eAtWin.checked = !!e.atWin;
+      eAtMemo.value = e.atMemo || '';
       eDeleteBtn.style.display = '';
     } else {
       title.textContent = '記録を追加';
-      state.selectedCat = 'BIG';
-      eG.value = '';
-      eP.value = '';
-      eNote.value = '';
+      state.selectedResult = null;
+      eGame.value = '';
+      ePoint.value = '';
+      eAtWin.checked = false;
+      eAtMemo.value = '';
       eDeleteBtn.style.display = 'none';
     }
-    catButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedCat); });
+    resultButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedResult); });
     overlayEntry.classList.remove('hidden');
   }
   document.getElementById('e-cancel').addEventListener('click', function () {
@@ -659,15 +696,16 @@
   document.getElementById('e-save').addEventListener('click', function () {
     var v = currentVisit();
     if (!v) return;
-    var g = eG.value === '' ? null : Number(eG.value);
-    var p = eP.value === '' ? null : Number(eP.value);
-    var note = eNote.value.trim();
-    var cat = state.selectedCat || 'メモ';
+    var game = eGame.value === '' ? null : Number(eGame.value);
+    var point = ePoint.value === '' ? null : Number(ePoint.value);
+    var result = state.selectedResult;
+    var atWin = eAtWin.checked;
+    var atMemo = eAtMemo.value.trim();
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
-      e.cat = cat; e.g = g; e.p = p; e.note = note;
+      e.game = game; e.point = point; e.result = result; e.atWin = atWin; e.atMemo = atMemo;
     } else {
-      v.entries.push({ id: uid(), cat: cat, g: g, p: p, note: note });
+      v.entries.push({ id: uid(), game: game, point: point, result: result, atWin: atWin, atMemo: atMemo });
     }
     save();
     overlayEntry.classList.add('hidden');
