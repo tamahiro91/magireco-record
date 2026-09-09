@@ -129,31 +129,31 @@
   .visit-card .stats { display: flex; gap: 12px; margin-top: 8px; font-size: 13px; }
   .visit-card .stats span b { color: var(--text); }
 
-  .counters { display: flex; gap: 8px; margin-top: 10px; }
+  .counters { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
   .counter-card {
-    flex: 1;
-    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     background: var(--panel2);
     border-radius: 12px;
-    padding: 8px 6px;
-    text-align: center;
+    padding: 8px 12px;
   }
-  .counter-card .counter-label { font-size: 11px; color: var(--sub); margin-bottom: 6px; white-space: nowrap; }
-  .counter-controls { display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .counter-card .counter-label { font-size: 14px; font-weight: 600; color: var(--text); }
+  .counter-controls { display: flex; align-items: center; gap: 12px; }
   .counter-controls .counter-btn {
-    width: 30px;
-    height: 30px;
+    width: 42px;
+    height: 42px;
     flex-shrink: 0;
-    border-radius: 8px;
+    border-radius: 10px;
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--text);
-    font-size: 16px;
+    font-size: 20px;
     cursor: pointer;
     padding: 0;
   }
   .counter-controls .counter-btn:active { opacity: 0.6; }
-  .counter-value { font-size: 18px; font-weight: 700; min-width: 20px; }
+  .counter-value { font-size: 20px; font-weight: 700; min-width: 28px; text-align: center; }
 
   .empty {
     text-align: center;
@@ -173,6 +173,17 @@
   .visit-header .store { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
   .visit-header .sub { font-size: 13px; color: var(--sub); }
   .visit-header .actions { display: flex; gap: 8px; margin-top: 10px; }
+  .visit-header .summary .label { font-size: 12px; font-weight: 600; }
+  .visit-header .summary .value { font-size: 26px; }
+  .visit-header .summary .card:nth-child(1) { background: rgba(255, 107, 107, 0.16); border: 1px solid rgba(255, 107, 107, 0.45); }
+  .visit-header .summary .card:nth-child(1) .label,
+  .visit-header .summary .card:nth-child(1) .value { color: var(--big); }
+  .visit-header .summary .card:nth-child(2) { background: rgba(185, 139, 255, 0.16); border: 1px solid rgba(185, 139, 255, 0.45); }
+  .visit-header .summary .card:nth-child(2) .label,
+  .visit-header .summary .card:nth-child(2) .value { color: var(--charge); }
+  .visit-header .summary .card:nth-child(3) { background: rgba(255, 214, 10, 0.14); border: 1px solid rgba(255, 214, 10, 0.45); }
+  .visit-header .summary .card:nth-child(3) .label,
+  .visit-header .summary .card:nth-child(3) .value { color: var(--accent); }
 
   .entry {
     background: var(--panel);
