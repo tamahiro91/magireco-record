@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>マギレコ実戦記録</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #000000;
+    --panel: #1c1c1e;
+    --panel2: #2c2c2e;
+    --border: #3a3a3c;
+    --text: #f2f2f7;
+    --sub: #9a9aa0;
+    --accent: #ffd60a;
+    --big: #ff6b6b;
+    --reg: #6bb8ff;
+    --charge: #b98bff;
+    --at: #6bffb0;
+    --memo: #9a9aa0;
+    --danger: #ff453a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  }
+  #app {
+    max-width: 640px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: max(16px, env(safe-area-inset-top)) 14px 90px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+    flex: 1;
+  }
+  .icon-btn {
+    background: var(--panel2);
+    border: none;
+    color: var(--text);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .icon-btn:active { opacity: 0.6; }
+  .primary-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .primary-btn:active { opacity: 0.7; }
+  .ghost-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+
+  /* 全体集計 */
+  .summary {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .summary .card {
+    flex: 1;
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+  }
+  .summary .card .label { font-size: 11px; color: var(--sub); margin-bottom: 4px; }
+  .summary .card .value { font-size: 18px; font-weight: 700; }
+
+  .search-row { margin-bottom: 12px; }
+  .search-row input {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+
+  /* 来店カード一覧 */
+  .visit-card {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .visit-card:active { opacity: 0.7; }
+  .visit-card .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .visit-card .store { font-size: 17px; font-weight: 700; }
+  .visit-card .date { font-size: 13px; color: var(--sub); white-space: nowrap; }
+  .visit-card .meta { font-size: 13px; color: var(--sub); margin-top: 4px; }
+  .visit-card .stats { display: flex; gap: 12px; margin-top: 8px; font-size: 13px; }
+  .visit-card .stats span b { color: var(--text); }
+
+  .empty {
+    text-align: center;
+    color: var(--sub);
+    padding: 60px 20px;
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  /* 詳細ビュー */
+  .visit-header {
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .visit-header .store { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+  .visit-header .sub { font-size: 13px; color: var(--sub); }
+  .visit-header .actions { display: flex; gap: 8px; margin-top: 10px; }
+
+  .entry {
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .entry .tag {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 999px;
+    color: #000;
+    white-space: nowrap;
+    margin-top: 1px;
+  }
+  .tag.BIG { background: var(--big); }
+  .tag.REG { background: var(--reg); }
+  .tag.マギチャレ成功 { background: var(--charge); }
+  .tag.AT当選 { background: var(--at); }
+  .tag.メモ { background: var(--memo); color: #000; }
+  .entry .body { flex: 1; min-width: 0; }
+  .entry .nums { font-size: 15px; font-weight: 700; }
+  .entry .nums .g.plus { color: var(--big); }
+  .entry .nums .g.minus { color: var(--sub); }
+  .entry .note { font-size: 13px; color: var(--sub); margin-top: 2px; word-break: break-word; }
+  .entry .del {
+    background: none; border: none; color: var(--sub); font-size: 18px; cursor: pointer; padding: 0 4px;
+  }
+
+  .fab {
+    position: fixed;
+    right: max(20px, calc((100vw - 640px) / 2 + 20px));
+    bottom: max(24px, env(safe-area-inset-bottom));
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #000;
+    font-size: 28px;
+    border: none;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    cursor: pointer;
+    z-index: 10;
+  }
+  .fab:active { opacity: 0.7; }
+
+  /* モーダル */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: flex-end;
+    z-index: 100;
+  }
+  .overlay.hidden { display: none; }
+  .sheet {
+    background: var(--panel);
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    border-radius: 18px 18px 0 0;
+    padding: 18px 16px max(18px, env(safe-area-inset-bottom));
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+  .sheet h2 { margin: 0 0 14px; font-size: 17px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 16px;
+    font-family: inherit;
+  }
+  .field textarea { resize: vertical; min-height: 44px; }
+  .row2 { display: flex; gap: 10px; }
+  .row2 .field { flex: 1; }
+  .cat-select { display: flex; gap: 8px; flex-wrap: wrap; }
+  .cat-select button {
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .cat-select button.active { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .sheet-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .sheet-actions button { flex: 1; padding: 12px; font-size: 15px; }
+
+  .backup-row { display: flex; gap: 8px; margin-top: 4px; }
+  .backup-row button { flex: 1; }
+  #import-file { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="view-list">
+    <header>
+      <h1>マギレコ実戦記録</h1>
+      <button class="icon-btn" id="btn-backup">⋯</button>
+    </header>
+
+    <div class="summary">
+      <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
+      <div class="card"><div class="label">当り回数</div><div class="value" id="sum-hits">0</div></div>
+      <div class="card"><div class="label">差枚合計</div><div class="value" id="sum-g">0</div></div>
+    </div>
+
+    <div class="search-row">
+      <input type="text" id="search" placeholder="店舗名で検索">
+    </div>
+
+    <div id="visit-list"></div>
+    <div class="empty" id="empty-msg" hidden>まだ記録がありません。<br>右下の + から来店を追加しましょう。</div>
+  </div>
+
+  <div id="view-detail" hidden>
+    <header>
+      <button class="icon-btn" id="btn-back">← 一覧</button>
+      <h1></h1>
+      <button class="icon-btn" id="btn-edit-visit">編集</button>
+    </header>
+
+    <div class="visit-header">
+      <div class="store" id="d-store"></div>
+      <div class="sub" id="d-sub"></div>
+      <div class="sub" id="d-memo"></div>
+      <div class="summary" style="margin-top:10px;">
+        <div class="card"><div class="label">回数</div><div class="value" id="d-count">0</div></div>
+        <div class="card"><div class="label">当り</div><div class="value" id="d-hits">0</div></div>
+        <div class="card"><div class="label">差枚</div><div class="value" id="d-g">0</div></div>
+      </div>
+    </div>
+
+    <div id="entry-list"></div>
+  </div>
+
+  <button class="fab" id="btn-fab">+</button>
+</div>
+
+<!-- 来店 追加/編集 -->
+<div class="overlay hidden" id="overlay-visit">
+  <div class="sheet">
+    <h2 id="visit-sheet-title">来店を追加</h2>
+    <div class="field">
+      <label>店舗名</label>
+      <input type="text" id="v-store" list="store-list" placeholder="例: エスパス日拓秋葉原">
+      <datalist id="store-list"></datalist>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>日付</label>
+        <input type="date" id="v-date">
+      </div>
+      <div class="field">
+        <label>台番号</label>
+        <input type="text" id="v-machine" placeholder="例: 2038">
+      </div>
+    </div>
+    <div class="field">
+      <label>メモ</label>
+      <textarea id="v-note" placeholder="任意のメモ"></textarea>
+    </div>
+    <div class="sheet-actions">
+      <button class="ghost-btn" id="v-cancel">キャンセル</button>
+      <button class="ghost-btn" id="v-delete" style="color:var(--danger);border-color:var(--danger);display:none;">来店を削除</button>
+      <button class="primary-btn" id="v-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 記録 追加/編集 -->
+<div class="overlay hidden" id="overlay-entry">
+  <div class="sheet">
+    <h2 id="entry-sheet-title">記録を追加</h2>
+    <div class="field">
+      <label>種別</label>
+      <div class="cat-select" id="e-cat">
+        <button type="button" data-v="BIG">BIG</button>
+        <button type="button" data-v="REG">REG</button>
+        <button type="button" data-v="マギチャレ成功">マギチャレ成功</button>
+        <button type="button" data-v="AT当選">AT当選</button>
+        <button type="button" data-v="メモ">メモのみ</button>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>差枚 (g)</label>
+        <input type="number" id="e-g" placeholder="例: 407">
+      </div>
+      <div class="field">
+        <label>G数 (p)</label>
+        <input type="number" id="e-p" placeholder="例: 650">
+      </div>
+    </div>
+    <div class="field">
+      <label>詳細メモ</label>
+      <textarea id="e-note" placeholder="例: atストーリー4.1 / みたま、緑、穢れ / きゅうべえ会話 など"></textarea>
+    </div>
+    <div class="sheet-actions">
+      <button class="ghost-btn" id="e-cancel">キャンセル</button>
+      <button class="ghost-btn" id="e-delete" style="color:var(--danger);border-color:var(--danger);display:none;">削除</button>
+      <button class="primary-btn" id="e-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- バックアップ -->
+<div class="overlay hidden" id="overlay-backup">
+  <div class="sheet">
+    <h2>バックアップ</h2>
+    <div class="backup-row">
+      <button class="ghost-btn" id="btn-export">JSONを書き出し</button>
+      <button class="ghost-btn" id="btn-import-open">JSONを読み込み</button>
+    </div>
+    <input type="file" id="import-file" accept="application/json">
+    <div class="sheet-actions">
+      <button class="primary-btn" id="backup-close" style="flex:1;">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var STORAGE_KEY = 'magireco.visits.v1';
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedCat: null };
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      state.visits = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      state.visits = [];
+    }
+  }
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.visits));
+  }
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function fmtDate(s) {
+    if (!s) return '';
+    var p = s.split('-');
+    return p.length === 3 ? p[0] + '/' + p[1] + '/' + p[2] : s;
+  }
+  function isHit(cat) {
+    return cat === 'BIG' || cat === 'REG' || cat === 'マギチャレ成功' || cat === 'AT当選';
+  }
+  function visitStats(visit) {
+    var g = 0, hits = 0;
+    (visit.entries || []).forEach(function (e) {
+      if (typeof e.g === 'number') g += e.g;
+      if (isHit(e.cat)) hits++;
+    });
+    return { g: g, hits: hits, count: (visit.entries || []).length };
+  }
+  function fmtG(g) {
+    return (g > 0 ? '+' : '') + g;
+  }
+
+  // --- 要素参照 ---
+  var elListView = document.getElementById('view-list');
+  var elDetailView = document.getElementById('view-detail');
+  var elVisitList = document.getElementById('visit-list');
+  var elEmptyMsg = document.getElementById('empty-msg');
+  var elSearch = document.getElementById('search');
+  var elSumVisits = document.getElementById('sum-visits');
+  var elSumHits = document.getElementById('sum-hits');
+  var elSumG = document.getElementById('sum-g');
+
+  function renderList() {
+    var q = (elSearch.value || '').trim();
+    var visits = state.visits.slice().sort(function (a, b) {
+      return (b.date + b.createdAt).localeCompare(a.date + a.createdAt);
+    });
+    if (q) {
+      visits = visits.filter(function (v) {
+        return (v.store || '').indexOf(q) !== -1;
+      });
+    }
+
+    var totalG = 0, totalHits = 0;
+    state.visits.forEach(function (v) {
+      var s = visitStats(v);
+      totalG += s.g;
+      totalHits += s.hits;
+    });
+    elSumVisits.textContent = state.visits.length;
+    elSumHits.textContent = totalHits;
+    elSumG.textContent = fmtG(totalG);
+
+    elVisitList.innerHTML = '';
+    elEmptyMsg.hidden = state.visits.length > 0;
+
+    visits.forEach(function (v) {
+      var s = visitStats(v);
+      var card = document.createElement('div');
+      card.className = 'visit-card';
+      card.innerHTML =
+        '<div class="top-row"><div class="store"></div><div class="date"></div></div>' +
+        '<div class="meta"></div>' +
+        '<div class="stats">' +
+          '<span>回数 <b class="c-count"></b></span>' +
+          '<span>当り <b class="c-hits"></b></span>' +
+          '<span>差枚 <b class="c-g"></b></span>' +
+        '</div>';
+      card.querySelector('.store').textContent = v.store || '(店舗名未設定)';
+      card.querySelector('.date').textContent = fmtDate(v.date);
+      card.querySelector('.meta').textContent = v.machine ? (v.machine + ' 番台') : '';
+      card.querySelector('.c-count').textContent = s.count;
+      card.querySelector('.c-hits').textContent = s.hits;
+      card.querySelector('.c-g').textContent = fmtG(s.g);
+      card.addEventListener('click', function () { openDetail(v.id); });
+      elVisitList.appendChild(card);
+    });
+
+    // 店舗名の候補
+    var storeList = document.getElementById('store-list');
+    var stores = Array.from(new Set(state.visits.map(function (v) { return v.store; }).filter(Boolean)));
+    storeList.innerHTML = stores.map(function (s) { return '<option value="' + s.replace(/"/g, '') + '">'; }).join('');
+  }
+
+  elSearch.addEventListener('input', renderList);
+
+  // --- 詳細ビュー ---
+  var elDStore = document.getElementById('d-store');
+  var elDSub = document.getElementById('d-sub');
+  var elDMemo = document.getElementById('d-memo');
+  var elDCount = document.getElementById('d-count');
+  var elDHits = document.getElementById('d-hits');
+  var elDG = document.getElementById('d-g');
+  var elEntryList = document.getElementById('entry-list');
+
+  function currentVisit() {
+    return state.visits.find(function (v) { return v.id === state.currentVisitId; });
+  }
+
+  function openDetail(id) {
+    state.currentVisitId = id;
+    elListView.hidden = true;
+    elDetailView.hidden = false;
+    renderDetail();
+  }
+  function closeDetail() {
+    state.currentVisitId = null;
+    elDetailView.hidden = true;
+    elListView.hidden = false;
+    renderList();
+  }
+  document.getElementById('btn-back').addEventListener('click', closeDetail);
+
+  function renderDetail() {
+    var v = currentVisit();
+    if (!v) { closeDetail(); return; }
+    elDStore.textContent = v.store || '(店舗名未設定)';
+    elDSub.textContent = fmtDate(v.date) + (v.machine ? '　' + v.machine + ' 番台' : '');
+    elDMemo.textContent = v.note || '';
+    elDMemo.style.display = v.note ? '' : 'none';
+
+    var s = visitStats(v);
+    elDCount.textContent = s.count;
+    elDHits.textContent = s.hits;
+    elDG.textContent = fmtG(s.g);
+
+    elEntryList.innerHTML = '';
+    (v.entries || []).forEach(function (e) {
+      var row = document.createElement('div');
+      row.className = 'entry';
+      var gText = (typeof e.g === 'number') ? (e.g > 0 ? '+' + e.g + 'g' : e.g + 'g') : '';
+      var pText = (typeof e.p === 'number') ? e.p + 'G' : '';
+      var numsText = [gText, pText].filter(Boolean).join(' / ');
+      row.innerHTML =
+        '<span class="tag ' + e.cat + '"></span>' +
+        '<div class="body">' +
+          '<div class="nums"></div>' +
+          '<div class="note"></div>' +
+        '</div>' +
+        '<button class="del">×</button>';
+      row.querySelector('.tag').textContent = e.cat;
+      row.querySelector('.nums').textContent = numsText || (e.cat === 'メモ' ? 'メモ' : e.cat);
+      row.querySelector('.note').textContent = e.note || '';
+      row.querySelector('.note').style.display = e.note ? '' : 'none';
+      row.querySelector('.body').addEventListener('click', function () { openEntrySheet(e.id); });
+      row.querySelector('.del').addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        if (confirm('この記録を削除しますか？')) {
+          v.entries = v.entries.filter(function (x) { return x.id !== e.id; });
+          save();
+          renderDetail();
+        }
+      });
+      elEntryList.appendChild(row);
+    });
+  }
+
+  // --- 来店 追加/編集シート ---
+  var overlayVisit = document.getElementById('overlay-visit');
+  var vStore = document.getElementById('v-store');
+  var vDate = document.getElementById('v-date');
+  var vMachine = document.getElementById('v-machine');
+  var vNote = document.getElementById('v-note');
+  var vDeleteBtn = document.getElementById('v-delete');
+
+  function openVisitSheet(mode) {
+    state.editingVisitMode = mode; // 'new' or 'edit'
+    var title = document.getElementById('visit-sheet-title');
+    if (mode === 'new') {
+      title.textContent = '来店を追加';
+      vStore.value = '';
+      vDate.value = todayStr();
+      vMachine.value = '';
+      vNote.value = '';
+      vDeleteBtn.style.display = 'none';
+    } else {
+      var v = currentVisit();
+      title.textContent = '来店を編集';
+      vStore.value = v.store || '';
+      vDate.value = v.date || todayStr();
+      vMachine.value = v.machine || '';
+      vNote.value = v.note || '';
+      vDeleteBtn.style.display = '';
+    }
+    overlayVisit.classList.remove('hidden');
+  }
+  document.getElementById('v-cancel').addEventListener('click', function () {
+    overlayVisit.classList.add('hidden');
+  });
+  document.getElementById('v-save').addEventListener('click', function () {
+    var store = vStore.value.trim();
+    var date = vDate.value || todayStr();
+    var machine = vMachine.value.trim();
+    var note = vNote.value.trim();
+    if (state.editingVisitMode === 'new') {
+      var v = { id: uid(), store: store, date: date, machine: machine, note: note, createdAt: Date.now().toString(), entries: [] };
+      state.visits.push(v);
+      save();
+      overlayVisit.classList.add('hidden');
+      openDetail(v.id);
+    } else {
+      var cv = currentVisit();
+      cv.store = store; cv.date = date; cv.machine = machine; cv.note = note;
+      save();
+      overlayVisit.classList.add('hidden');
+      renderDetail();
+    }
+  });
+  vDeleteBtn.addEventListener('click', function () {
+    if (!confirm('この来店記録をすべて削除しますか？')) return;
+    state.visits = state.visits.filter(function (v) { return v.id !== state.currentVisitId; });
+    save();
+    overlayVisit.classList.add('hidden');
+    closeDetail();
+  });
+  document.getElementById('btn-edit-visit').addEventListener('click', function () {
+    if (currentVisit()) openVisitSheet('edit');
+  });
+
+  // --- 記録 追加/編集シート ---
+  var overlayEntry = document.getElementById('overlay-entry');
+  var eG = document.getElementById('e-g');
+  var eP = document.getElementById('e-p');
+  var eNote = document.getElementById('e-note');
+  var eDeleteBtn = document.getElementById('e-delete');
+  var catButtons = document.querySelectorAll('#e-cat button');
+
+  catButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      state.selectedCat = btn.dataset.v;
+      catButtons.forEach(function (b) { b.classList.toggle('active', b === btn); });
+    });
+  });
+
+  function openEntrySheet(entryId) {
+    state.editingEntryId = entryId || null;
+    var title = document.getElementById('entry-sheet-title');
+    if (entryId) {
+      var v = currentVisit();
+      var e = v.entries.find(function (x) { return x.id === entryId; });
+      title.textContent = '記録を編集';
+      state.selectedCat = e.cat;
+      eG.value = (typeof e.g === 'number') ? e.g : '';
+      eP.value = (typeof e.p === 'number') ? e.p : '';
+      eNote.value = e.note || '';
+      eDeleteBtn.style.display = '';
+    } else {
+      title.textContent = '記録を追加';
+      state.selectedCat = 'BIG';
+      eG.value = '';
+      eP.value = '';
+      eNote.value = '';
+      eDeleteBtn.style.display = 'none';
+    }
+    catButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedCat); });
+    overlayEntry.classList.remove('hidden');
+  }
+  document.getElementById('e-cancel').addEventListener('click', function () {
+    overlayEntry.classList.add('hidden');
+  });
+  document.getElementById('e-save').addEventListener('click', function () {
+    var v = currentVisit();
+    if (!v) return;
+    var g = eG.value === '' ? null : Number(eG.value);
+    var p = eP.value === '' ? null : Number(eP.value);
+    var note = eNote.value.trim();
+    var cat = state.selectedCat || 'メモ';
+    if (state.editingEntryId) {
+      var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
+      e.cat = cat; e.g = g; e.p = p; e.note = note;
+    } else {
+      v.entries.push({ id: uid(), cat: cat, g: g, p: p, note: note });
+    }
+    save();
+    overlayEntry.classList.add('hidden');
+    renderDetail();
+  });
+  eDeleteBtn.addEventListener('click', function () {
+    var v = currentVisit();
+    if (!confirm('この記録を削除しますか？')) return;
+    v.entries = v.entries.filter(function (x) { return x.id !== state.editingEntryId; });
+    save();
+    overlayEntry.classList.add('hidden');
+    renderDetail();
+  });
+
+  // --- FAB: 一覧では来店追加、詳細では記録追加 ---
+  document.getElementById('btn-fab').addEventListener('click', function () {
+    if (elDetailView.hidden) {
+      openVisitSheet('new');
+    } else {
+      openEntrySheet(null);
+    }
+  });
+
+  // --- バックアップ ---
+  var overlayBackup = document.getElementById('overlay-backup');
+  document.getElementById('btn-backup').addEventListener('click', function () {
+    overlayBackup.classList.remove('hidden');
+  });
+  document.getElementById('backup-close').addEventListener('click', function () {
+    overlayBackup.classList.add('hidden');
+  });
+  document.getElementById('btn-export').addEventListener('click', function () {
+    var blob = new Blob([JSON.stringify(state.visits, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'magireco-records-' + todayStr() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+  document.getElementById('btn-import-open').addEventListener('click', function () {
+    document.getElementById('import-file').click();
+  });
+  document.getElementById('import-file').addEventListener('change', function (ev) {
+    var file = ev.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var data = JSON.parse(reader.result);
+        if (!Array.isArray(data)) throw new Error('invalid');
+        if (confirm('現在の記録に読み込んだデータを追加します。よろしいですか？')) {
+          state.visits = state.visits.concat(data);
+          save();
+          renderList();
+          overlayBackup.classList.add('hidden');
+        }
+      } catch (e) {
+        alert('JSONの読み込みに失敗しました。');
+      }
+      ev.target.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  load();
+  renderList();
+})();
+</script>
+</body>
+</html>
