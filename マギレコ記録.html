@@ -159,12 +159,17 @@
   }
   .entry .tag {
     flex-shrink: 0;
+    width: 92px;
+    box-sizing: border-box;
+    text-align: center;
     font-size: 11px;
     font-weight: 700;
-    padding: 3px 8px;
+    padding: 3px 4px;
     border-radius: 999px;
     color: #000;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     margin-top: 1px;
   }
   .tag.BIG { background: var(--big); }
@@ -175,11 +180,12 @@
   .entry .tags { display: flex; flex-direction: column; gap: 4px; }
   .entry .body { flex: 1; min-width: 0; }
   .entry .nums { font-size: 15px; font-weight: 700; }
+  .entry .mode { font-size: 13px; color: var(--accent); margin-top: 2px; }
   .entry .note { font-size: 13px; color: var(--sub); margin-top: 2px; word-break: break-word; }
-  .entry .reorder { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+  .entry .reorder { display: flex; flex-direction: row; gap: 6px; flex-shrink: 0; }
   .entry .reorder button {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -384,6 +390,17 @@
       </div>
     </div>
     <div class="field">
+      <label>魔法少女モード</label>
+      <div class="cat-select" id="e-mode">
+        <button type="button" data-v="いろはモード">いろはモード</button>
+        <button type="button" data-v="やちよモード">やちよモード</button>
+        <button type="button" data-v="鶴乃モード">鶴乃モード</button>
+        <button type="button" data-v="フェリシアモード">フェリシアモード</button>
+        <button type="button" data-v="さなモード">さなモード</button>
+        <button type="button" data-v="黒江モード">黒江モード</button>
+      </div>
+    </div>
+    <div class="field">
       <label>at中身のメモ</label>
       <textarea id="e-atmemo" placeholder="例: ストーリー4.1 / きゅうべえ会話 / 黒江モード? など"></textarea>
     </div>
@@ -413,7 +430,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [] };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null };
 
   // 古い形式のデータを新形式(game/point/results[]/atWin/atMemo)に変換する
   // - 最も古い形式: cat/g/p/note
@@ -597,6 +614,7 @@
         '<div class="tags">' + tags.join('') + '</div>' +
         '<div class="body">' +
           '<div class="nums"></div>' +
+          '<div class="mode"></div>' +
           '<div class="note"></div>' +
         '</div>' +
         '<div class="reorder">' +
@@ -606,6 +624,8 @@
         '<button class="del">×</button>';
       row.querySelector('.nums').textContent = numsText;
       row.querySelector('.nums').style.display = numsText ? '' : 'none';
+      row.querySelector('.mode').textContent = e.mode || '';
+      row.querySelector('.mode').style.display = e.mode ? '' : 'none';
       row.querySelector('.note').textContent = e.atMemo || '';
       row.querySelector('.note').style.display = e.atMemo ? '' : 'none';
       row.querySelector('.body').addEventListener('click', function () { openEntrySheet(e.id); });
@@ -729,6 +749,15 @@
     });
   });
 
+  var modeButtons = document.querySelectorAll('#e-mode button');
+  modeButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      // 魔法少女モードは1つだけ選択(もう一度押すと選択解除)
+      state.selectedMode = (state.selectedMode === btn.dataset.v) ? null : btn.dataset.v;
+      modeButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedMode); });
+    });
+  });
+
   function openEntrySheet(entryId) {
     state.editingEntryId = entryId || null;
     var title = document.getElementById('entry-sheet-title');
@@ -737,6 +766,7 @@
       var e = v.entries.find(function (x) { return x.id === entryId; });
       title.textContent = '記録を編集';
       state.selectedResults = (e.results || []).slice();
+      state.selectedMode = e.mode || null;
       eGame.value = (typeof e.game === 'number') ? e.game : '';
       ePoint.value = (typeof e.point === 'number') ? e.point : '';
       eAtWin.checked = !!e.atWin;
@@ -745,6 +775,7 @@
     } else {
       title.textContent = '記録を追加';
       state.selectedResults = [];
+      state.selectedMode = null;
       eGame.value = '';
       ePoint.value = '';
       eAtWin.checked = false;
@@ -752,6 +783,7 @@
       eDeleteBtn.style.display = 'none';
     }
     resultButtons.forEach(function (b) { b.classList.toggle('active', state.selectedResults.indexOf(b.dataset.v) !== -1); });
+    modeButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedMode); });
     overlayEntry.classList.remove('hidden');
   }
   document.getElementById('e-cancel').addEventListener('click', function () {
@@ -763,13 +795,14 @@
     var game = eGame.value === '' ? null : Number(eGame.value);
     var point = ePoint.value === '' ? null : Number(ePoint.value);
     var results = state.selectedResults.slice();
+    var mode = state.selectedMode;
     var atWin = eAtWin.checked;
     var atMemo = eAtMemo.value.trim();
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
-      e.game = game; e.point = point; e.results = results; e.atWin = atWin; e.atMemo = atMemo;
+      e.game = game; e.point = point; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
     } else {
-      v.entries.push({ id: uid(), game: game, point: point, results: results, atWin: atWin, atMemo: atMemo });
+      v.entries.push({ id: uid(), game: game, point: point, results: results, mode: mode, atWin: atWin, atMemo: atMemo });
     }
     save();
     overlayEntry.classList.add('hidden');
