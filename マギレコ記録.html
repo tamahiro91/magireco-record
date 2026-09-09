@@ -129,6 +129,30 @@
   .visit-card .stats { display: flex; gap: 12px; margin-top: 8px; font-size: 13px; }
   .visit-card .stats span b { color: var(--text); }
 
+  .counters { display: flex; gap: 10px; margin-top: 10px; }
+  .counter-card {
+    flex: 1;
+    background: var(--panel2);
+    border-radius: 12px;
+    padding: 10px;
+    text-align: center;
+  }
+  .counter-card .counter-label { font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+  .counter-controls { display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .counter-controls .counter-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .counter-controls .counter-btn:active { opacity: 0.6; }
+  .counter-value { font-size: 20px; font-weight: 700; min-width: 26px; }
+
   .empty {
     text-align: center;
     color: var(--sub);
@@ -318,9 +342,27 @@
       <div class="sub" id="d-sub"></div>
       <div class="sub" id="d-memo"></div>
       <div class="summary" style="margin-top:10px;">
-        <div class="card"><div class="label">回数</div><div class="value" id="d-count">0</div></div>
-        <div class="card"><div class="label">当り</div><div class="value" id="d-hits">0</div></div>
-        <div class="card"><div class="label">ポイント</div><div class="value" id="d-point">0</div></div>
+        <div class="card"><div class="label">BIG</div><div class="value" id="d-big">0</div></div>
+        <div class="card"><div class="label">みたま</div><div class="value" id="d-mitama">0</div></div>
+        <div class="card"><div class="label">合計</div><div class="value" id="d-total">0</div></div>
+      </div>
+      <div class="counters">
+        <div class="counter-card">
+          <div class="counter-label">スイカ</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="d-suika-minus">−</button>
+            <div class="counter-value" id="d-suika-value">0</div>
+            <button type="button" class="counter-btn" id="d-suika-plus">＋</button>
+          </div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">CZ</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="d-cz-minus">−</button>
+            <div class="counter-value" id="d-cz-value">0</div>
+            <button type="button" class="counter-btn" id="d-cz-plus">＋</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -484,12 +526,14 @@
     return p.length === 3 ? p[0] + '/' + p[1] + '/' + p[2] : s;
   }
   function visitStats(visit) {
-    var point = 0, hits = 0;
+    var point = 0, hits = 0, big = 0, mitama = 0;
     (visit.entries || []).forEach(function (e) {
       if (typeof e.point === 'number') point += e.point;
       if (e.results && e.results.length) hits++;
+      if (e.results && e.results.indexOf('BIG') !== -1) big++;
+      if (e.results && e.results.indexOf('みたま') !== -1) mitama++;
     });
-    return { point: point, hits: hits, count: (visit.entries || []).length };
+    return { point: point, hits: hits, count: (visit.entries || []).length, big: big, mitama: mitama, total: big + mitama };
   }
 
   // --- 要素参照 ---
@@ -560,10 +604,26 @@
   var elDStore = document.getElementById('d-store');
   var elDSub = document.getElementById('d-sub');
   var elDMemo = document.getElementById('d-memo');
-  var elDCount = document.getElementById('d-count');
-  var elDHits = document.getElementById('d-hits');
-  var elDPoint = document.getElementById('d-point');
+  var elDBig = document.getElementById('d-big');
+  var elDMitama = document.getElementById('d-mitama');
+  var elDTotal = document.getElementById('d-total');
+  var elDSuikaValue = document.getElementById('d-suika-value');
+  var elDCzValue = document.getElementById('d-cz-value');
   var elEntryList = document.getElementById('entry-list');
+
+  // スイカ/CZのタップカウンター(来店ごとに保持)
+  function changeCounter(key, delta) {
+    var v = currentVisit();
+    if (!v) return;
+    if (!v.counters) v.counters = { suika: 0, cz: 0 };
+    v.counters[key] = Math.max(0, (v.counters[key] || 0) + delta);
+    save();
+    renderDetail();
+  }
+  document.getElementById('d-suika-plus').addEventListener('click', function () { changeCounter('suika', 1); });
+  document.getElementById('d-suika-minus').addEventListener('click', function () { changeCounter('suika', -1); });
+  document.getElementById('d-cz-plus').addEventListener('click', function () { changeCounter('cz', 1); });
+  document.getElementById('d-cz-minus').addEventListener('click', function () { changeCounter('cz', -1); });
 
   function currentVisit() {
     return state.visits.find(function (v) { return v.id === state.currentVisitId; });
@@ -592,9 +652,13 @@
     elDMemo.style.display = v.note ? '' : 'none';
 
     var s = visitStats(v);
-    elDCount.textContent = s.count;
-    elDHits.textContent = s.hits;
-    elDPoint.textContent = s.point;
+    elDBig.textContent = s.big;
+    elDMitama.textContent = s.mitama;
+    elDTotal.textContent = s.total;
+
+    var counters = v.counters || { suika: 0, cz: 0 };
+    elDSuikaValue.textContent = counters.suika || 0;
+    elDCzValue.textContent = counters.cz || 0;
 
     elEntryList.innerHTML = '';
     (v.entries || []).forEach(function (e, idx) {
@@ -702,7 +766,7 @@
     var machine = vMachine.value.trim();
     var note = vNote.value.trim();
     if (state.editingVisitMode === 'new') {
-      var v = { id: uid(), store: store, date: date, machine: machine, note: note, createdAt: Date.now().toString(), entries: [] };
+      var v = { id: uid(), store: store, date: date, machine: machine, note: note, createdAt: Date.now().toString(), entries: [], counters: { suika: 0, cz: 0 } };
       state.visits.push(v);
       save();
       overlayVisit.classList.add('hidden');
