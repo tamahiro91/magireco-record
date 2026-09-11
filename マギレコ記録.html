@@ -358,7 +358,7 @@
     font-size: 16px;
     font-family: inherit;
   }
-  .field textarea { resize: vertical; min-height: 44px; }
+  .field textarea { resize: vertical; min-height: 44px; overflow-y: hidden; }
   .row2 { display: flex; gap: 10px; }
   .row2 .field { flex: 1; }
   .cat-select { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -816,6 +816,15 @@
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
+
+  // テキストエリアの高さを入力内容に合わせて自動で伸ばす
+  function autoResizeTextarea(el) {
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+  function setupAutoResize(el) {
+    el.addEventListener('input', function () { autoResizeTextarea(el); });
+  }
   function todayStr() {
     var d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -1123,6 +1132,7 @@
   var vMachine = document.getElementById('v-machine');
   var vNote = document.getElementById('v-note');
   var vDeleteBtn = document.getElementById('v-delete');
+  setupAutoResize(vNote);
 
   function openVisitSheet(mode) {
     state.editingVisitMode = mode; // 'new' or 'edit'
@@ -1144,6 +1154,7 @@
       vDeleteBtn.style.display = '';
     }
     overlayVisit.classList.remove('hidden');
+    autoResizeTextarea(vNote);
   }
   document.getElementById('v-cancel').addEventListener('click', function () {
     overlayVisit.classList.add('hidden');
@@ -1186,6 +1197,7 @@
   var eAtWin = document.getElementById('e-atwin');
   var eAtMemo = document.getElementById('e-atmemo');
   var eDeleteBtn = document.getElementById('e-delete');
+  setupAutoResize(eAtMemo);
   var resultButtons = document.querySelectorAll('#e-result button');
 
   // BIGが選ばれている間だけビッグ関連、at当選がONの間だけat終了画面の項目を表示する
@@ -1279,6 +1291,7 @@
     atScreenButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedAtScreen); });
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
+    autoResizeTextarea(eAtMemo);
   }
   document.getElementById('e-cancel').addEventListener('click', function () {
     overlayEntry.classList.add('hidden');
