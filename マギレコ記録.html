@@ -302,6 +302,7 @@
   .tag.at直撃 { background: var(--chokugeki); }
   .tag.AT { background: var(--at); }
   .tag.メモ { background: var(--memo); color: #000; }
+  .entry .entry-num { flex-shrink: 0; width: 16px; text-align: center; font-size: 13px; font-weight: 700; color: var(--sub); margin-top: 4px; }
   .entry .tags { display: flex; flex-direction: column; gap: 4px; }
   .entry .body { flex: 1; min-width: 0; }
   .entry .nums { font-size: 15px; font-weight: 700; }
@@ -434,7 +435,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-11e</div>
+    <div class="app-version">v2026-09-11f</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1074,6 +1075,7 @@
     elDInvestTotal.innerHTML = '＝ ' + (invest.rate * (invest.count || 0)) + '枚 <span class="invest-total-label">(使用枚数)</span>';
 
     elEntryList.innerHTML = '';
+    var entryNum = 0;
     (v.entries || []).forEach(function (e, idx) {
       var row = document.createElement('div');
       row.className = 'entry';
@@ -1086,10 +1088,13 @@
         return '<span class="tag ' + r + '">' + r + '</span>';
       });
       if (e.atWin) tags.push('<span class="tag AT">at当選</span>');
-      if (!tags.length) tags.push('<span class="tag メモ">メモ</span>');
+      var isMemo = !tags.length;
+      if (isMemo) tags.push('<span class="tag メモ">メモ</span>');
+      if (!isMemo) entryNum++;
 
       row.dataset.entryId = e.id;
       row.innerHTML =
+        '<div class="entry-num">' + (isMemo ? '' : entryNum) + '</div>' +
         '<div class="tags">' + tags.join('') + '</div>' +
         '<div class="body">' +
           '<div class="nums"></div>' +
