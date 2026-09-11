@@ -191,7 +191,8 @@
   .visit-header .summary .card:nth-child(4) .label,
   .visit-header .summary .card:nth-child(4) .value { color: var(--at); }
 
-  #d-header-game { text-align: center; font-size: 16px; color: var(--sub); white-space: nowrap; }
+  .visit-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .visit-game { flex-shrink: 0; font-size: 18px; font-weight: 700; color: var(--sub); white-space: nowrap; margin-top: 2px; }
 
   .invest-row {
     display: flex;
@@ -399,13 +400,18 @@
   <div id="view-detail" hidden>
     <header>
       <button class="icon-btn" id="btn-back">← 一覧</button>
-      <h1 id="d-header-game"></h1>
+      <h1></h1>
       <button class="icon-btn" id="btn-edit-visit">編集</button>
     </header>
 
     <div class="visit-header">
-      <div class="store" id="d-store"></div>
-      <div class="sub" id="d-sub"></div>
+      <div class="visit-top">
+        <div class="visit-info">
+          <div class="store" id="d-store"></div>
+          <div class="sub" id="d-sub"></div>
+        </div>
+        <div class="visit-game" id="d-header-game"></div>
+      </div>
       <div class="sub" id="d-memo"></div>
       <div class="invest-row">
         <button type="button" class="invest-rate" id="d-invest-rate">46枚▾</button>
