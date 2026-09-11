@@ -434,12 +434,11 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-11d</div>
+    <div class="app-version">v2026-09-11e</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
       <div class="card"><div class="label">当り回数</div><div class="value" id="sum-hits">0</div></div>
-      <div class="card"><div class="label">ポイント合計</div><div class="value" id="sum-point">0</div></div>
     </div>
 
     <div class="search-row">
@@ -904,7 +903,6 @@
   var elSearch = document.getElementById('search');
   var elSumVisits = document.getElementById('sum-visits');
   var elSumHits = document.getElementById('sum-hits');
-  var elSumPoint = document.getElementById('sum-point');
 
   function renderList() {
     var q = (elSearch.value || '').trim();
@@ -917,15 +915,13 @@
       });
     }
 
-    var totalPoint = 0, totalHits = 0;
+    var totalHits = 0;
     state.visits.forEach(function (v) {
       var s = visitStats(v);
-      totalPoint += s.point;
       totalHits += s.hits;
     });
     elSumVisits.textContent = state.visits.length;
     elSumHits.textContent = totalHits;
-    elSumPoint.textContent = totalPoint;
 
     elVisitList.innerHTML = '';
     elEmptyMsg.hidden = state.visits.length > 0;
@@ -943,7 +939,7 @@
           '<div class="prob-col"><div class="p-label">ボーナス回数</div><div class="p-count c-bonus"></div><div class="p-percent c-bonus-prob"></div></div>' +
           '<div class="prob-col"><div class="p-label">at初当たり回数</div><div class="p-count c-atwin"></div><div class="p-percent c-atwin-prob"></div></div>' +
           '<div class="prob-col"><div class="p-label">CZ回数</div><div class="p-count c-cz"></div><div class="p-percent c-cz-prob"></div></div>' +
-          '<div class="prob-col"><div class="p-label">CZ成功</div><div class="p-percent c-czwin-prob"></div></div>' +
+          '<div class="prob-col"><div class="p-label">CZ成功</div><div class="p-count c-czwin"></div><div class="p-percent c-czwin-prob"></div></div>' +
         '</div>';
       card.querySelector('.store').textContent = v.store || '(店舗名未設定)';
       card.querySelector('.date').textContent = fmtDate(v.date);
@@ -955,6 +951,7 @@
       card.querySelector('.c-atwin-prob').textContent = fmtProb(s.game, s.atWin);
       card.querySelector('.c-cz').textContent = counters.cz || 0;
       card.querySelector('.c-cz-prob').textContent = fmtPercent(counters.cz, counters.suika);
+      card.querySelector('.c-czwin').textContent = counters.czWin || 0;
       card.querySelector('.c-czwin-prob').textContent = fmtPercent(counters.czWin, counters.cz);
       card.addEventListener('click', function () { openDetail(v.id); });
       elVisitList.appendChild(card);
