@@ -270,7 +270,7 @@
   }
   .tag.BIG { background: var(--big); }
   .tag.みたま { background: var(--charge); }
-  .tag.マギCZ { background: var(--reg); }
+  .tag.マギアCZ { background: var(--reg); }
   .tag.黒江CZ { background: var(--kuroe); }
   .tag.エピボ { background: var(--epibo); }
   .tag.引戻し { background: var(--hikimodoshi); }
@@ -531,7 +531,7 @@
       <div class="cat-select" id="e-result">
         <button type="button" data-v="BIG">BIG</button>
         <button type="button" data-v="みたま">みたま</button>
-        <button type="button" data-v="マギCZ">マギCZ</button>
+        <button type="button" data-v="マギアCZ">マギアCZ</button>
         <button type="button" data-v="黒江CZ">黒江CZ</button>
         <button type="button" data-v="エピボ">エピボ</button>
         <button type="button" data-v="引戻し">引戻し</button>
@@ -622,9 +622,12 @@
   // 古い形式のデータを新形式(game/point/results[]/atWin/atMemo)に変換する
   // - 最も古い形式: cat/g/p/note
   // - ひとつ前の形式: game/point/result(単一の文字列)/atWin/atMemo
-  // 旧名称「マギチャレ当選」は新名称「マギCZ」に読み替える
+  // 旧名称(「マギチャレ当選」「マギCZ」)は新名称「マギアCZ」に読み替える
   function renameOldResults(results) {
-    return (results || []).map(function (r) { return r === 'マギチャレ当選' ? 'マギCZ' : r; });
+    return (results || []).map(function (r) {
+      if (r === 'マギチャレ当選' || r === 'マギCZ') return 'マギアCZ';
+      return r;
+    });
   }
 
   function normalizeEntry(e) {
