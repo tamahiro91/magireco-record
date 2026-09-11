@@ -207,24 +207,38 @@
   .invest-row {
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: space-between;
+    gap: 6px;
     margin-top: 10px;
     background: var(--panel2);
     border-radius: 12px;
-    padding: 8px 8px;
+    padding: 8px 10px;
+  }
+  .invest-rate-wrap { position: relative; flex-shrink: 0; }
+  .invest-rate-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: var(--sub);
+    pointer-events: none;
   }
   .invest-rate {
-    flex-shrink: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 34px;
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--text);
     border-radius: 8px;
-    padding: 6px 10px;
+    padding: 0 22px 0 10px;
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
   }
-  .invest-rate:active { opacity: 0.6; }
+  .invest-stepper { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .mini-btn {
     flex-shrink: 0;
     width: 30px;
@@ -241,8 +255,7 @@
   .invest-count { font-size: 15px; font-weight: 700; min-width: 18px; text-align: center; }
   .invest-unit { font-size: 13px; color: var(--sub); flex-shrink: 0; }
   .invest-total {
-    margin-left: auto;
-    padding-left: 6px;
+    padding-left: 10px;
     border-left: 1px solid var(--border);
     font-size: 15px;
     font-weight: 700;
@@ -413,7 +426,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-11a</div>
+    <div class="app-version">v2026-09-11b</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -449,11 +462,21 @@
       </div>
       <div class="sub" id="d-memo"></div>
       <div class="invest-row">
-        <button type="button" class="invest-rate" id="d-invest-rate">46枚▾</button>
-        <button type="button" class="mini-btn" id="d-invest-minus">−</button>
-        <div class="invest-count" id="d-invest-count">0</div>
-        <span class="invest-unit">本</span>
-        <button type="button" class="mini-btn" id="d-invest-plus">＋</button>
+        <div class="invest-rate-wrap">
+          <select class="invest-rate" id="d-invest-rate">
+            <option value="46">46枚</option>
+            <option value="47">47枚</option>
+            <option value="48">48枚</option>
+            <option value="49">49枚</option>
+            <option value="50">50枚</option>
+          </select>
+        </div>
+        <div class="invest-stepper">
+          <button type="button" class="mini-btn" id="d-invest-minus">−</button>
+          <div class="invest-count" id="d-invest-count">0</div>
+          <span class="invest-unit">本</span>
+          <button type="button" class="mini-btn" id="d-invest-plus">＋</button>
+        </div>
         <div class="invest-total" id="d-invest-total">＝0枚</div>
       </div>
       <div class="summary" style="margin-top:10px;">
@@ -977,11 +1000,11 @@
     save();
     renderDetail();
   }
-  document.getElementById('d-invest-rate').addEventListener('click', function () {
+  document.getElementById('d-invest-rate').addEventListener('change', function (ev) {
     var v = currentVisit();
     if (!v) return;
     if (!v.invest) v.invest = { rate: 46, count: 0 };
-    v.invest.rate = (v.invest.rate === 46) ? 47 : 46;
+    v.invest.rate = Number(ev.target.value);
     save();
     renderDetail();
   });
@@ -1033,7 +1056,7 @@
     elDCzWinProb.textContent = fmtPercent(counters.czWin, counters.cz);
 
     var invest = v.invest || { rate: 46, count: 0 };
-    elDInvestRate.textContent = invest.rate + '枚▾';
+    elDInvestRate.value = String(invest.rate);
     elDInvestCount.textContent = invest.count || 0;
     elDInvestTotal.innerHTML = '＝ ' + (invest.rate * (invest.count || 0)) + '枚 <span class="invest-total-label">(使用枚数)</span>';
 
