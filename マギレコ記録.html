@@ -515,6 +515,10 @@
         <label>ポイント</label>
         <input type="number" inputmode="numeric" id="e-point" placeholder="例: 350">
       </div>
+      <div class="field">
+        <label>at初期ゲーム数</label>
+        <input type="number" inputmode="numeric" id="e-at-start-game" placeholder="例: 0">
+      </div>
     </div>
     <div class="field">
       <label>結果(複数選択可)</label>
@@ -1012,6 +1016,7 @@
   var overlayEntry = document.getElementById('overlay-entry');
   var eGame = document.getElementById('e-game');
   var ePoint = document.getElementById('e-point');
+  var eAtStartGame = document.getElementById('e-at-start-game');
   var eAtWin = document.getElementById('e-atwin');
   var eAtMemo = document.getElementById('e-atmemo');
   var eDeleteBtn = document.getElementById('e-delete');
@@ -1083,6 +1088,7 @@
       state.selectedAtScreen = e.atScreen || null;
       eGame.value = (typeof e.game === 'number') ? e.game : '';
       ePoint.value = (typeof e.point === 'number') ? e.point : '';
+      eAtStartGame.value = (typeof e.atStartGame === 'number') ? e.atStartGame : '';
       eAtWin.checked = !!e.atWin;
       eAtMemo.value = e.atMemo || '';
       eDeleteBtn.style.display = '';
@@ -1095,6 +1101,7 @@
       state.selectedAtScreen = null;
       eGame.value = '';
       ePoint.value = '';
+      eAtStartGame.value = '';
       eAtWin.checked = false;
       eAtMemo.value = '';
       eDeleteBtn.style.display = 'none';
@@ -1115,6 +1122,7 @@
     if (!v) return;
     var game = eGame.value === '' ? null : Number(eGame.value);
     var point = ePoint.value === '' ? null : Number(ePoint.value);
+    var atStartGame = eAtStartGame.value === '' ? null : Number(eAtStartGame.value);
     var results = state.selectedResults.slice();
     var mode = state.selectedMode;
     var atWin = eAtWin.checked;
@@ -1126,10 +1134,10 @@
     var atScreen = atWin ? state.selectedAtScreen : null;
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
-      e.game = game; e.point = point; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
+      e.game = game; e.point = point; e.atStartGame = atStartGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
       e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreen = atScreen;
     } else {
-      v.entries.push({ id: uid(), game: game, point: point, results: results, mode: mode, atWin: atWin, atMemo: atMemo, bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen });
+      v.entries.push({ id: uid(), game: game, point: point, atStartGame: atStartGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo, bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen });
     }
     save();
     overlayEntry.classList.add('hidden');
