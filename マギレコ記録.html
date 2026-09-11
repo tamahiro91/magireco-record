@@ -182,6 +182,8 @@
   .visit-header .summary .card { padding: 8px 4px; }
   .visit-header .summary .label { font-size: 11px; font-weight: 600; white-space: nowrap; }
   .visit-header .summary .value { font-size: 22px; }
+  .visit-header .summary .prob,
+  .counter-card .prob { font-size: 10px; color: var(--sub); margin-top: 3px; white-space: nowrap; }
   .visit-header .summary .card:nth-child(1) { background: rgba(255, 107, 107, 0.16); border: 1px solid rgba(255, 107, 107, 0.45); }
   .visit-header .summary .card:nth-child(1) .label,
   .visit-header .summary .card:nth-child(1) .value { color: var(--big); }
@@ -451,10 +453,10 @@
         <div class="invest-total" id="d-invest-total">＝0枚</div>
       </div>
       <div class="summary" style="margin-top:10px;">
-        <div class="card"><div class="label">BIG</div><div class="value" id="d-big">0</div></div>
-        <div class="card"><div class="label">みたま</div><div class="value" id="d-mitama">0</div></div>
-        <div class="card"><div class="label">合計</div><div class="value" id="d-total">0</div></div>
-        <div class="card"><div class="label">at当選</div><div class="value" id="d-atwin">0</div></div>
+        <div class="card"><div class="label">BIG</div><div class="value" id="d-big">0</div><div class="prob" id="d-big-prob"></div></div>
+        <div class="card"><div class="label">みたま</div><div class="value" id="d-mitama">0</div><div class="prob" id="d-mitama-prob"></div></div>
+        <div class="card"><div class="label">合計</div><div class="value" id="d-total">0</div><div class="prob" id="d-total-prob"></div></div>
+        <div class="card"><div class="label">at当選</div><div class="value" id="d-atwin">0</div><div class="prob" id="d-atwin-prob"></div></div>
       </div>
       <div class="counters">
         <div class="counter-card">
@@ -472,6 +474,7 @@
             <div class="counter-value" id="d-cz-value">0</div>
             <button type="button" class="counter-btn" id="d-cz-plus">＋</button>
           </div>
+          <div class="prob" id="d-cz-prob"></div>
         </div>
         <div class="counter-card">
           <div class="counter-label">CZ成功</div>
@@ -480,6 +483,7 @@
             <div class="counter-value" id="d-czwin-value">0</div>
             <button type="button" class="counter-btn" id="d-czwin-plus">＋</button>
           </div>
+          <div class="prob" id="d-czwin-prob"></div>
         </div>
       </div>
     </div>
@@ -834,6 +838,16 @@
     var p = s.split('-');
     return p.length === 3 ? p[0] + '/' + p[1] + '/' + p[2] : s;
   }
+  // 分母÷回数を「1/xxx.x」の確率表記にする(回数が0の時は空欄)
+  function fmtProb(total, count) {
+    if (!count) return '';
+    return '1/' + (total / count).toFixed(1);
+  }
+  // 回数÷分母を「xx.x%」のパーセント表記にする(分母が0の時は空欄)
+  function fmtPercent(count, base) {
+    if (!base) return '';
+    return (count / base * 100).toFixed(1) + '%';
+  }
   function visitStats(visit) {
     var point = 0, hits = 0, big = 0, mitama = 0, atWin = 0, game = 0;
     (visit.entries || []).forEach(function (e) {
@@ -919,10 +933,16 @@
   var elDMitama = document.getElementById('d-mitama');
   var elDTotal = document.getElementById('d-total');
   var elDAtWin = document.getElementById('d-atwin');
+  var elDBigProb = document.getElementById('d-big-prob');
+  var elDMitamaProb = document.getElementById('d-mitama-prob');
+  var elDTotalProb = document.getElementById('d-total-prob');
+  var elDAtWinProb = document.getElementById('d-atwin-prob');
   var elDHeaderGame = document.getElementById('d-header-game');
   var elDSuikaValue = document.getElementById('d-suika-value');
   var elDCzValue = document.getElementById('d-cz-value');
   var elDCzWinValue = document.getElementById('d-czwin-value');
+  var elDCzProb = document.getElementById('d-cz-prob');
+  var elDCzWinProb = document.getElementById('d-czwin-prob');
   var elDInvestRate = document.getElementById('d-invest-rate');
   var elDInvestCount = document.getElementById('d-invest-count');
   var elDInvestTotal = document.getElementById('d-invest-total');
@@ -996,11 +1016,17 @@
     elDTotal.textContent = s.total;
     elDAtWin.textContent = s.atWin;
     elDHeaderGame.textContent = s.game + 'G';
+    elDBigProb.textContent = fmtProb(s.game, s.big);
+    elDMitamaProb.textContent = fmtProb(s.game, s.mitama);
+    elDTotalProb.textContent = fmtProb(s.game, s.total);
+    elDAtWinProb.textContent = fmtProb(s.game, s.atWin);
 
     var counters = v.counters || { suika: 0, cz: 0, czWin: 0 };
     elDSuikaValue.textContent = counters.suika || 0;
     elDCzValue.textContent = counters.cz || 0;
     elDCzWinValue.textContent = counters.czWin || 0;
+    elDCzProb.textContent = fmtPercent(counters.cz, counters.suika);
+    elDCzWinProb.textContent = fmtPercent(counters.czWin, counters.cz);
 
     var invest = v.invest || { rate: 46, count: 0 };
     elDInvestRate.textContent = invest.rate + '枚▾';
