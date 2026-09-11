@@ -185,6 +185,51 @@
   .visit-header .summary .card:nth-child(3) .label,
   .visit-header .summary .card:nth-child(3) .value { color: var(--accent); }
 
+  .invest-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    background: var(--panel2);
+    border-radius: 12px;
+    padding: 8px 10px;
+  }
+  .invest-rate {
+    flex-shrink: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .invest-rate:active { opacity: 0.6; }
+  .mini-btn {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .mini-btn:active { opacity: 0.6; }
+  .invest-count { font-size: 15px; font-weight: 700; min-width: 18px; text-align: center; }
+  .invest-unit { font-size: 13px; color: var(--sub); flex-shrink: 0; }
+  .invest-total {
+    margin-left: auto;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
   .entry {
     background: var(--panel);
     border-radius: 12px;
@@ -354,6 +399,14 @@
       <div class="store" id="d-store"></div>
       <div class="sub" id="d-sub"></div>
       <div class="sub" id="d-memo"></div>
+      <div class="invest-row">
+        <button type="button" class="invest-rate" id="d-invest-rate">46枚▾</button>
+        <button type="button" class="mini-btn" id="d-invest-minus">−</button>
+        <div class="invest-count" id="d-invest-count">0</div>
+        <span class="invest-unit">本</span>
+        <button type="button" class="mini-btn" id="d-invest-plus">＋</button>
+        <div class="invest-total" id="d-invest-total">＝0枚</div>
+      </div>
       <div class="summary" style="margin-top:10px;">
         <div class="card"><div class="label">BIG</div><div class="value" id="d-big">0</div></div>
         <div class="card"><div class="label">みたま</div><div class="value" id="d-mitama">0</div></div>
@@ -631,6 +684,9 @@
   var elDSuikaValue = document.getElementById('d-suika-value');
   var elDCzValue = document.getElementById('d-cz-value');
   var elDCzWinValue = document.getElementById('d-czwin-value');
+  var elDInvestRate = document.getElementById('d-invest-rate');
+  var elDInvestCount = document.getElementById('d-invest-count');
+  var elDInvestTotal = document.getElementById('d-invest-total');
   var elEntryList = document.getElementById('entry-list');
 
   // スイカ/CZ/CZ成功のタップカウンター(来店ごとに保持)
@@ -648,6 +704,26 @@
   document.getElementById('d-cz-minus').addEventListener('click', function () { changeCounter('cz', -1); });
   document.getElementById('d-czwin-plus').addEventListener('click', function () { changeCounter('czWin', 1); });
   document.getElementById('d-czwin-minus').addEventListener('click', function () { changeCounter('czWin', -1); });
+
+  // 投資枚数(46枚or47枚 × 本数 = 総枚数)
+  function changeInvestCount(delta) {
+    var v = currentVisit();
+    if (!v) return;
+    if (!v.invest) v.invest = { rate: 46, count: 0 };
+    v.invest.count = Math.max(0, (v.invest.count || 0) + delta);
+    save();
+    renderDetail();
+  }
+  document.getElementById('d-invest-rate').addEventListener('click', function () {
+    var v = currentVisit();
+    if (!v) return;
+    if (!v.invest) v.invest = { rate: 46, count: 0 };
+    v.invest.rate = (v.invest.rate === 46) ? 47 : 46;
+    save();
+    renderDetail();
+  });
+  document.getElementById('d-invest-plus').addEventListener('click', function () { changeInvestCount(1); });
+  document.getElementById('d-invest-minus').addEventListener('click', function () { changeInvestCount(-1); });
 
   function currentVisit() {
     return state.visits.find(function (v) { return v.id === state.currentVisitId; });
@@ -684,6 +760,11 @@
     elDSuikaValue.textContent = counters.suika || 0;
     elDCzValue.textContent = counters.cz || 0;
     elDCzWinValue.textContent = counters.czWin || 0;
+
+    var invest = v.invest || { rate: 46, count: 0 };
+    elDInvestRate.textContent = invest.rate + '枚▾';
+    elDInvestCount.textContent = invest.count || 0;
+    elDInvestTotal.textContent = '＝' + (invest.rate * (invest.count || 0)) + '枚';
 
     elEntryList.innerHTML = '';
     (v.entries || []).forEach(function (e, idx) {
@@ -791,7 +872,7 @@
     var machine = vMachine.value.trim();
     var note = vNote.value.trim();
     if (state.editingVisitMode === 'new') {
-      var v = { id: uid(), store: store, date: date, machine: machine, note: note, createdAt: Date.now().toString(), entries: [], counters: { suika: 0, cz: 0, czWin: 0 } };
+      var v = { id: uid(), store: store, date: date, machine: machine, note: note, createdAt: Date.now().toString(), entries: [], counters: { suika: 0, cz: 0, czWin: 0 }, invest: { rate: 46, count: 0 } };
       state.visits.push(v);
       save();
       overlayVisit.classList.add('hidden');
