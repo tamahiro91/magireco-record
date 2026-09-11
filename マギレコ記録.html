@@ -26,6 +26,7 @@
     --danger: #ff453a;
     --kuroe: #7a8cff;
     --epibo: #ffb454;
+    --hikimodoshi: #ff2d95;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -235,10 +236,12 @@
   .invest-count { font-size: 15px; font-weight: 700; min-width: 18px; text-align: center; }
   .invest-unit { font-size: 13px; color: var(--sub); flex-shrink: 0; }
   .invest-total {
-    margin-left: auto;
-    font-size: 14px;
+    margin-left: 4px;
+    padding-left: 14px;
+    border-left: 1px solid var(--border);
+    font-size: 15px;
     font-weight: 700;
-    color: var(--accent);
+    color: var(--text);
     white-space: nowrap;
     flex-shrink: 0;
   }
@@ -269,9 +272,10 @@
   }
   .tag.BIG { background: var(--big); }
   .tag.みたま { background: var(--charge); }
-  .tag.マギチャレ当選 { background: var(--reg); }
+  .tag.マギアCZ { background: var(--reg); }
   .tag.黒江CZ { background: var(--kuroe); }
   .tag.エピボ { background: var(--epibo); }
+  .tag.引戻し { background: var(--hikimodoshi); }
   .tag.AT { background: var(--at); }
   .tag.メモ { background: var(--memo); color: #000; }
   .entry .tags { display: flex; flex-direction: column; gap: 4px; }
@@ -529,9 +533,10 @@
       <div class="cat-select" id="e-result">
         <button type="button" data-v="BIG">BIG</button>
         <button type="button" data-v="みたま">みたま</button>
-        <button type="button" data-v="マギチャレ当選">マギチャレ当選</button>
+        <button type="button" data-v="マギアCZ">マギアCZ</button>
         <button type="button" data-v="黒江CZ">黒江CZ</button>
         <button type="button" data-v="エピボ">エピボ</button>
+        <button type="button" data-v="引戻し">引戻し</button>
       </div>
     </div>
     <div class="field" id="field-big-voice" hidden>
@@ -619,8 +624,19 @@
   // 古い形式のデータを新形式(game/point/results[]/atWin/atMemo)に変換する
   // - 最も古い形式: cat/g/p/note
   // - ひとつ前の形式: game/point/result(単一の文字列)/atWin/atMemo
+  // 旧名称(「マギチャレ当選」「マギCZ」)は新名称「マギアCZ」に読み替える
+  function renameOldResults(results) {
+    return (results || []).map(function (r) {
+      if (r === 'マギチャレ当選' || r === 'マギCZ') return 'マギアCZ';
+      return r;
+    });
+  }
+
   function normalizeEntry(e) {
-    if (Array.isArray(e.results)) return e;
+    if (Array.isArray(e.results)) {
+      e.results = renameOldResults(e.results);
+      return e;
+    }
 
     var results = [];
     if (e.result) {
@@ -630,6 +646,7 @@
     } else if (e.cat === 'マギチャレ成功') {
       results = ['みたま'];
     }
+    results = renameOldResults(results);
 
     return {
       id: e.id,
