@@ -205,11 +205,11 @@
   .invest-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     margin-top: 10px;
     background: var(--panel2);
     border-radius: 12px;
-    padding: 8px 10px;
+    padding: 8px 8px;
   }
   .invest-rate {
     flex-shrink: 0;
@@ -239,8 +239,8 @@
   .invest-count { font-size: 15px; font-weight: 700; min-width: 18px; text-align: center; }
   .invest-unit { font-size: 13px; color: var(--sub); flex-shrink: 0; }
   .invest-total {
-    margin-left: 4px;
-    padding-left: 14px;
+    margin-left: 2px;
+    padding-left: 6px;
     border-left: 1px solid var(--border);
     font-size: 15px;
     font-weight: 700;
@@ -248,6 +248,7 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
+  .invest-total-label { font-size: 11px; font-weight: 400; color: var(--sub); }
 
   .entry {
     background: var(--panel);
@@ -1031,7 +1032,7 @@
     var invest = v.invest || { rate: 46, count: 0 };
     elDInvestRate.textContent = invest.rate + '枚▾';
     elDInvestCount.textContent = invest.count || 0;
-    elDInvestTotal.textContent = '＝' + (invest.rate * (invest.count || 0)) + '枚';
+    elDInvestTotal.innerHTML = '＝ ' + (invest.rate * (invest.count || 0)) + '枚 <span class="invest-total-label">(使用枚数)</span>';
 
     elEntryList.innerHTML = '';
     (v.entries || []).forEach(function (e, idx) {
