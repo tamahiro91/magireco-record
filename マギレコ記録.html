@@ -274,6 +274,7 @@
   .entry .body { flex: 1; min-width: 0; }
   .entry .nums { font-size: 15px; font-weight: 700; }
   .entry .mode { font-size: 13px; color: var(--accent); margin-top: 2px; }
+  .entry .extra { font-size: 12px; color: var(--sub); margin-top: 2px; word-break: break-word; }
   .entry .note { font-size: 13px; color: var(--sub); margin-top: 2px; word-break: break-word; }
   .entry .reorder { display: flex; flex-direction: row; gap: 6px; flex-shrink: 0; }
   .entry .reorder button {
@@ -519,10 +520,42 @@
         <button type="button" data-v="マギチャレ当選">マギチャレ当選</button>
       </div>
     </div>
+    <div class="field" id="field-big-voice" hidden>
+      <label>ビッグ終了後のボイス</label>
+      <div class="cat-select" id="e-big-voice">
+        <button type="button" data-v="運命を変えたいなら〜">①運命を変えたいなら〜</button>
+        <button type="button" data-v="この町で魔法少女は〜">②この町で魔法少女は〜</button>
+        <button type="button" data-v="お姉ちゃんにはまだ誰かを〜">③お姉ちゃんにはまだ誰かを〜</button>
+        <button type="button" data-v="お姉ちゃんが幸せを〜">④お姉ちゃんが幸せを〜</button>
+        <button type="button" data-v="奇跡って〜">⑤奇跡って〜</button>
+      </div>
+    </div>
+    <div class="field" id="field-big-screen" hidden>
+      <label>ビッグ終了後の画面</label>
+      <div class="cat-select" id="e-big-screen">
+        <button type="button" data-v="いろは&フェリシア">いろは&フェリシア</button>
+        <button type="button" data-v="いろは&さな">いろは&さな</button>
+        <button type="button" data-v="いろは&やちよ&鶴乃">いろは&やちよ&鶴乃</button>
+        <button type="button" data-v="いろは&やちよ&ももこチーム">いろは&やちよ&ももこチーム</button>
+        <button type="button" data-v="水着みかづき荘">水着みかづき荘</button>
+        <button type="button" data-v="2nd Seasonキービジュアル">2nd Seasonキービジュアル</button>
+        <button type="button" data-v="1st Seasonキービジュアル">1st Seasonキービジュアル</button>
+        <button type="button" data-v="小さいキュゥべえ">小さいキュゥべえ</button>
+      </div>
+    </div>
     <div class="field">
       <div class="check-row">
         <input type="checkbox" id="e-atwin">
         <label for="e-atwin">at当選</label>
+      </div>
+    </div>
+    <div class="field" id="field-at-screen" hidden>
+      <label>at終了後の画面</label>
+      <div class="cat-select" id="e-at-screen">
+        <button type="button" data-v="城背景">城背景</button>
+        <button type="button" data-v="マギウスメンバー">マギウスメンバー</button>
+        <button type="button" data-v="みかづき荘メンバー">みかづき荘メンバー</button>
+        <button type="button" data-v="まどか&いろは">まどか&いろは</button>
       </div>
     </div>
     <div class="field">
@@ -566,7 +599,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null };
 
   // 古い形式のデータを新形式(game/point/results[]/atWin/atMemo)に変換する
   // - 最も古い形式: cat/g/p/note
@@ -806,11 +839,18 @@
       if (e.atWin) tags.push('<span class="tag AT">at当選</span>');
       if (!tags.length) tags.push('<span class="tag メモ">メモ</span>');
 
+      var extras = [];
+      if (e.bigVoice) extras.push('ボイス:' + e.bigVoice);
+      if (e.bigScreen) extras.push('画面:' + e.bigScreen);
+      if (e.atScreen) extras.push('at画面:' + e.atScreen);
+      var extraText = extras.join(' / ');
+
       row.innerHTML =
         '<div class="tags">' + tags.join('') + '</div>' +
         '<div class="body">' +
           '<div class="nums"></div>' +
           '<div class="mode"></div>' +
+          '<div class="extra"></div>' +
           '<div class="note"></div>' +
         '</div>' +
         '<div class="reorder">' +
@@ -822,6 +862,8 @@
       row.querySelector('.nums').style.display = numsText ? '' : 'none';
       row.querySelector('.mode').textContent = e.mode || '';
       row.querySelector('.mode').style.display = e.mode ? '' : 'none';
+      row.querySelector('.extra').textContent = extraText;
+      row.querySelector('.extra').style.display = extraText ? '' : 'none';
       row.querySelector('.note').textContent = e.atMemo || '';
       row.querySelector('.note').style.display = e.atMemo ? '' : 'none';
       row.querySelector('.body').addEventListener('click', function () { openEntrySheet(e.id); });
@@ -931,6 +973,17 @@
   var eDeleteBtn = document.getElementById('e-delete');
   var resultButtons = document.querySelectorAll('#e-result button');
 
+  // BIGが選ばれている間だけビッグ関連、at当選がONの間だけat終了画面の項目を表示する
+  var fieldBigVoice = document.getElementById('field-big-voice');
+  var fieldBigScreen = document.getElementById('field-big-screen');
+  var fieldAtScreen = document.getElementById('field-at-screen');
+  function updateConditionalFields() {
+    var hasBig = state.selectedResults.indexOf('BIG') !== -1;
+    fieldBigVoice.hidden = !hasBig;
+    fieldBigScreen.hidden = !hasBig;
+    fieldAtScreen.hidden = !eAtWin.checked;
+  }
+
   resultButtons.forEach(function (btn) {
     btn.addEventListener('click', function () {
       // BIG/みたま/マギチャレ当選はそれぞれ独立してON/OFFできる(同時選択OK)
@@ -942,8 +995,11 @@
         state.selectedResults.splice(idx, 1);
       }
       btn.classList.toggle('active', state.selectedResults.indexOf(v) !== -1);
+      updateConditionalFields();
     });
   });
+
+  eAtWin.addEventListener('change', updateConditionalFields);
 
   var modeButtons = document.querySelectorAll('#e-mode button');
   modeButtons.forEach(function (btn) {
@@ -954,6 +1010,21 @@
     });
   });
 
+  // 単一選択(もう一度押すと選択解除)のボタングループを作る共通ヘルパー
+  function setupSingleSelect(selector, stateKey) {
+    var buttons = document.querySelectorAll(selector);
+    buttons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        state[stateKey] = (state[stateKey] === btn.dataset.v) ? null : btn.dataset.v;
+        buttons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state[stateKey]); });
+      });
+    });
+    return buttons;
+  }
+  var bigVoiceButtons = setupSingleSelect('#e-big-voice button', 'selectedBigVoice');
+  var bigScreenButtons = setupSingleSelect('#e-big-screen button', 'selectedBigScreen');
+  var atScreenButtons = setupSingleSelect('#e-at-screen button', 'selectedAtScreen');
+
   function openEntrySheet(entryId) {
     state.editingEntryId = entryId || null;
     var title = document.getElementById('entry-sheet-title');
@@ -963,6 +1034,9 @@
       title.textContent = '記録を編集';
       state.selectedResults = (e.results || []).slice();
       state.selectedMode = e.mode || null;
+      state.selectedBigVoice = e.bigVoice || null;
+      state.selectedBigScreen = e.bigScreen || null;
+      state.selectedAtScreen = e.atScreen || null;
       eGame.value = (typeof e.game === 'number') ? e.game : '';
       ePoint.value = (typeof e.point === 'number') ? e.point : '';
       eAtWin.checked = !!e.atWin;
@@ -972,6 +1046,9 @@
       title.textContent = '記録を追加';
       state.selectedResults = [];
       state.selectedMode = null;
+      state.selectedBigVoice = null;
+      state.selectedBigScreen = null;
+      state.selectedAtScreen = null;
       eGame.value = '';
       ePoint.value = '';
       eAtWin.checked = false;
@@ -980,6 +1057,10 @@
     }
     resultButtons.forEach(function (b) { b.classList.toggle('active', state.selectedResults.indexOf(b.dataset.v) !== -1); });
     modeButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedMode); });
+    bigVoiceButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBigVoice); });
+    bigScreenButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBigScreen); });
+    atScreenButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedAtScreen); });
+    updateConditionalFields();
     overlayEntry.classList.remove('hidden');
   }
   document.getElementById('e-cancel').addEventListener('click', function () {
@@ -994,11 +1075,17 @@
     var mode = state.selectedMode;
     var atWin = eAtWin.checked;
     var atMemo = eAtMemo.value.trim();
+    // BIGが選ばれていない/at当選がOFFの時は、関連する選択を保存しない(表示と矛盾しないように)
+    var hasBig = results.indexOf('BIG') !== -1;
+    var bigVoice = hasBig ? state.selectedBigVoice : null;
+    var bigScreen = hasBig ? state.selectedBigScreen : null;
+    var atScreen = atWin ? state.selectedAtScreen : null;
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
+      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreen = atScreen;
     } else {
-      v.entries.push({ id: uid(), game: game, point: point, results: results, mode: mode, atWin: atWin, atMemo: atMemo });
+      v.entries.push({ id: uid(), game: game, point: point, results: results, mode: mode, atWin: atWin, atMemo: atMemo, bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen });
     }
     save();
     overlayEntry.classList.add('hidden');
