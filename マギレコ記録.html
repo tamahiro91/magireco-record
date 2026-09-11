@@ -192,7 +192,9 @@
   .visit-header .summary .card:nth-child(4) .value { color: var(--at); }
 
   .visit-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-  .visit-game { flex-shrink: 0; font-size: 18px; font-weight: 700; color: var(--sub); white-space: nowrap; margin-top: 2px; }
+  .visit-game { flex-shrink: 0; text-align: right; white-space: nowrap; }
+  .visit-game-label { font-size: 11px; color: var(--sub); }
+  .visit-game-value { font-size: 24px; font-weight: 800; color: var(--accent); margin-top: 2px; }
 
   .invest-row {
     display: flex;
@@ -410,7 +412,10 @@
           <div class="store" id="d-store"></div>
           <div class="sub" id="d-sub"></div>
         </div>
-        <div class="visit-game" id="d-header-game"></div>
+        <div class="visit-game">
+          <div class="visit-game-label">総ゲーム数</div>
+          <div class="visit-game-value" id="d-header-game">0G</div>
+        </div>
       </div>
       <div class="sub" id="d-memo"></div>
       <div class="invest-row">
