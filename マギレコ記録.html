@@ -622,11 +622,41 @@
       <button class="ghost-btn" id="btn-import-open">JSONを読み込み</button>
     </div>
     <input type="file" id="import-file" accept="application/json">
+
+    <div class="field" style="margin-top:20px;">
+      <label>同期コード(Safari・ホーム画面など複数の入口で同じデータを使いたい時に設定)</label>
+      <input type="text" id="sync-code-input" placeholder="例: 自分だけの合言葉">
+    </div>
+    <div class="backup-row">
+      <button class="ghost-btn" id="btn-sync-start">同期を開始</button>
+      <button class="ghost-btn" id="btn-sync-stop">同期を解除</button>
+    </div>
+    <div id="sync-status" style="font-size:12px;color:var(--sub);margin-top:6px;"></div>
+
     <div class="sheet-actions">
       <button class="primary-btn" id="backup-close" style="flex:1;">閉じる</button>
     </div>
   </div>
 </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+  var firebaseConfig = {
+    apiKey: "AIzaSyDpsskBpMUW-AfcoD6YW0sAsoQAGx2kEhI",
+    authDomain: "magireko.firebaseapp.com",
+    projectId: "magireko",
+    storageBucket: "magireko.firebasestorage.app",
+    messagingSenderId: "698048240400",
+    appId: "1:698048240400:web:d52a37299ed9519d8fe395"
+  };
+
+  var app = initializeApp(firebaseConfig);
+  var db = getFirestore(app);
+  window.__mgrSync = { db: db, doc: doc, getDoc: getDoc, setDoc: setDoc, onSnapshot: onSnapshot };
+  window.dispatchEvent(new Event('mgr-firebase-ready'));
+</script>
 
 <script>
 (function () {
@@ -683,7 +713,106 @@
   }
   function save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state.visits));
+    pushToCloud();
   }
+
+  // --- クラウド同期(Firebase Firestore) ---
+  var SYNC_CODE_KEY = 'magireco.syncCode';
+  var syncCode = localStorage.getItem(SYNC_CODE_KEY) || null;
+  var syncUnsubscribe = null;
+  var firebaseReady = false;
+  var pendingSyncStart = null;
+
+  window.addEventListener('mgr-firebase-ready', function () {
+    firebaseReady = true;
+    if (syncCode) {
+      listenSync();
+    }
+    if (pendingSyncStart) {
+      var code = pendingSyncStart;
+      pendingSyncStart = null;
+      startSync(code);
+    }
+  });
+
+  function syncDocRef(code) {
+    return window.__mgrSync.doc(window.__mgrSync.db, 'syncs', code);
+  }
+
+  function setSyncStatus(text) {
+    var el = document.getElementById('sync-status');
+    if (el) el.textContent = text;
+  }
+
+  function pushToCloud() {
+    if (!syncCode || !firebaseReady) return;
+    window.__mgrSync.setDoc(syncDocRef(syncCode), {
+      visits: state.visits,
+      updatedAt: Date.now()
+    }).catch(function () {
+      setSyncStatus('同期エラー: クラウドへの保存に失敗しました');
+    });
+  }
+
+  function listenSync() {
+    if (syncUnsubscribe) { syncUnsubscribe(); syncUnsubscribe = null; }
+    if (!syncCode || !firebaseReady) return;
+    syncUnsubscribe = window.__mgrSync.onSnapshot(syncDocRef(syncCode), function (snap) {
+      if (!snap.exists()) return;
+      state.visits = snap.data().visits || [];
+      state.visits.forEach(function (v) { v.entries = (v.entries || []).map(normalizeEntry); });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.visits));
+      if (!elDetailView.hidden) { renderDetail(); } else { renderList(); }
+      setSyncStatus('同期コード「' + syncCode + '」で同期中');
+    }, function () {
+      setSyncStatus('同期エラー: クラウドに接続できませんでした');
+    });
+    setSyncStatus('同期コード「' + syncCode + '」で同期中');
+  }
+
+  function startSync(code) {
+    if (!firebaseReady) {
+      pendingSyncStart = code;
+      setSyncStatus('接続中です…もう少しお待ちください');
+      return;
+    }
+    syncCode = code;
+    localStorage.setItem(SYNC_CODE_KEY, code);
+    setSyncStatus('接続中…');
+    window.__mgrSync.getDoc(syncDocRef(code)).then(function (snap) {
+      var cloudVisits = snap.exists() ? (snap.data().visits || []) : [];
+      var localHasData = state.visits.length > 0;
+      var cloudHasData = cloudVisits.length > 0;
+      if (cloudHasData && localHasData) {
+        if (confirm('クラウドにも記録があります。クラウド側のデータを使いますか?\n(OK: クラウドを使う / キャンセル: 今の端末のデータでクラウドを上書き)')) {
+          state.visits = cloudVisits;
+          state.visits.forEach(function (v) { v.entries = (v.entries || []).map(normalizeEntry); });
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state.visits));
+          renderList();
+        } else {
+          pushToCloud();
+        }
+      } else if (cloudHasData) {
+        state.visits = cloudVisits;
+        state.visits.forEach(function (v) { v.entries = (v.entries || []).map(normalizeEntry); });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.visits));
+        renderList();
+      } else {
+        pushToCloud();
+      }
+      listenSync();
+    }).catch(function () {
+      setSyncStatus('同期エラー: クラウドに接続できませんでした');
+    });
+  }
+
+  function stopSync() {
+    if (syncUnsubscribe) { syncUnsubscribe(); syncUnsubscribe = null; }
+    syncCode = null;
+    localStorage.removeItem(SYNC_CODE_KEY);
+    setSyncStatus('同期を解除しました');
+  }
+
   function uid() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
@@ -1200,11 +1329,26 @@
 
   // --- バックアップ ---
   var overlayBackup = document.getElementById('overlay-backup');
+  var syncCodeInput = document.getElementById('sync-code-input');
   document.getElementById('btn-backup').addEventListener('click', function () {
+    syncCodeInput.value = syncCode || '';
+    setSyncStatus(syncCode ? ('同期コード「' + syncCode + '」で同期中') : '同期は設定されていません');
     overlayBackup.classList.remove('hidden');
   });
   document.getElementById('backup-close').addEventListener('click', function () {
     overlayBackup.classList.add('hidden');
+  });
+  document.getElementById('btn-sync-start').addEventListener('click', function () {
+    var code = syncCodeInput.value.trim();
+    if (!code) { alert('同期コードを入力してください'); return; }
+    startSync(code);
+  });
+  document.getElementById('btn-sync-stop').addEventListener('click', function () {
+    if (!syncCode) return;
+    if (confirm('同期を解除しますか?(記録はこの端末には残ります)')) {
+      stopSync();
+      syncCodeInput.value = '';
+    }
   });
   document.getElementById('btn-export').addEventListener('click', function () {
     var blob = new Blob([JSON.stringify(state.visits, null, 2)], { type: 'application/json' });
