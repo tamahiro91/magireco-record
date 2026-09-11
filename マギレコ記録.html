@@ -248,6 +248,7 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
+  .invest-total-label { font-size: 11px; font-weight: 400; color: var(--sub); }
 
   .entry {
     background: var(--panel);
@@ -1031,7 +1032,7 @@
     var invest = v.invest || { rate: 46, count: 0 };
     elDInvestRate.textContent = invest.rate + '枚▾';
     elDInvestCount.textContent = invest.count || 0;
-    elDInvestTotal.textContent = '＝' + (invest.rate * (invest.count || 0)) + '枚';
+    elDInvestTotal.innerHTML = '＝ ' + (invest.rate * (invest.count || 0)) + '枚 <span class="invest-total-label">(使用枚数)</span>';
 
     elEntryList.innerHTML = '';
     (v.entries || []).forEach(function (e, idx) {
