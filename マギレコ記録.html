@@ -132,8 +132,12 @@
   .visit-card .store { font-size: 17px; font-weight: 700; }
   .visit-card .date { font-size: 13px; color: var(--sub); white-space: nowrap; }
   .visit-card .meta { font-size: 13px; color: var(--sub); margin-top: 4px; }
-  .visit-card .stats { display: flex; gap: 12px; margin-top: 8px; font-size: 13px; }
-  .visit-card .stats span b { color: var(--text); }
+  .visit-card .game-line { font-size: 15px; font-weight: 700; color: var(--text); margin-top: 8px; }
+  .visit-card .prob-grid { display: flex; margin-top: 8px; }
+  .visit-card .prob-col { flex: 1; text-align: center; min-width: 0; }
+  .visit-card .prob-col .p-label { font-size: 10px; color: var(--sub); white-space: nowrap; }
+  .visit-card .prob-col .p-count { font-size: 15px; font-weight: 700; color: var(--text); margin-top: 2px; }
+  .visit-card .prob-col .p-percent { font-size: 12px; color: var(--sub); margin-top: 2px; }
 
   .counters { display: flex; gap: 8px; margin-top: 10px; }
   .counter-card {
@@ -430,7 +434,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-11c</div>
+    <div class="app-version">v2026-09-11d</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -928,22 +932,30 @@
 
     visits.forEach(function (v) {
       var s = visitStats(v);
+      var counters = v.counters || { suika: 0, cz: 0, czWin: 0 };
       var card = document.createElement('div');
       card.className = 'visit-card';
       card.innerHTML =
         '<div class="top-row"><div class="store"></div><div class="date"></div></div>' +
         '<div class="meta"></div>' +
-        '<div class="stats">' +
-          '<span>回数 <b class="c-count"></b></span>' +
-          '<span>当り <b class="c-hits"></b></span>' +
-          '<span>ポイント <b class="c-point"></b></span>' +
+        '<div class="game-line"></div>' +
+        '<div class="prob-grid">' +
+          '<div class="prob-col"><div class="p-label">ボーナス回数</div><div class="p-count c-bonus"></div><div class="p-percent c-bonus-prob"></div></div>' +
+          '<div class="prob-col"><div class="p-label">at初当たり回数</div><div class="p-count c-atwin"></div><div class="p-percent c-atwin-prob"></div></div>' +
+          '<div class="prob-col"><div class="p-label">CZ回数</div><div class="p-count c-cz"></div><div class="p-percent c-cz-prob"></div></div>' +
+          '<div class="prob-col"><div class="p-label">CZ成功</div><div class="p-percent c-czwin-prob"></div></div>' +
         '</div>';
       card.querySelector('.store').textContent = v.store || '(店舗名未設定)';
       card.querySelector('.date').textContent = fmtDate(v.date);
       card.querySelector('.meta').textContent = v.machine ? (v.machine + ' 番台') : '';
-      card.querySelector('.c-count').textContent = s.count;
-      card.querySelector('.c-hits').textContent = s.hits;
-      card.querySelector('.c-point').textContent = s.point;
+      card.querySelector('.game-line').textContent = '総G数 ' + s.game + 'G';
+      card.querySelector('.c-bonus').textContent = s.total;
+      card.querySelector('.c-bonus-prob').textContent = fmtProb(s.game, s.total);
+      card.querySelector('.c-atwin').textContent = s.atWin;
+      card.querySelector('.c-atwin-prob').textContent = fmtProb(s.game, s.atWin);
+      card.querySelector('.c-cz').textContent = counters.cz || 0;
+      card.querySelector('.c-cz-prob').textContent = fmtPercent(counters.cz, counters.suika);
+      card.querySelector('.c-czwin-prob').textContent = fmtPercent(counters.czWin, counters.cz);
       card.addEventListener('click', function () { openDetail(v.id); });
       elVisitList.appendChild(card);
     });
