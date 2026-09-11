@@ -839,7 +839,8 @@
       row.className = 'entry';
       var gameText = (typeof e.game === 'number') ? e.game + 'G' : '';
       var pointText = (typeof e.point === 'number') ? e.point + 'pt' : '';
-      var numsText = [gameText, pointText].filter(Boolean).join(' / ');
+      var atStartGameText = (typeof e.atStartGame === 'number') ? 'at初期' + e.atStartGame + 'G' : '';
+      var numsText = [gameText, pointText, atStartGameText].filter(Boolean).join(' / ');
 
       var tags = (e.results || []).map(function (r) {
         return '<span class="tag ' + r + '">' + r + '</span>';
