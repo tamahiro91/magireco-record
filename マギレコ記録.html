@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="マギレコ記録">
@@ -341,7 +341,7 @@
     max-width: 640px;
     margin: 0 auto;
     border-radius: 18px 18px 0 0;
-    padding: 18px 16px max(18px, env(safe-area-inset-bottom));
+    padding: 18px 16px 0;
     max-height: 88vh;
     overflow-y: auto;
   }
@@ -383,7 +383,16 @@
   }
   .check-row input[type="checkbox"] { width: 20px; height: 20px; }
   .check-row label { margin: 0; font-size: 15px; color: var(--text); }
-  .sheet-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .sheet-actions {
+    display: flex;
+    gap: 10px;
+    margin: 16px -16px 0;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+    position: sticky;
+    bottom: 0;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+  }
   .sheet-actions button { flex: 1; padding: 12px; font-size: 15px; }
 
   .backup-row { display: flex; gap: 8px; margin-top: 4px; }
