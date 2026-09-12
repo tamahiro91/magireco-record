@@ -441,6 +441,18 @@
     font-family: inherit;
   }
   .band-bonus span { font-size: 13px; color: var(--sub); }
+  .wee-chance-card {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .wee-chance-card .wee-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+  .wee-chance-card .field { margin-bottom: 10px; }
+  .wee-chance-card .field:last-child { margin-bottom: 0; }
+  .wee-chance-card .field label { font-size: 12px; }
+  .wee-chance-delete { color: var(--danger); border-color: var(--danger); width: 100%; margin-top: 4px; }
   .picker-trigger {
     width: 100%;
     text-align: left;
@@ -502,7 +514,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-12i</div>
+    <div class="app-version">v2026-09-12j</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -743,6 +755,11 @@
       <label>at終了後の画面</label>
       <button type="button" class="picker-trigger" id="e-at-screen-trigger">未選択 ▾</button>
     </div>
+    <div class="field" id="field-wee-chances" hidden>
+      <label>ストーリー示唆</label>
+      <div id="wee-chances-list"></div>
+      <button type="button" class="ghost-btn" id="wee-chance-add">＋ うぃチャンスを追加</button>
+    </div>
     <div class="field">
       <label>at中身のメモ</label>
       <textarea id="e-atmemo" placeholder="例: ストーリー4.1 / きゅうべえ会話 / 黒江モード? など"></textarea>
@@ -814,7 +831,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [] };
   // 設定示唆パターン(1〜9)ごとの示唆レベル
   var EMBRYO_PATTERN_LEVEL = {
     '1': '基本', '2': '基本', '3': '基本', '4': '基本',
@@ -927,6 +944,19 @@
   }
   function atScreenFullLabel(v) {
     return v ? (v + '(' + AT_SCREEN_SUGGESTION[v] + ')') : '未選択';
+  }
+
+  // うぃチャンス(at中のストーリー示唆)の選択肢
+  var WEE_TRIGGER_OPTIONS = ['ゲーム数', '小役当選'];
+  var WEE_STORY_TYPES = ['ノーマル', 'SP', '神浜', 'マギアボーナス'];
+  var WEE_NORMAL_NUMBERS = ['1', '2', '3', '4', '5', '6', '7', '8'];
+  var WEE_SP_COLORS = ['青', '黄', '緑'];
+  var WEE_CONNECT_COLORS = ['白', '青', '黄', '緑', '赤', '虹'];
+  function createEmptyWeeChance() {
+    return {
+      id: uid(), trigger: null, triggerGame: null, storyType: null,
+      normalNumber: null, spColor: null, magiaStock: null, bonusGame: null, connectColor: null
+    };
   }
 
   // 古い形式のデータを新形式(game/point/results[]/atWin/atMemo)に変換する
@@ -1544,6 +1574,7 @@
   var fieldBigVoice = document.getElementById('field-big-voice');
   var fieldBigScreen = document.getElementById('field-big-screen');
   var fieldAtScreen = document.getElementById('field-at-screen');
+  var fieldWeeChances = document.getElementById('field-wee-chances');
   var fieldBand = document.getElementById('field-band');
   var fieldStartGame = document.getElementById('field-start-game');
   var fieldEmbryo = document.getElementById('field-embryo');
@@ -1560,6 +1591,7 @@
     fieldBigVoice.hidden = !hasBig;
     fieldBigScreen.hidden = !hasBig;
     fieldAtScreen.hidden = !eAtWin.checked;
+    fieldWeeChances.hidden = !eAtWin.checked;
     fieldBand.hidden = !hasEmbryo;
     fieldStartGame.hidden = !hasEmbryo;
     fieldEmbryo.hidden = !hasEmbryo;
@@ -1648,6 +1680,106 @@
     });
   });
 
+  // うぃチャンス(at中のストーリー示唆)の入力欄を組み立てる小さなヘルパー群
+  function buildToggleField(labelText, options, currentValue, onSelect) {
+    var field = document.createElement('div');
+    field.className = 'field';
+    var label = document.createElement('label');
+    label.textContent = labelText;
+    field.appendChild(label);
+    var group = document.createElement('div');
+    group.className = 'cat-select';
+    options.forEach(function (opt) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = opt;
+      if (opt === currentValue) btn.classList.add('active');
+      btn.addEventListener('click', function () { onSelect(opt); });
+      group.appendChild(btn);
+    });
+    field.appendChild(group);
+    return field;
+  }
+  function buildNumberField(labelText, obj, key, placeholder) {
+    var field = document.createElement('div');
+    field.className = 'field';
+    var label = document.createElement('label');
+    label.textContent = labelText;
+    field.appendChild(label);
+    var input = document.createElement('input');
+    input.type = 'number';
+    input.inputMode = 'numeric';
+    input.placeholder = placeholder;
+    input.value = (typeof obj[key] === 'number') ? obj[key] : '';
+    input.addEventListener('input', function () {
+      obj[key] = input.value === '' ? null : Number(input.value);
+    });
+    field.appendChild(input);
+    return field;
+  }
+  var weeChancesList = document.getElementById('wee-chances-list');
+  function renderWeeChances() {
+    weeChancesList.innerHTML = '';
+    state.weeChances.forEach(function (chance, idx) {
+      var card = document.createElement('div');
+      card.className = 'wee-chance-card';
+      var title = document.createElement('div');
+      title.className = 'wee-title';
+      title.textContent = 'うぃチャンス' + (idx + 1);
+      card.appendChild(title);
+
+      card.appendChild(buildToggleField('当選契機', WEE_TRIGGER_OPTIONS, chance.trigger, function (v) {
+        chance.trigger = (chance.trigger === v) ? null : v;
+        renderWeeChances();
+      }));
+      if (chance.trigger === 'ゲーム数') {
+        card.appendChild(buildNumberField('ゲーム数', chance, 'triggerGame', '例: 480'));
+      }
+
+      card.appendChild(buildToggleField('種別', WEE_STORY_TYPES, chance.storyType, function (v) {
+        chance.storyType = (chance.storyType === v) ? null : v;
+        renderWeeChances();
+      }));
+      if (chance.storyType === 'ノーマル') {
+        card.appendChild(buildToggleField('ノーマル番号', WEE_NORMAL_NUMBERS, chance.normalNumber ? String(chance.normalNumber) : null, function (v) {
+          chance.normalNumber = (String(chance.normalNumber) === v) ? null : Number(v);
+          renderWeeChances();
+        }));
+      } else if (chance.storyType === 'SP') {
+        card.appendChild(buildToggleField('SP色', WEE_SP_COLORS, chance.spColor, function (v) {
+          chance.spColor = (chance.spColor === v) ? null : v;
+          renderWeeChances();
+        }));
+      } else if (chance.storyType === 'マギアボーナス') {
+        card.appendChild(buildNumberField('うぃチャンスストック数', chance, 'magiaStock', '例: 3'));
+      }
+      if (chance.storyType && chance.storyType !== 'マギアボーナス') {
+        card.appendChild(buildNumberField('上乗せゲーム数', chance, 'bonusGame', '例: 15'));
+      }
+
+      card.appendChild(buildToggleField('コネクト色', WEE_CONNECT_COLORS, chance.connectColor, function (v) {
+        chance.connectColor = (chance.connectColor === v) ? null : v;
+        renderWeeChances();
+      }));
+
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'ghost-btn wee-chance-delete';
+      delBtn.textContent = 'このうぃチャンスを削除';
+      delBtn.addEventListener('click', function () {
+        state.weeChances.splice(idx, 1);
+        renderWeeChances();
+      });
+      card.appendChild(delBtn);
+
+      weeChancesList.appendChild(card);
+    });
+  }
+  document.getElementById('wee-chance-add').addEventListener('click', function () {
+    state.weeChances.push(createEmptyWeeChance());
+    renderWeeChances();
+  });
+
   // 単一選択(もう一度押すと選択解除)のボタングループを作る共通ヘルパー
   // onChangeを渡すと選択が変わるたびに呼び出す(条件付き表示の再判定などに使う)
   function setupSingleSelect(selector, stateKey, onChange) {
@@ -1710,6 +1842,7 @@
       eEmbryoBonus.value = (typeof e.embryoBonus === 'number') ? e.embryoBonus : '';
       eEmbryoConnectBonus.value = (typeof e.embryoConnectBonus === 'number') ? e.embryoConnectBonus : '';
       state.selectedEmbryoPattern = e.embryoPattern ? String(e.embryoPattern) : null;
+      state.weeChances = (e.weeChances || []).map(function (c) { return Object.assign({}, c); });
       eAtWin.checked = !!e.atWin;
       eAtMemo.value = e.atMemo || '';
       eDeleteBtn.style.display = '';
@@ -1733,6 +1866,7 @@
       eEmbryoBonus.value = '';
       eEmbryoConnectBonus.value = '';
       state.selectedEmbryoPattern = null;
+      state.weeChances = [];
       eAtWin.checked = false;
       eAtMemo.value = '';
       eDeleteBtn.style.display = 'none';
@@ -1747,6 +1881,7 @@
     eBigVoiceTrigger.textContent = bigVoiceFullLabel(state.selectedBigVoice, eAtWin.checked) + ' ▾';
     eBigScreenTrigger.textContent = bigScreenFullLabel(state.selectedBigScreen) + ' ▾';
     eAtScreenTrigger.textContent = atScreenFullLabel(state.selectedAtScreen) + ' ▾';
+    renderWeeChances();
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
     autoResizeTextarea(eAtMemo);
@@ -1783,18 +1918,20 @@
     var embryoConnect = hasEmbryo ? state.selectedEmbryoConnect : null;
     var embryoConnectBonus = hasEmbryo ? (eEmbryoConnectBonus.value === '' ? null : Number(eEmbryoConnectBonus.value)) : null;
     var embryoPattern = hasEmbryo && state.selectedEmbryoPattern ? Number(state.selectedEmbryoPattern) : null;
+    // at当選がOFFの時はうぃチャンスの記録も保存しない
+    var weeChances = atWin ? state.weeChances.map(function (c) { return Object.assign({}, c); }) : [];
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
       e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreen = atScreen; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
-      e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern;
+      e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
     } else {
       v.entries.push({
         id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
         bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
-        embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern
+        embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances
       });
     }
     save();
