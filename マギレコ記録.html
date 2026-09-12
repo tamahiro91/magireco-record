@@ -502,7 +502,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-12h</div>
+    <div class="app-version">v2026-09-12i</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -837,17 +837,20 @@
     { v: '9', text: '⑨ 設定5以上濃厚!?(小さいキュゥべえ)' }
   ];
   // 魔法少女モードピッカーの選択肢
-  // 魔法少女モードごとの特徴
-  var MODE_FEATURES = {
-    'いろはモード': '基本パターン',
-    'やちよモード': 'ポイント倍ゾーン当選率アップ',
-    '鶴乃モード': '強チェリー成立時ボーナス当選率アップ',
-    'フェリシアモード': 'チャンス目成立時ボーナス当選率アップ',
-    'さなモード': 'スイカ成立時CZ当選率アップ',
-    '黒江モード': '穢れ獲得量アップ'
+  // 魔法少女モードごとの短縮表示(例: いろはモード → いろは(基本))
+  var MODE_SHORT_LABEL = {
+    'いろはモード': 'いろは', 'やちよモード': 'やちよ', '鶴乃モード': '鶴乃',
+    'フェリシアモード': 'フェリシア', 'さなモード': 'さな', '黒江モード': '黒江'
   };
+  var MODE_SHORT_FEATURE = {
+    'いろはモード': '基本', 'やちよモード': 'ポイント', '鶴乃モード': '強チェ',
+    'フェリシアモード': 'チャン目', 'さなモード': 'CZ', '黒江モード': '穢れ'
+  };
+  function modeShortText(v) {
+    return v ? (MODE_SHORT_LABEL[v] + '(' + MODE_SHORT_FEATURE[v] + ')') : '未選択';
+  }
   var MODE_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
-    Object.keys(MODE_FEATURES).map(function (v) { return { v: v, text: v + '(' + MODE_FEATURES[v] + ')' }; })
+    Object.keys(MODE_SHORT_LABEL).map(function (v) { return { v: v, text: modeShortText(v) }; })
   );
   // ビッグ終了後の画面ごとの設定示唆
   var BIG_SCREEN_SUGGESTION = {
@@ -912,6 +915,18 @@
       options.push({ v: v, text: BIG_VOICE_LABELS[v] + '(' + bigVoiceSuggestion(v, atWin) + ')' });
     });
     return options;
+  }
+  // ボタン(ピッカーを開く前の表示)にも選択肢と同じフルの示唆文を表示する
+  function bigVoiceFullLabel(v, atWin) {
+    return v ? (BIG_VOICE_LABELS[v] + '(' + bigVoiceSuggestion(v, atWin) + ')') : '未選択';
+  }
+  function bigScreenFullLabel(v) {
+    if (!v) return '未選択';
+    var s = BIG_SCREEN_SUGGESTION[v];
+    return s ? (v + '(' + s + ')') : v;
+  }
+  function atScreenFullLabel(v) {
+    return v ? (v + '(' + AT_SCREEN_SUGGESTION[v] + ')') : '未選択';
   }
 
   // 古い形式のデータを新形式(game/point/results[]/atWin/atMemo)に変換する
@@ -1323,7 +1338,7 @@
         '<button type="button" class="drag-handle">☰</button>';
       row.querySelector('.nums').textContent = numsText;
       row.querySelector('.nums').style.display = numsText ? '' : 'none';
-      row.querySelector('.mode').textContent = e.mode ? (e.mode + '(' + MODE_FEATURES[e.mode] + ')') : '';
+      row.querySelector('.mode').textContent = e.mode ? modeShortText(e.mode) : '';
       row.querySelector('.mode').style.display = e.mode ? '' : 'none';
 
       var extraContainer = row.querySelector('.extra');
@@ -1570,7 +1585,11 @@
     });
   });
 
-  eAtWin.addEventListener('change', updateConditionalFields);
+  eAtWin.addEventListener('change', function () {
+    // at当選のON/OFFでボイスの示唆内容が変わるため、選択済みならボタンの表示も更新する
+    eBigVoiceTrigger.textContent = bigVoiceFullLabel(state.selectedBigVoice, eAtWin.checked) + ' ▾';
+    updateConditionalFields();
+  });
 
   // 選択肢が長い項目用の共通ピッカー(下からせり上がるシートで1つ選ぶ)
   var overlayPicker = document.getElementById('overlay-picker');
@@ -1601,7 +1620,7 @@
   eModeTrigger.addEventListener('click', function () {
     openPicker('魔法少女モード', MODE_OPTIONS, state.selectedMode || '', function (v) {
       state.selectedMode = v || null;
-      eModeTrigger.textContent = (v || '未選択') + ' ▾';
+      eModeTrigger.textContent = modeShortText(v) + ' ▾';
     });
   });
   eEmbryoPatternTrigger.addEventListener('click', function () {
@@ -1613,19 +1632,19 @@
   eBigVoiceTrigger.addEventListener('click', function () {
     openPicker('ビッグ終了後のボイス', buildBigVoiceOptions(eAtWin.checked), state.selectedBigVoice || '', function (v) {
       state.selectedBigVoice = v || null;
-      eBigVoiceTrigger.textContent = (v || '未選択') + ' ▾';
+      eBigVoiceTrigger.textContent = bigVoiceFullLabel(v, eAtWin.checked) + ' ▾';
     });
   });
   eBigScreenTrigger.addEventListener('click', function () {
     openPicker('ビッグ終了後の画面', BIG_SCREEN_OPTIONS, state.selectedBigScreen || '', function (v) {
       state.selectedBigScreen = v || null;
-      eBigScreenTrigger.textContent = (v || '未選択') + ' ▾';
+      eBigScreenTrigger.textContent = bigScreenFullLabel(v) + ' ▾';
     });
   });
   eAtScreenTrigger.addEventListener('click', function () {
     openPicker('at終了後の画面', AT_SCREEN_OPTIONS, state.selectedAtScreen || '', function (v) {
       state.selectedAtScreen = v || null;
-      eAtScreenTrigger.textContent = (v || '未選択') + ' ▾';
+      eAtScreenTrigger.textContent = atScreenFullLabel(v) + ' ▾';
     });
   });
 
@@ -1723,11 +1742,11 @@
     embryoTriggerButtons.forEach(function (b) { b.classList.toggle('active', state.selectedEmbryoTriggers.indexOf(b.dataset.v) !== -1); });
     embryoBellButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoBell); });
     embryoConnectButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoConnect); });
-    eModeTrigger.textContent = state.selectedMode ? (state.selectedMode + ' ▾') : '未選択 ▾';
+    eModeTrigger.textContent = modeShortText(state.selectedMode) + ' ▾';
     eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(state.selectedEmbryoPattern) + ' ▾';
-    eBigVoiceTrigger.textContent = (state.selectedBigVoice || '未選択') + ' ▾';
-    eBigScreenTrigger.textContent = (state.selectedBigScreen || '未選択') + ' ▾';
-    eAtScreenTrigger.textContent = (state.selectedAtScreen || '未選択') + ' ▾';
+    eBigVoiceTrigger.textContent = bigVoiceFullLabel(state.selectedBigVoice, eAtWin.checked) + ' ▾';
+    eBigScreenTrigger.textContent = bigScreenFullLabel(state.selectedBigScreen) + ' ▾';
+    eAtScreenTrigger.textContent = atScreenFullLabel(state.selectedAtScreen) + ' ▾';
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
     autoResizeTextarea(eAtMemo);
