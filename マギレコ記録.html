@@ -441,6 +441,31 @@
     font-family: inherit;
   }
   .band-bonus span { font-size: 13px; color: var(--sub); }
+  .picker-trigger {
+    width: 100%;
+    text-align: left;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 15px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .picker-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+  .picker-option {
+    text-align: left;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .picker-option.active { border-color: var(--accent); color: var(--accent); }
   .check-row {
     display: flex;
     align-items: center;
@@ -477,7 +502,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-12c</div>
+    <div class="app-version">v2026-09-12d</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -621,6 +646,10 @@
       </div>
     </div>
     <div class="field">
+      <label>魔法少女モード</label>
+      <button type="button" class="picker-trigger" id="e-mode-trigger">未選択 ▾</button>
+    </div>
+    <div class="field">
       <label>結果(複数選択可)</label>
       <div class="cat-select" id="e-result">
         <button type="button" data-v="BIG">BIG</button>
@@ -689,18 +718,7 @@
     </div>
     <div class="field" id="field-embryo-pattern" hidden>
       <label>設定示唆</label>
-      <select id="e-embryo-pattern">
-        <option value="">未選択</option>
-        <option value="1">① 基本パターン(いろは⇒やちよ⇒鶴乃⇒フェリシア⇒さな)</option>
-        <option value="2">② 基本パターン(ももこ⇒レナ⇒かえで⇒みたま⇒黒江)</option>
-        <option value="3">③ 基本パターン(灯花⇒ねむ⇒天音姉妹⇒みふゆ⇒アリナ)</option>
-        <option value="4">④ 基本パターン(まどか⇒さやか⇒マミ⇒杏子⇒ほむら)</option>
-        <option value="5">⑤ 高設定示唆・弱(逆順スタート)</option>
-        <option value="6">⑥ 高設定示唆・強(ももこ⇒やちよ⇒鶴乃⇒みふゆ⇒みたま)</option>
-        <option value="7">⑦ 高設定示唆・強(いろは⇒うい⇒灯花⇒ねむ⇒アリナ)</option>
-        <option value="8">⑧ 高設定示唆・強(4キャラのみ)</option>
-        <option value="9">⑨ 設定5以上濃厚!?(小さいキュゥべえ)</option>
-      </select>
+      <button type="button" class="picker-trigger" id="e-embryo-pattern-trigger">未選択 ▾</button>
     </div>
     <div class="field" id="field-big-voice" hidden>
       <label>ビッグ終了後のボイス</label>
@@ -742,17 +760,6 @@
       </div>
     </div>
     <div class="field">
-      <label>魔法少女モード</label>
-      <div class="cat-select" id="e-mode">
-        <button type="button" data-v="いろはモード">いろはモード</button>
-        <button type="button" data-v="やちよモード">やちよモード</button>
-        <button type="button" data-v="鶴乃モード">鶴乃モード</button>
-        <button type="button" data-v="フェリシアモード">フェリシアモード</button>
-        <button type="button" data-v="さなモード">さなモード</button>
-        <button type="button" data-v="黒江モード">黒江モード</button>
-      </div>
-    </div>
-    <div class="field">
       <label>at中身のメモ</label>
       <textarea id="e-atmemo" placeholder="例: ストーリー4.1 / きゅうべえ会話 / 黒江モード? など"></textarea>
     </div>
@@ -760,6 +767,17 @@
       <button class="ghost-btn" id="e-cancel">キャンセル</button>
       <button class="ghost-btn" id="e-delete" style="color:var(--danger);border-color:var(--danger);display:none;">削除</button>
       <button class="primary-btn" id="e-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 選択肢が長い項目用の共通ピッカー(魔法少女モード/設定示唆) -->
+<div class="overlay hidden" id="overlay-picker">
+  <div class="sheet">
+    <h2 id="picker-title"></h2>
+    <div class="picker-list" id="picker-list"></div>
+    <div class="sheet-actions">
+      <button class="ghost-btn" id="picker-cancel">キャンセル</button>
     </div>
   </div>
 </div>
@@ -812,15 +830,36 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTrigger: null, selectedEmbryoBell: null, selectedEmbryoConnect: null };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTrigger: null, selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null };
   // 設定示唆パターン(1〜9)ごとの示唆レベル
   var EMBRYO_PATTERN_LEVEL = {
-    '1': '基本パターン', '2': '基本パターン', '3': '基本パターン', '4': '基本パターン',
+    '1': '基本', '2': '基本', '3': '基本', '4': '基本',
     '5': '高設定示唆(弱)',
     '6': '高設定示唆(強)', '7': '高設定示唆(強)', '8': '高設定示唆(強)',
     '9': '設定5以上濃厚!?'
   };
   var EMBRYO_ROMAN = { '1': '①', '2': '②', '3': '③', '4': '④', '5': '⑤', '6': '⑥', '7': '⑦', '8': '⑧', '9': '⑨' };
+  // 設定示唆ピッカーの選択肢
+  var EMBRYO_PATTERN_OPTIONS = [
+    { v: '1', text: '① 基本(いろは⇒やちよ⇒鶴乃⇒フェリシア⇒さな)' },
+    { v: '2', text: '② 基本(ももこ⇒レナ⇒かえで⇒みたま⇒黒江)' },
+    { v: '3', text: '③ 基本(灯花⇒ねむ⇒天音姉妹⇒みふゆ⇒アリナ)' },
+    { v: '4', text: '④ 基本(まどか⇒さやか⇒マミ⇒杏子⇒ほむら)' },
+    { v: '5', text: '⑤ 高設定示唆・弱(逆順スタート)' },
+    { v: '6', text: '⑥ 高設定示唆・強(ももこ⇒やちよ⇒鶴乃⇒みふゆ⇒みたま)' },
+    { v: '7', text: '⑦ 高設定示唆・強(いろは⇒うい⇒灯花⇒ねむ⇒アリナ)' },
+    { v: '8', text: '⑧ 高設定示唆・強(4キャラのみ)' },
+    { v: '9', text: '⑨ 設定5以上濃厚!?(小さいキュゥべえ)' }
+  ];
+  // 魔法少女モードピッカーの選択肢
+  var MODE_OPTIONS = [
+    { v: 'いろはモード', text: 'いろはモード' },
+    { v: 'やちよモード', text: 'やちよモード' },
+    { v: '鶴乃モード', text: '鶴乃モード' },
+    { v: 'フェリシアモード', text: 'フェリシアモード' },
+    { v: 'さなモード', text: 'さなモード' },
+    { v: '黒江モード', text: '黒江モード' }
+  ];
 
   // 古い形式のデータを新形式(game/point/results[]/atWin/atMemo)に変換する
   // - 最も古い形式: cat/g/p/note
@@ -1409,7 +1448,8 @@
   var eBandBonus = document.getElementById('e-band-bonus');
   var eEmbryoBonus = document.getElementById('e-embryo-bonus');
   var eEmbryoConnectBonus = document.getElementById('e-embryo-connect-bonus');
-  var eEmbryoPattern = document.getElementById('e-embryo-pattern');
+  var eModeTrigger = document.getElementById('e-mode-trigger');
+  var eEmbryoPatternTrigger = document.getElementById('e-embryo-pattern-trigger');
   var eAtWin = document.getElementById('e-atwin');
   var eAtMemo = document.getElementById('e-atmemo');
   var eDeleteBtn = document.getElementById('e-delete');
@@ -1417,7 +1457,7 @@
   var resultButtons = document.querySelectorAll('#e-result button');
 
   // BIGが選ばれている間だけビッグ関連、at当選がONの間だけat終了画面の項目を表示する
-  // 帯色は結果を1つ以上選んでいる間だけ、エンブリオ関連は結果にエンブリオを含む間だけ表示する
+  // 帯色・エンブリオ関連は結果にエンブリオを含む間だけ表示する
   var fieldBigVoice = document.getElementById('field-big-voice');
   var fieldBigScreen = document.getElementById('field-big-screen');
   var fieldAtScreen = document.getElementById('field-at-screen');
@@ -1434,7 +1474,7 @@
     fieldBigVoice.hidden = !hasBig;
     fieldBigScreen.hidden = !hasBig;
     fieldAtScreen.hidden = !eAtWin.checked;
-    fieldBand.hidden = state.selectedResults.length === 0;
+    fieldBand.hidden = !hasEmbryo;
     fieldEmbryo.hidden = !hasEmbryo;
     fieldEmbryoBell.hidden = !(hasEmbryo && isKamihama);
     fieldEmbryoBonus.hidden = !(hasEmbryo && isKamihama);
@@ -1459,12 +1499,42 @@
 
   eAtWin.addEventListener('change', updateConditionalFields);
 
-  var modeButtons = document.querySelectorAll('#e-mode button');
-  modeButtons.forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      // 魔法少女モードは1つだけ選択(もう一度押すと選択解除)
-      state.selectedMode = (state.selectedMode === btn.dataset.v) ? null : btn.dataset.v;
-      modeButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedMode); });
+  // 選択肢が長い項目用の共通ピッカー(下からせり上がるシートで1つ選ぶ)
+  var overlayPicker = document.getElementById('overlay-picker');
+  var pickerTitle = document.getElementById('picker-title');
+  var pickerList = document.getElementById('picker-list');
+  document.getElementById('picker-cancel').addEventListener('click', function () {
+    overlayPicker.classList.add('hidden');
+  });
+  function openPicker(title, options, currentValue, onSelect) {
+    pickerTitle.textContent = title;
+    pickerList.innerHTML = '';
+    options.forEach(function (opt) {
+      var row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'picker-option' + (opt.v === currentValue ? ' active' : '');
+      row.textContent = opt.text;
+      row.addEventListener('click', function () {
+        onSelect(opt.v);
+        overlayPicker.classList.add('hidden');
+      });
+      pickerList.appendChild(row);
+    });
+    overlayPicker.classList.remove('hidden');
+  }
+  function embryoPatternShortLabel(v) {
+    return v ? (EMBRYO_ROMAN[v] + ' ' + EMBRYO_PATTERN_LEVEL[v]) : '未選択';
+  }
+  eModeTrigger.addEventListener('click', function () {
+    openPicker('魔法少女モード', MODE_OPTIONS, state.selectedMode, function (v) {
+      state.selectedMode = v;
+      eModeTrigger.textContent = v + ' ▾';
+    });
+  });
+  eEmbryoPatternTrigger.addEventListener('click', function () {
+    openPicker('設定示唆', EMBRYO_PATTERN_OPTIONS, state.selectedEmbryoPattern, function (v) {
+      state.selectedEmbryoPattern = v;
+      eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(v) + ' ▾';
     });
   });
 
@@ -1512,7 +1582,7 @@
       eBandBonus.value = (typeof e.bandBonus === 'number') ? e.bandBonus : '';
       eEmbryoBonus.value = (typeof e.embryoBonus === 'number') ? e.embryoBonus : '';
       eEmbryoConnectBonus.value = (typeof e.embryoConnectBonus === 'number') ? e.embryoConnectBonus : '';
-      eEmbryoPattern.value = e.embryoPattern ? String(e.embryoPattern) : '';
+      state.selectedEmbryoPattern = e.embryoPattern ? String(e.embryoPattern) : null;
       eAtWin.checked = !!e.atWin;
       eAtMemo.value = e.atMemo || '';
       eDeleteBtn.style.display = '';
@@ -1534,13 +1604,12 @@
       eBandBonus.value = '';
       eEmbryoBonus.value = '';
       eEmbryoConnectBonus.value = '';
-      eEmbryoPattern.value = '';
+      state.selectedEmbryoPattern = null;
       eAtWin.checked = false;
       eAtMemo.value = '';
       eDeleteBtn.style.display = 'none';
     }
     resultButtons.forEach(function (b) { b.classList.toggle('active', state.selectedResults.indexOf(b.dataset.v) !== -1); });
-    modeButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedMode); });
     bigVoiceButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBigVoice); });
     bigScreenButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBigScreen); });
     atScreenButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedAtScreen); });
@@ -1548,6 +1617,8 @@
     embryoTriggerButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoTrigger); });
     embryoBellButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoBell); });
     embryoConnectButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoConnect); });
+    eModeTrigger.textContent = state.selectedMode ? (state.selectedMode + ' ▾') : '未選択 ▾';
+    eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(state.selectedEmbryoPattern) + ' ▾';
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
     autoResizeTextarea(eAtMemo);
@@ -1568,21 +1639,20 @@
     var atMemo = eAtMemo.value.trim();
     // BIGが選ばれていない/at当選がOFFの時は、関連する選択を保存しない(表示と矛盾しないように)
     var hasBig = results.indexOf('BIG') !== -1;
-    var hasResult = results.length > 0;
     var bigVoice = hasBig ? state.selectedBigVoice : null;
     var bigScreen = hasBig ? state.selectedBigScreen : null;
     var atScreen = atWin ? state.selectedAtScreen : null;
-    var bandColor = hasResult ? state.selectedBand : null;
-    var bandBonus = hasResult ? (eBandBonus.value === '' ? null : Number(eBandBonus.value)) : null;
-    // エンブリオが選ばれていない時は関連する選択を保存しない(表示と矛盾しないように)
+    // 帯色・エンブリオが選ばれていない時は関連する選択を保存しない(表示と矛盾しないように)
     var hasEmbryo = results.indexOf('エンブリオ') !== -1;
+    var bandColor = hasEmbryo ? state.selectedBand : null;
+    var bandBonus = hasEmbryo ? (eBandBonus.value === '' ? null : Number(eBandBonus.value)) : null;
     var isKamihama = hasEmbryo && state.selectedEmbryoTrigger === '神浜当選';
     var embryoTrigger = hasEmbryo ? state.selectedEmbryoTrigger : null;
     var embryoBellLevel = isKamihama && state.selectedEmbryoBell ? Number(state.selectedEmbryoBell) : null;
     var embryoBonus = isKamihama ? (eEmbryoBonus.value === '' ? null : Number(eEmbryoBonus.value)) : null;
     var embryoConnect = hasEmbryo ? state.selectedEmbryoConnect : null;
     var embryoConnectBonus = hasEmbryo ? (eEmbryoConnectBonus.value === '' ? null : Number(eEmbryoConnectBonus.value)) : null;
-    var embryoPattern = hasEmbryo && eEmbryoPattern.value ? Number(eEmbryoPattern.value) : null;
+    var embryoPattern = hasEmbryo && state.selectedEmbryoPattern ? Number(state.selectedEmbryoPattern) : null;
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
@@ -1685,6 +1755,7 @@
   function updateBodyScrollLock() {
     var anyOpen = !overlayVisit.classList.contains('hidden') ||
                   !overlayEntry.classList.contains('hidden') ||
+                  !overlayPicker.classList.contains('hidden') ||
                   !overlayBackup.classList.contains('hidden');
     if (anyOpen && !modalLocked) {
       modalLocked = true;
@@ -1702,7 +1773,7 @@
       window.scrollTo(0, modalScrollY);
     }
   }
-  [overlayVisit, overlayEntry, overlayBackup].forEach(function (el) {
+  [overlayVisit, overlayEntry, overlayPicker, overlayBackup].forEach(function (el) {
     new MutationObserver(updateBodyScrollLock).observe(el, { attributes: true, attributeFilter: ['class'] });
   });
 
