@@ -502,7 +502,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-12g</div>
+    <div class="app-version">v2026-09-12h</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -837,50 +837,80 @@
     { v: '9', text: '⑨ 設定5以上濃厚!?(小さいキュゥべえ)' }
   ];
   // 魔法少女モードピッカーの選択肢
-  var MODE_OPTIONS = [
-    { v: '', text: '未選択(解除)' },
-    { v: 'いろはモード', text: 'いろはモード' },
-    { v: 'やちよモード', text: 'やちよモード' },
-    { v: '鶴乃モード', text: '鶴乃モード' },
-    { v: 'フェリシアモード', text: 'フェリシアモード' },
-    { v: 'さなモード', text: 'さなモード' },
-    { v: '黒江モード', text: '黒江モード' }
-  ];
-  // ビッグ終了後の画面ピッカーの選択肢(設定示唆を含む)
-  var BIG_SCREEN_OPTIONS = [
-    { v: '', text: '未選択(解除)' },
-    { v: 'デフォルト', text: 'デフォルト' },
-    { v: 'いろは&フェリシア', text: 'いろは&フェリシア(設定3・5・6示唆)' },
-    { v: 'いろは&さな', text: 'いろは&さな(設定2・4・6示唆)' },
-    { v: 'いろは&やちよ&鶴乃', text: 'いろは&やちよ&鶴乃(高設定示唆・弱)' },
-    { v: 'いろは&やちよ&ももこチーム', text: 'いろは&やちよ&ももこチーム(高設定示唆・強)' },
-    { v: '水着みかづき荘', text: '水着みかづき荘(設定2以上濃厚!?)' },
-    { v: '2nd Seasonキービジュアル', text: '2nd Seasonキービジュアル(設定4以上濃厚!?)' },
-    { v: '1st Seasonキービジュアル', text: '1st Seasonキービジュアル(設定5以上濃厚!?)' },
-    { v: '小さいキュゥべえ', text: '小さいキュゥべえ(設定6濃厚!?)' }
-  ];
-  // at終了後の画面ピッカーの選択肢(設定示唆を含む)
-  var AT_SCREEN_OPTIONS = [
-    { v: '', text: '未選択(解除)' },
-    { v: '城背景', text: '城背景(基本パターン)' },
-    { v: 'マギウスメンバー', text: 'マギウスメンバー(設定3・5・6示唆)' },
-    { v: 'みかづき荘メンバー', text: 'みかづき荘メンバー(設定2・4・6示唆)' },
-    { v: 'まどか&いろは', text: 'まどか&いろは(設定6濃厚!?)' }
-  ];
+  // 魔法少女モードごとの特徴
+  var MODE_FEATURES = {
+    'いろはモード': '基本パターン',
+    'やちよモード': 'ポイント倍ゾーン当選率アップ',
+    '鶴乃モード': '強チェリー成立時ボーナス当選率アップ',
+    'フェリシアモード': 'チャンス目成立時ボーナス当選率アップ',
+    'さなモード': 'スイカ成立時CZ当選率アップ',
+    '黒江モード': '穢れ獲得量アップ'
+  };
+  var MODE_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
+    Object.keys(MODE_FEATURES).map(function (v) { return { v: v, text: v + '(' + MODE_FEATURES[v] + ')' }; })
+  );
+  // ビッグ終了後の画面ごとの設定示唆
+  var BIG_SCREEN_SUGGESTION = {
+    'デフォルト': '',
+    'いろは&フェリシア': '設定3・5・6示唆',
+    'いろは&さな': '設定2・4・6示唆',
+    'いろは&やちよ&鶴乃': '高設定示唆・弱',
+    'いろは&やちよ&ももこチーム': '高設定示唆・強',
+    '水着みかづき荘': '設定2以上濃厚!?',
+    '2nd Seasonキービジュアル': '設定4以上濃厚!?',
+    '1st Seasonキービジュアル': '設定5以上濃厚!?',
+    '小さいキュゥべえ': '設定6濃厚!?'
+  };
+  var BIG_SCREEN_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
+    Object.keys(BIG_SCREEN_SUGGESTION).map(function (v) {
+      var s = BIG_SCREEN_SUGGESTION[v];
+      return { v: v, text: s ? (v + '(' + s + ')') : v };
+    })
+  );
+  // at終了後の画面ごとの設定示唆
+  var AT_SCREEN_SUGGESTION = {
+    '城背景': '基本パターン',
+    'マギウスメンバー': '設定3・5・6示唆',
+    'みかづき荘メンバー': '設定2・4・6示唆',
+    'まどか&いろは': '設定6濃厚!?'
+  };
+  var AT_SCREEN_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
+    Object.keys(AT_SCREEN_SUGGESTION).map(function (v) { return { v: v, text: v + '(' + AT_SCREEN_SUGGESTION[v] + ')' }; })
+  );
+  // ビッグ終了後のボイスごとの設定示唆(at当選の有無で内容が変わる)
+  var BIG_VOICE_LABELS = {
+    '運命を変えたいなら〜': '①運命を変えたいなら〜',
+    'この町で魔法少女は〜': '②この町で魔法少女は〜',
+    'お姉ちゃんにはまだ誰かを〜': '③お姉ちゃんにはまだ誰かを〜',
+    'お姉ちゃんが幸せを〜': '④お姉ちゃんが幸せを〜',
+    '奇跡って〜': '⑤奇跡って〜'
+  };
+  var BIG_VOICE_SUGGESTION = {
+    atWin: {
+      '運命を変えたいなら〜': '基本パターン',
+      'この町で魔法少女は〜': '浅いG数選択示唆',
+      'お姉ちゃんにはまだ誰かを〜': '100G以内示唆・弱',
+      'お姉ちゃんが幸せを〜': '100G以内示唆・強/150G以内当選濃厚!?',
+      '奇跡って〜': '50G以内当選濃厚!?'
+    },
+    noAtWin: {
+      '運命を変えたいなら〜': '基本パターン',
+      'この町で魔法少女は〜': '300pt以内当選示唆・弱',
+      'お姉ちゃんにはまだ誰かを〜': '深いpt数が選択されにくい!?',
+      'お姉ちゃんが幸せを〜': '③よりさらに深いpt数が選択されにくい!?',
+      '奇跡って〜': '300pt以内当選示唆・強'
+    }
+  };
+  function bigVoiceSuggestion(v, atWin) {
+    var table = atWin ? BIG_VOICE_SUGGESTION.atWin : BIG_VOICE_SUGGESTION.noAtWin;
+    return table[v] || '';
+  }
   // ビッグ終了後のボイスピッカーの選択肢(at当選の有無で示唆内容が変わる)
   function buildBigVoiceOptions(atWin) {
-    var suffixes = atWin
-      ? ['基本パターン', '浅いG数選択示唆', '100G以内示唆・弱', '100G以内示唆・強/150G以内当選濃厚!?', '50G以内当選濃厚!?']
-      : ['基本パターン', '300pt以内当選示唆・弱', '深いpt数が選択されにくい!?', '③よりさらに深いpt数が選択されにくい!?', '300pt以内当選示唆・強'];
-    var base = [
-      { v: '運命を変えたいなら〜', text: '①運命を変えたいなら〜' },
-      { v: 'この町で魔法少女は〜', text: '②この町で魔法少女は〜' },
-      { v: 'お姉ちゃんにはまだ誰かを〜', text: '③お姉ちゃんにはまだ誰かを〜' },
-      { v: 'お姉ちゃんが幸せを〜', text: '④お姉ちゃんが幸せを〜' },
-      { v: '奇跡って〜', text: '⑤奇跡って〜' }
-    ];
     var options = [{ v: '', text: '未選択(解除)' }];
-    base.forEach(function (opt, i) { options.push({ v: opt.v, text: opt.text + '(' + suffixes[i] + ')' }); });
+    Object.keys(BIG_VOICE_LABELS).forEach(function (v) {
+      options.push({ v: v, text: BIG_VOICE_LABELS[v] + '(' + bigVoiceSuggestion(v, atWin) + ')' });
+    });
     return options;
   }
 
@@ -1293,7 +1323,7 @@
         '<button type="button" class="drag-handle">☰</button>';
       row.querySelector('.nums').textContent = numsText;
       row.querySelector('.nums').style.display = numsText ? '' : 'none';
-      row.querySelector('.mode').textContent = e.mode || '';
+      row.querySelector('.mode').textContent = e.mode ? (e.mode + '(' + MODE_FEATURES[e.mode] + ')') : '';
       row.querySelector('.mode').style.display = e.mode ? '' : 'none';
 
       var extraContainer = row.querySelector('.extra');
@@ -1314,9 +1344,15 @@
       if (e.embryoPattern) {
         extraLines.push('設定示唆: ' + EMBRYO_ROMAN[e.embryoPattern] + ' ' + EMBRYO_PATTERN_LEVEL[String(e.embryoPattern)]);
       }
-      if (e.bigVoice) extraLines.push('ボイス: ' + e.bigVoice);
-      if (e.bigScreen) extraLines.push('画面: ' + e.bigScreen);
-      if (e.atScreen) extraLines.push('at画面: ' + e.atScreen);
+      if (e.bigVoice) {
+        var voiceSuggestion = bigVoiceSuggestion(e.bigVoice, e.atWin);
+        extraLines.push('ボイス: ' + e.bigVoice + (voiceSuggestion ? '(' + voiceSuggestion + ')' : ''));
+      }
+      if (e.bigScreen) {
+        var screenSuggestion = BIG_SCREEN_SUGGESTION[e.bigScreen];
+        extraLines.push('画面: ' + e.bigScreen + (screenSuggestion ? '(' + screenSuggestion + ')' : ''));
+      }
+      if (e.atScreen) extraLines.push('at画面: ' + e.atScreen + '(' + AT_SCREEN_SUGGESTION[e.atScreen] + ')');
       extraLines.forEach(function (text) {
         var lineDiv = document.createElement('div');
         lineDiv.textContent = text;
