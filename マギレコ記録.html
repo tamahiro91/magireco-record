@@ -502,7 +502,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-12d</div>
+    <div class="app-version">v2026-09-12e</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -684,11 +684,16 @@
       </div>
     </div>
     <div class="field" id="field-embryo" hidden>
-      <label>当選契機</label>
+      <label>当選契機(複数選択可)</label>
       <div class="cat-select" id="e-embryo-trigger">
         <button type="button" data-v="ストーリー当選">ストーリー当選</button>
         <button type="button" data-v="神浜当選">神浜当選</button>
+        <button type="button" data-v="小役当選">小役当選</button>
       </div>
+    </div>
+    <div class="field" id="field-embryo-game-count" hidden>
+      <label>当選ゲーム数</label>
+      <input type="number" inputmode="numeric" id="e-embryo-game-count" placeholder="例: 480">
     </div>
     <div class="field" id="field-embryo-bell" hidden>
       <label>ベルレベル</label>
@@ -830,7 +835,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTrigger: null, selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null };
   // 設定示唆パターン(1〜9)ごとの示唆レベル
   var EMBRYO_PATTERN_LEVEL = {
     '1': '基本', '2': '基本', '3': '基本', '4': '基本',
@@ -841,6 +846,7 @@
   var EMBRYO_ROMAN = { '1': '①', '2': '②', '3': '③', '4': '④', '5': '⑤', '6': '⑥', '7': '⑦', '8': '⑧', '9': '⑨' };
   // 設定示唆ピッカーの選択肢
   var EMBRYO_PATTERN_OPTIONS = [
+    { v: '', text: '未選択(解除)' },
     { v: '1', text: '① 基本(いろは⇒やちよ⇒鶴乃⇒フェリシア⇒さな)' },
     { v: '2', text: '② 基本(ももこ⇒レナ⇒かえで⇒みたま⇒黒江)' },
     { v: '3', text: '③ 基本(灯花⇒ねむ⇒天音姉妹⇒みふゆ⇒アリナ)' },
@@ -853,6 +859,7 @@
   ];
   // 魔法少女モードピッカーの選択肢
   var MODE_OPTIONS = [
+    { v: '', text: '未選択(解除)' },
     { v: 'いろはモード', text: 'いろはモード' },
     { v: 'やちよモード', text: 'やちよモード' },
     { v: '鶴乃モード', text: '鶴乃モード' },
@@ -875,6 +882,11 @@
   function normalizeEntry(e) {
     if (Array.isArray(e.results)) {
       e.results = renameOldResults(e.results);
+      // 当選契機が単一選択(文字列)だった旧形式を複数選択(配列)に変換する
+      if (!Array.isArray(e.embryoTriggers)) {
+        e.embryoTriggers = e.embryoTrigger ? [e.embryoTrigger] : [];
+        delete e.embryoTrigger;
+      }
       return e;
     }
 
@@ -1272,12 +1284,12 @@
       var extraLines = [];
       if (typeof e.startGame === 'number') extraLines.push('初期ゲーム数 ' + e.startGame + 'G');
       if (typeof e.bandBonus === 'number') extraLines.push('上乗せ抽選｜合計' + (10 + e.bandBonus) + 'G');
-      if (e.embryoTrigger === '神浜当選') {
-        var bellText = e.embryoBellLevel ? '(ベル' + e.embryoBellLevel + ')' : '';
-        var bonusText = (typeof e.embryoBonus === 'number') ? '｜上乗せ' + e.embryoBonus + 'G' : '';
-        extraLines.push('神浜当選' + bellText + bonusText);
-      } else if (e.embryoTrigger === 'ストーリー当選') {
-        extraLines.push('ストーリー当選');
+      if (e.embryoTriggers && e.embryoTriggers.length) {
+        var isKamihamaEntry = e.embryoTriggers.indexOf('神浜当選') !== -1;
+        var bellText = (isKamihamaEntry && e.embryoBellLevel) ? '(ベル' + e.embryoBellLevel + ')' : '';
+        var triggerBonusText = (isKamihamaEntry && typeof e.embryoBonus === 'number') ? '｜上乗せ' + e.embryoBonus + 'G' : '';
+        var gameCountText = (typeof e.embryoGameCount === 'number') ? '｜' + e.embryoGameCount + 'G' : '';
+        extraLines.push(e.embryoTriggers.join('・') + bellText + triggerBonusText + gameCountText);
       }
       if (e.embryoConnect) {
         var connectBonusText = (typeof e.embryoConnectBonus === 'number') ? '｜上乗せ' + e.embryoConnectBonus + 'G' : '';
@@ -1446,6 +1458,7 @@
   var eAtStartGame = document.getElementById('e-at-start-game');
   var eStartGame = document.getElementById('e-start-game');
   var eBandBonus = document.getElementById('e-band-bonus');
+  var eEmbryoGameCount = document.getElementById('e-embryo-game-count');
   var eEmbryoBonus = document.getElementById('e-embryo-bonus');
   var eEmbryoConnectBonus = document.getElementById('e-embryo-connect-bonus');
   var eModeTrigger = document.getElementById('e-mode-trigger');
@@ -1463,6 +1476,7 @@
   var fieldAtScreen = document.getElementById('field-at-screen');
   var fieldBand = document.getElementById('field-band');
   var fieldEmbryo = document.getElementById('field-embryo');
+  var fieldEmbryoGameCount = document.getElementById('field-embryo-game-count');
   var fieldEmbryoBell = document.getElementById('field-embryo-bell');
   var fieldEmbryoBonus = document.getElementById('field-embryo-bonus');
   var fieldEmbryoConnect = document.getElementById('field-embryo-connect');
@@ -1470,12 +1484,14 @@
   function updateConditionalFields() {
     var hasBig = state.selectedResults.indexOf('BIG') !== -1;
     var hasEmbryo = state.selectedResults.indexOf('エンブリオ') !== -1;
-    var isKamihama = state.selectedEmbryoTrigger === '神浜当選';
+    var hasAnyTrigger = state.selectedEmbryoTriggers.length > 0;
+    var isKamihama = state.selectedEmbryoTriggers.indexOf('神浜当選') !== -1;
     fieldBigVoice.hidden = !hasBig;
     fieldBigScreen.hidden = !hasBig;
     fieldAtScreen.hidden = !eAtWin.checked;
     fieldBand.hidden = !hasEmbryo;
     fieldEmbryo.hidden = !hasEmbryo;
+    fieldEmbryoGameCount.hidden = !(hasEmbryo && hasAnyTrigger);
     fieldEmbryoBell.hidden = !(hasEmbryo && isKamihama);
     fieldEmbryoBonus.hidden = !(hasEmbryo && isKamihama);
     fieldEmbryoConnect.hidden = !hasEmbryo;
@@ -1526,14 +1542,14 @@
     return v ? (EMBRYO_ROMAN[v] + ' ' + EMBRYO_PATTERN_LEVEL[v]) : '未選択';
   }
   eModeTrigger.addEventListener('click', function () {
-    openPicker('魔法少女モード', MODE_OPTIONS, state.selectedMode, function (v) {
-      state.selectedMode = v;
-      eModeTrigger.textContent = v + ' ▾';
+    openPicker('魔法少女モード', MODE_OPTIONS, state.selectedMode || '', function (v) {
+      state.selectedMode = v || null;
+      eModeTrigger.textContent = (v || '未選択') + ' ▾';
     });
   });
   eEmbryoPatternTrigger.addEventListener('click', function () {
-    openPicker('設定示唆', EMBRYO_PATTERN_OPTIONS, state.selectedEmbryoPattern, function (v) {
-      state.selectedEmbryoPattern = v;
+    openPicker('設定示唆', EMBRYO_PATTERN_OPTIONS, state.selectedEmbryoPattern || '', function (v) {
+      state.selectedEmbryoPattern = v || null;
       eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(v) + ' ▾';
     });
   });
@@ -1555,9 +1571,28 @@
   var bigScreenButtons = setupSingleSelect('#e-big-screen button', 'selectedBigScreen');
   var atScreenButtons = setupSingleSelect('#e-at-screen button', 'selectedAtScreen');
   var bandButtons = setupSingleSelect('#e-band button', 'selectedBand');
-  var embryoTriggerButtons = setupSingleSelect('#e-embryo-trigger button', 'selectedEmbryoTrigger', function () { updateConditionalFields(); });
   var embryoBellButtons = setupSingleSelect('#e-embryo-bell button', 'selectedEmbryoBell');
   var embryoConnectButtons = setupSingleSelect('#e-embryo-connect button', 'selectedEmbryoConnect');
+
+  // 複数選択(ON/OFFをそれぞれ独立して切り替え)のボタングループを作る共通ヘルパー
+  function setupMultiSelect(selector, stateKey, onChange) {
+    var buttons = document.querySelectorAll(selector);
+    buttons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var v = btn.dataset.v;
+        var idx = state[stateKey].indexOf(v);
+        if (idx === -1) {
+          state[stateKey].push(v);
+        } else {
+          state[stateKey].splice(idx, 1);
+        }
+        btn.classList.toggle('active', state[stateKey].indexOf(v) !== -1);
+        if (onChange) onChange();
+      });
+    });
+    return buttons;
+  }
+  var embryoTriggerButtons = setupMultiSelect('#e-embryo-trigger button', 'selectedEmbryoTriggers', function () { updateConditionalFields(); });
 
   function openEntrySheet(entryId) {
     state.editingEntryId = entryId || null;
@@ -1572,7 +1607,7 @@
       state.selectedBigScreen = e.bigScreen || null;
       state.selectedAtScreen = e.atScreen || null;
       state.selectedBand = e.bandColor || null;
-      state.selectedEmbryoTrigger = e.embryoTrigger || null;
+      state.selectedEmbryoTriggers = (e.embryoTriggers || []).slice();
       state.selectedEmbryoBell = (e.embryoBellLevel != null) ? String(e.embryoBellLevel) : null;
       state.selectedEmbryoConnect = e.embryoConnect || null;
       eGame.value = (typeof e.game === 'number') ? e.game : '';
@@ -1580,6 +1615,7 @@
       eAtStartGame.value = (typeof e.atStartGame === 'number') ? e.atStartGame : '';
       eStartGame.value = (typeof e.startGame === 'number') ? e.startGame : '';
       eBandBonus.value = (typeof e.bandBonus === 'number') ? e.bandBonus : '';
+      eEmbryoGameCount.value = (typeof e.embryoGameCount === 'number') ? e.embryoGameCount : '';
       eEmbryoBonus.value = (typeof e.embryoBonus === 'number') ? e.embryoBonus : '';
       eEmbryoConnectBonus.value = (typeof e.embryoConnectBonus === 'number') ? e.embryoConnectBonus : '';
       state.selectedEmbryoPattern = e.embryoPattern ? String(e.embryoPattern) : null;
@@ -1594,7 +1630,7 @@
       state.selectedBigScreen = null;
       state.selectedAtScreen = null;
       state.selectedBand = null;
-      state.selectedEmbryoTrigger = null;
+      state.selectedEmbryoTriggers = [];
       state.selectedEmbryoBell = null;
       state.selectedEmbryoConnect = null;
       eGame.value = '';
@@ -1602,6 +1638,7 @@
       eAtStartGame.value = '';
       eStartGame.value = '';
       eBandBonus.value = '';
+      eEmbryoGameCount.value = '';
       eEmbryoBonus.value = '';
       eEmbryoConnectBonus.value = '';
       state.selectedEmbryoPattern = null;
@@ -1614,7 +1651,7 @@
     bigScreenButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBigScreen); });
     atScreenButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedAtScreen); });
     bandButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBand); });
-    embryoTriggerButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoTrigger); });
+    embryoTriggerButtons.forEach(function (b) { b.classList.toggle('active', state.selectedEmbryoTriggers.indexOf(b.dataset.v) !== -1); });
     embryoBellButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoBell); });
     embryoConnectButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoConnect); });
     eModeTrigger.textContent = state.selectedMode ? (state.selectedMode + ' ▾') : '未選択 ▾';
@@ -1646,8 +1683,10 @@
     var hasEmbryo = results.indexOf('エンブリオ') !== -1;
     var bandColor = hasEmbryo ? state.selectedBand : null;
     var bandBonus = hasEmbryo ? (eBandBonus.value === '' ? null : Number(eBandBonus.value)) : null;
-    var isKamihama = hasEmbryo && state.selectedEmbryoTrigger === '神浜当選';
-    var embryoTrigger = hasEmbryo ? state.selectedEmbryoTrigger : null;
+    var embryoTriggers = hasEmbryo ? state.selectedEmbryoTriggers.slice() : [];
+    var hasAnyTrigger = embryoTriggers.length > 0;
+    var isKamihama = embryoTriggers.indexOf('神浜当選') !== -1;
+    var embryoGameCount = hasAnyTrigger ? (eEmbryoGameCount.value === '' ? null : Number(eEmbryoGameCount.value)) : null;
     var embryoBellLevel = isKamihama && state.selectedEmbryoBell ? Number(state.selectedEmbryoBell) : null;
     var embryoBonus = isKamihama ? (eEmbryoBonus.value === '' ? null : Number(eEmbryoBonus.value)) : null;
     var embryoConnect = hasEmbryo ? state.selectedEmbryoConnect : null;
@@ -1657,13 +1696,13 @@
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
       e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreen = atScreen; e.bandColor = bandColor; e.bandBonus = bandBonus;
-      e.embryoTrigger = embryoTrigger; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
+      e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern;
     } else {
       v.entries.push({
         id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
         bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen, bandColor: bandColor, bandBonus: bandBonus,
-        embryoTrigger: embryoTrigger, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
+        embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern
       });
     }
