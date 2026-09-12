@@ -502,7 +502,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-12e</div>
+    <div class="app-version">v2026-09-12f</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -727,27 +727,11 @@
     </div>
     <div class="field" id="field-big-voice" hidden>
       <label>ビッグ終了後のボイス</label>
-      <div class="cat-select" id="e-big-voice">
-        <button type="button" data-v="運命を変えたいなら〜">①運命を変えたいなら〜</button>
-        <button type="button" data-v="この町で魔法少女は〜">②この町で魔法少女は〜</button>
-        <button type="button" data-v="お姉ちゃんにはまだ誰かを〜">③お姉ちゃんにはまだ誰かを〜</button>
-        <button type="button" data-v="お姉ちゃんが幸せを〜">④お姉ちゃんが幸せを〜</button>
-        <button type="button" data-v="奇跡って〜">⑤奇跡って〜</button>
-      </div>
+      <button type="button" class="picker-trigger" id="e-big-voice-trigger">未選択 ▾</button>
     </div>
     <div class="field" id="field-big-screen" hidden>
       <label>ビッグ終了後の画面</label>
-      <div class="cat-select" id="e-big-screen">
-        <button type="button" data-v="デフォルト">デフォルト</button>
-        <button type="button" data-v="いろは&フェリシア">いろは&フェリシア</button>
-        <button type="button" data-v="いろは&さな">いろは&さな</button>
-        <button type="button" data-v="いろは&やちよ&鶴乃">いろは&やちよ&鶴乃</button>
-        <button type="button" data-v="いろは&やちよ&ももこチーム">いろは&やちよ&ももこチーム</button>
-        <button type="button" data-v="水着みかづき荘">水着みかづき荘</button>
-        <button type="button" data-v="2nd Seasonキービジュアル">2nd Seasonキービジュアル</button>
-        <button type="button" data-v="1st Seasonキービジュアル">1st Seasonキービジュアル</button>
-        <button type="button" data-v="小さいキュゥべえ">小さいキュゥべえ</button>
-      </div>
+      <button type="button" class="picker-trigger" id="e-big-screen-trigger">未選択 ▾</button>
     </div>
     <div class="field">
       <div class="check-row">
@@ -757,12 +741,7 @@
     </div>
     <div class="field" id="field-at-screen" hidden>
       <label>at終了後の画面</label>
-      <div class="cat-select" id="e-at-screen">
-        <button type="button" data-v="城背景">城背景</button>
-        <button type="button" data-v="マギウスメンバー">マギウスメンバー</button>
-        <button type="button" data-v="みかづき荘メンバー">みかづき荘メンバー</button>
-        <button type="button" data-v="まどか&いろは">まどか&いろは</button>
-      </div>
+      <button type="button" class="picker-trigger" id="e-at-screen-trigger">未選択 ▾</button>
     </div>
     <div class="field">
       <label>at中身のメモ</label>
@@ -867,6 +846,43 @@
     { v: 'さなモード', text: 'さなモード' },
     { v: '黒江モード', text: '黒江モード' }
   ];
+  // ビッグ終了後の画面ピッカーの選択肢(設定示唆を含む)
+  var BIG_SCREEN_OPTIONS = [
+    { v: '', text: '未選択(解除)' },
+    { v: 'デフォルト', text: 'デフォルト' },
+    { v: 'いろは&フェリシア', text: 'いろは&フェリシア(設定3・5・6示唆)' },
+    { v: 'いろは&さな', text: 'いろは&さな(設定2・4・6示唆)' },
+    { v: 'いろは&やちよ&鶴乃', text: 'いろは&やちよ&鶴乃(高設定示唆・弱)' },
+    { v: 'いろは&やちよ&ももこチーム', text: 'いろは&やちよ&ももこチーム(高設定示唆・強)' },
+    { v: '水着みかづき荘', text: '水着みかづき荘(設定2以上濃厚!?)' },
+    { v: '2nd Seasonキービジュアル', text: '2nd Seasonキービジュアル(設定4以上濃厚!?)' },
+    { v: '1st Seasonキービジュアル', text: '1st Seasonキービジュアル(設定5以上濃厚!?)' },
+    { v: '小さいキュゥべえ', text: '小さいキュゥべえ(設定6濃厚!?)' }
+  ];
+  // at終了後の画面ピッカーの選択肢(設定示唆を含む)
+  var AT_SCREEN_OPTIONS = [
+    { v: '', text: '未選択(解除)' },
+    { v: '城背景', text: '城背景(基本パターン)' },
+    { v: 'マギウスメンバー', text: 'マギウスメンバー(設定3・5・6示唆)' },
+    { v: 'みかづき荘メンバー', text: 'みかづき荘メンバー(設定2・4・6示唆)' },
+    { v: 'まどか&いろは', text: 'まどか&いろは(設定6濃厚!?)' }
+  ];
+  // ビッグ終了後のボイスピッカーの選択肢(at当選の有無で示唆内容が変わる)
+  function buildBigVoiceOptions(atWin) {
+    var suffixes = atWin
+      ? ['基本パターン', '浅いG数選択示唆', '100G以内示唆・弱', '100G以内示唆・強/150G以内当選濃厚!?', '50G以内当選濃厚!?']
+      : ['基本パターン', '300pt以内当選示唆・弱', '深いpt数が選択されにくい!?', '③よりさらに深いpt数が選択されにくい!?', '300pt以内当選示唆・強'];
+    var base = [
+      { v: '運命を変えたいなら〜', text: '①運命を変えたいなら〜' },
+      { v: 'この町で魔法少女は〜', text: '②この町で魔法少女は〜' },
+      { v: 'お姉ちゃんにはまだ誰かを〜', text: '③お姉ちゃんにはまだ誰かを〜' },
+      { v: 'お姉ちゃんが幸せを〜', text: '④お姉ちゃんが幸せを〜' },
+      { v: '奇跡って〜', text: '⑤奇跡って〜' }
+    ];
+    var options = [{ v: '', text: '未選択(解除)' }];
+    base.forEach(function (opt, i) { options.push({ v: opt.v, text: opt.text + '(' + suffixes[i] + ')' }); });
+    return options;
+  }
 
   // 古い形式のデータを新形式(game/point/results[]/atWin/atMemo)に変換する
   // - 最も古い形式: cat/g/p/note
@@ -1463,6 +1479,9 @@
   var eEmbryoConnectBonus = document.getElementById('e-embryo-connect-bonus');
   var eModeTrigger = document.getElementById('e-mode-trigger');
   var eEmbryoPatternTrigger = document.getElementById('e-embryo-pattern-trigger');
+  var eBigVoiceTrigger = document.getElementById('e-big-voice-trigger');
+  var eBigScreenTrigger = document.getElementById('e-big-screen-trigger');
+  var eAtScreenTrigger = document.getElementById('e-at-screen-trigger');
   var eAtWin = document.getElementById('e-atwin');
   var eAtMemo = document.getElementById('e-atmemo');
   var eDeleteBtn = document.getElementById('e-delete');
@@ -1553,6 +1572,24 @@
       eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(v) + ' ▾';
     });
   });
+  eBigVoiceTrigger.addEventListener('click', function () {
+    openPicker('ビッグ終了後のボイス', buildBigVoiceOptions(eAtWin.checked), state.selectedBigVoice || '', function (v) {
+      state.selectedBigVoice = v || null;
+      eBigVoiceTrigger.textContent = (v || '未選択') + ' ▾';
+    });
+  });
+  eBigScreenTrigger.addEventListener('click', function () {
+    openPicker('ビッグ終了後の画面', BIG_SCREEN_OPTIONS, state.selectedBigScreen || '', function (v) {
+      state.selectedBigScreen = v || null;
+      eBigScreenTrigger.textContent = (v || '未選択') + ' ▾';
+    });
+  });
+  eAtScreenTrigger.addEventListener('click', function () {
+    openPicker('at終了後の画面', AT_SCREEN_OPTIONS, state.selectedAtScreen || '', function (v) {
+      state.selectedAtScreen = v || null;
+      eAtScreenTrigger.textContent = (v || '未選択') + ' ▾';
+    });
+  });
 
   // 単一選択(もう一度押すと選択解除)のボタングループを作る共通ヘルパー
   // onChangeを渡すと選択が変わるたびに呼び出す(条件付き表示の再判定などに使う)
@@ -1567,9 +1604,6 @@
     });
     return buttons;
   }
-  var bigVoiceButtons = setupSingleSelect('#e-big-voice button', 'selectedBigVoice');
-  var bigScreenButtons = setupSingleSelect('#e-big-screen button', 'selectedBigScreen');
-  var atScreenButtons = setupSingleSelect('#e-at-screen button', 'selectedAtScreen');
   var bandButtons = setupSingleSelect('#e-band button', 'selectedBand');
   var embryoBellButtons = setupSingleSelect('#e-embryo-bell button', 'selectedEmbryoBell');
   var embryoConnectButtons = setupSingleSelect('#e-embryo-connect button', 'selectedEmbryoConnect');
@@ -1647,15 +1681,15 @@
       eDeleteBtn.style.display = 'none';
     }
     resultButtons.forEach(function (b) { b.classList.toggle('active', state.selectedResults.indexOf(b.dataset.v) !== -1); });
-    bigVoiceButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBigVoice); });
-    bigScreenButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBigScreen); });
-    atScreenButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedAtScreen); });
     bandButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBand); });
     embryoTriggerButtons.forEach(function (b) { b.classList.toggle('active', state.selectedEmbryoTriggers.indexOf(b.dataset.v) !== -1); });
     embryoBellButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoBell); });
     embryoConnectButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoConnect); });
     eModeTrigger.textContent = state.selectedMode ? (state.selectedMode + ' ▾') : '未選択 ▾';
     eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(state.selectedEmbryoPattern) + ' ▾';
+    eBigVoiceTrigger.textContent = (state.selectedBigVoice || '未選択') + ' ▾';
+    eBigScreenTrigger.textContent = (state.selectedBigScreen || '未選択') + ' ▾';
+    eAtScreenTrigger.textContent = (state.selectedAtScreen || '未選択') + ' ▾';
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
     autoResizeTextarea(eAtMemo);
