@@ -308,11 +308,13 @@
   .tag.エンブリオ { background: var(--embryo); }
   .tag.AT { background: var(--at); }
   .tag.メモ { background: var(--memo); color: #000; }
-  .tag.帯青 { background: var(--band-blue); }
-  .tag.帯黄 { background: var(--band-yellow); }
-  .tag.帯緑 { background: var(--band-green); }
-  .tag.帯赤 { background: var(--band-red); }
-  .tag.帯虹 { background: linear-gradient(90deg, #fa5252, #ffe066, #51cf66, #4dabf7, #b98bff); }
+  .band-dot-tag { width: 92px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--text); padding: 3px 4px; margin-top: 1px; }
+  .band-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .band-dot.帯青 { background: var(--band-blue); }
+  .band-dot.帯黄 { background: var(--band-yellow); }
+  .band-dot.帯緑 { background: var(--band-green); }
+  .band-dot.帯赤 { background: var(--band-red); }
+  .band-dot.帯虹 { background: linear-gradient(90deg, #fa5252, #ffe066, #51cf66, #4dabf7, #b98bff); }
   .entry .entry-num { flex-shrink: 0; width: 16px; text-align: center; font-size: 13px; font-weight: 700; color: var(--sub); margin-top: 4px; }
   .entry .tags { display: flex; flex-direction: column; gap: 4px; }
   .entry .body { flex: 1; min-width: 0; }
@@ -475,7 +477,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-12b</div>
+    <div class="app-version">v2026-09-12c</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -652,6 +654,54 @@
         </div>
       </div>
     </div>
+    <div class="field" id="field-embryo" hidden>
+      <label>当選契機</label>
+      <div class="cat-select" id="e-embryo-trigger">
+        <button type="button" data-v="ストーリー当選">ストーリー当選</button>
+        <button type="button" data-v="神浜当選">神浜当選</button>
+      </div>
+    </div>
+    <div class="field" id="field-embryo-bell" hidden>
+      <label>ベルレベル</label>
+      <div class="cat-select" id="e-embryo-bell">
+        <button type="button" data-v="1">1</button>
+        <button type="button" data-v="2">2</button>
+        <button type="button" data-v="3">3</button>
+      </div>
+    </div>
+    <div class="field" id="field-embryo-bonus" hidden>
+      <label>上乗せゲーム数</label>
+      <input type="number" inputmode="numeric" id="e-embryo-bonus" placeholder="例: 30">
+    </div>
+    <div class="field" id="field-embryo-connect" hidden>
+      <label>コネクト</label>
+      <div class="cat-select" id="e-embryo-connect">
+        <button type="button" data-v="やちよ">やちよ</button>
+        <button type="button" data-v="鶴乃">鶴乃</button>
+        <button type="button" data-v="さな">さな</button>
+        <button type="button" data-v="フェリシア">フェリシア</button>
+        <button type="button" data-v="黒江">黒江</button>
+        <button type="button" data-v="ほむら">ほむら</button>
+        <button type="button" data-v="まどか">まどか</button>
+      </div>
+      <label style="margin-top:10px;">コネクト上乗せ</label>
+      <input type="number" inputmode="numeric" id="e-embryo-connect-bonus" placeholder="例: 20">
+    </div>
+    <div class="field" id="field-embryo-pattern" hidden>
+      <label>設定示唆</label>
+      <select id="e-embryo-pattern">
+        <option value="">未選択</option>
+        <option value="1">① 基本パターン(いろは⇒やちよ⇒鶴乃⇒フェリシア⇒さな)</option>
+        <option value="2">② 基本パターン(ももこ⇒レナ⇒かえで⇒みたま⇒黒江)</option>
+        <option value="3">③ 基本パターン(灯花⇒ねむ⇒天音姉妹⇒みふゆ⇒アリナ)</option>
+        <option value="4">④ 基本パターン(まどか⇒さやか⇒マミ⇒杏子⇒ほむら)</option>
+        <option value="5">⑤ 高設定示唆・弱(逆順スタート)</option>
+        <option value="6">⑥ 高設定示唆・強(ももこ⇒やちよ⇒鶴乃⇒みふゆ⇒みたま)</option>
+        <option value="7">⑦ 高設定示唆・強(いろは⇒うい⇒灯花⇒ねむ⇒アリナ)</option>
+        <option value="8">⑧ 高設定示唆・強(4キャラのみ)</option>
+        <option value="9">⑨ 設定5以上濃厚!?(小さいキュゥべえ)</option>
+      </select>
+    </div>
     <div class="field" id="field-big-voice" hidden>
       <label>ビッグ終了後のボイス</label>
       <div class="cat-select" id="e-big-voice">
@@ -762,7 +812,15 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTrigger: null, selectedEmbryoBell: null, selectedEmbryoConnect: null };
+  // 設定示唆パターン(1〜9)ごとの示唆レベル
+  var EMBRYO_PATTERN_LEVEL = {
+    '1': '基本パターン', '2': '基本パターン', '3': '基本パターン', '4': '基本パターン',
+    '5': '高設定示唆(弱)',
+    '6': '高設定示唆(強)', '7': '高設定示唆(強)', '8': '高設定示唆(強)',
+    '9': '設定5以上濃厚!?'
+  };
+  var EMBRYO_ROMAN = { '1': '①', '2': '②', '3': '③', '4': '④', '5': '⑤', '6': '⑥', '7': '⑦', '8': '⑧', '9': '⑨' };
 
   // 古い形式のデータを新形式(game/point/results[]/atWin/atMemo)に変換する
   // - 最も古い形式: cat/g/p/note
@@ -1149,7 +1207,7 @@
       var tags = (e.results || []).map(function (r) {
         return '<span class="tag ' + r + '">' + r + '</span>';
       });
-      if (e.bandColor) tags.push('<span class="tag 帯' + e.bandColor + '">' + e.bandColor + '</span>');
+      if (e.bandColor) tags.push('<span class="band-dot-tag"><span class="band-dot 帯' + e.bandColor + '"></span>' + e.bandColor + '</span>');
       if (e.atWin) tags.push('<span class="tag AT">at当選</span>');
       var isMemo = !tags.length;
       if (isMemo) tags.push('<span class="tag メモ">メモ</span>');
@@ -1175,6 +1233,20 @@
       var extraLines = [];
       if (typeof e.startGame === 'number') extraLines.push('初期ゲーム数 ' + e.startGame + 'G');
       if (typeof e.bandBonus === 'number') extraLines.push('上乗せ抽選｜合計' + (10 + e.bandBonus) + 'G');
+      if (e.embryoTrigger === '神浜当選') {
+        var bellText = e.embryoBellLevel ? '(ベル' + e.embryoBellLevel + ')' : '';
+        var bonusText = (typeof e.embryoBonus === 'number') ? '｜上乗せ' + e.embryoBonus + 'G' : '';
+        extraLines.push('神浜当選' + bellText + bonusText);
+      } else if (e.embryoTrigger === 'ストーリー当選') {
+        extraLines.push('ストーリー当選');
+      }
+      if (e.embryoConnect) {
+        var connectBonusText = (typeof e.embryoConnectBonus === 'number') ? '｜上乗せ' + e.embryoConnectBonus + 'G' : '';
+        extraLines.push('コネクト: ' + e.embryoConnect + connectBonusText);
+      }
+      if (e.embryoPattern) {
+        extraLines.push('設定示唆: ' + EMBRYO_ROMAN[e.embryoPattern] + ' ' + EMBRYO_PATTERN_LEVEL[String(e.embryoPattern)]);
+      }
       if (e.bigVoice) extraLines.push('ボイス: ' + e.bigVoice);
       if (e.bigScreen) extraLines.push('画面: ' + e.bigScreen);
       if (e.atScreen) extraLines.push('at画面: ' + e.atScreen);
@@ -1335,6 +1407,9 @@
   var eAtStartGame = document.getElementById('e-at-start-game');
   var eStartGame = document.getElementById('e-start-game');
   var eBandBonus = document.getElementById('e-band-bonus');
+  var eEmbryoBonus = document.getElementById('e-embryo-bonus');
+  var eEmbryoConnectBonus = document.getElementById('e-embryo-connect-bonus');
+  var eEmbryoPattern = document.getElementById('e-embryo-pattern');
   var eAtWin = document.getElementById('e-atwin');
   var eAtMemo = document.getElementById('e-atmemo');
   var eDeleteBtn = document.getElementById('e-delete');
@@ -1342,17 +1417,29 @@
   var resultButtons = document.querySelectorAll('#e-result button');
 
   // BIGが選ばれている間だけビッグ関連、at当選がONの間だけat終了画面の項目を表示する
-  // 帯色は結果を1つ以上選んでいる間だけ表示する
+  // 帯色は結果を1つ以上選んでいる間だけ、エンブリオ関連は結果にエンブリオを含む間だけ表示する
   var fieldBigVoice = document.getElementById('field-big-voice');
   var fieldBigScreen = document.getElementById('field-big-screen');
   var fieldAtScreen = document.getElementById('field-at-screen');
   var fieldBand = document.getElementById('field-band');
+  var fieldEmbryo = document.getElementById('field-embryo');
+  var fieldEmbryoBell = document.getElementById('field-embryo-bell');
+  var fieldEmbryoBonus = document.getElementById('field-embryo-bonus');
+  var fieldEmbryoConnect = document.getElementById('field-embryo-connect');
+  var fieldEmbryoPattern = document.getElementById('field-embryo-pattern');
   function updateConditionalFields() {
     var hasBig = state.selectedResults.indexOf('BIG') !== -1;
+    var hasEmbryo = state.selectedResults.indexOf('エンブリオ') !== -1;
+    var isKamihama = state.selectedEmbryoTrigger === '神浜当選';
     fieldBigVoice.hidden = !hasBig;
     fieldBigScreen.hidden = !hasBig;
     fieldAtScreen.hidden = !eAtWin.checked;
     fieldBand.hidden = state.selectedResults.length === 0;
+    fieldEmbryo.hidden = !hasEmbryo;
+    fieldEmbryoBell.hidden = !(hasEmbryo && isKamihama);
+    fieldEmbryoBonus.hidden = !(hasEmbryo && isKamihama);
+    fieldEmbryoConnect.hidden = !hasEmbryo;
+    fieldEmbryoPattern.hidden = !hasEmbryo;
   }
 
   resultButtons.forEach(function (btn) {
@@ -1382,12 +1469,14 @@
   });
 
   // 単一選択(もう一度押すと選択解除)のボタングループを作る共通ヘルパー
-  function setupSingleSelect(selector, stateKey) {
+  // onChangeを渡すと選択が変わるたびに呼び出す(条件付き表示の再判定などに使う)
+  function setupSingleSelect(selector, stateKey, onChange) {
     var buttons = document.querySelectorAll(selector);
     buttons.forEach(function (btn) {
       btn.addEventListener('click', function () {
         state[stateKey] = (state[stateKey] === btn.dataset.v) ? null : btn.dataset.v;
         buttons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state[stateKey]); });
+        if (onChange) onChange();
       });
     });
     return buttons;
@@ -1396,6 +1485,9 @@
   var bigScreenButtons = setupSingleSelect('#e-big-screen button', 'selectedBigScreen');
   var atScreenButtons = setupSingleSelect('#e-at-screen button', 'selectedAtScreen');
   var bandButtons = setupSingleSelect('#e-band button', 'selectedBand');
+  var embryoTriggerButtons = setupSingleSelect('#e-embryo-trigger button', 'selectedEmbryoTrigger', function () { updateConditionalFields(); });
+  var embryoBellButtons = setupSingleSelect('#e-embryo-bell button', 'selectedEmbryoBell');
+  var embryoConnectButtons = setupSingleSelect('#e-embryo-connect button', 'selectedEmbryoConnect');
 
   function openEntrySheet(entryId) {
     state.editingEntryId = entryId || null;
@@ -1410,11 +1502,17 @@
       state.selectedBigScreen = e.bigScreen || null;
       state.selectedAtScreen = e.atScreen || null;
       state.selectedBand = e.bandColor || null;
+      state.selectedEmbryoTrigger = e.embryoTrigger || null;
+      state.selectedEmbryoBell = (e.embryoBellLevel != null) ? String(e.embryoBellLevel) : null;
+      state.selectedEmbryoConnect = e.embryoConnect || null;
       eGame.value = (typeof e.game === 'number') ? e.game : '';
       ePoint.value = (typeof e.point === 'number') ? e.point : '';
       eAtStartGame.value = (typeof e.atStartGame === 'number') ? e.atStartGame : '';
       eStartGame.value = (typeof e.startGame === 'number') ? e.startGame : '';
       eBandBonus.value = (typeof e.bandBonus === 'number') ? e.bandBonus : '';
+      eEmbryoBonus.value = (typeof e.embryoBonus === 'number') ? e.embryoBonus : '';
+      eEmbryoConnectBonus.value = (typeof e.embryoConnectBonus === 'number') ? e.embryoConnectBonus : '';
+      eEmbryoPattern.value = e.embryoPattern ? String(e.embryoPattern) : '';
       eAtWin.checked = !!e.atWin;
       eAtMemo.value = e.atMemo || '';
       eDeleteBtn.style.display = '';
@@ -1426,11 +1524,17 @@
       state.selectedBigScreen = null;
       state.selectedAtScreen = null;
       state.selectedBand = null;
+      state.selectedEmbryoTrigger = null;
+      state.selectedEmbryoBell = null;
+      state.selectedEmbryoConnect = null;
       eGame.value = '';
       ePoint.value = '';
       eAtStartGame.value = '';
       eStartGame.value = '';
       eBandBonus.value = '';
+      eEmbryoBonus.value = '';
+      eEmbryoConnectBonus.value = '';
+      eEmbryoPattern.value = '';
       eAtWin.checked = false;
       eAtMemo.value = '';
       eDeleteBtn.style.display = 'none';
@@ -1441,6 +1545,9 @@
     bigScreenButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBigScreen); });
     atScreenButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedAtScreen); });
     bandButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBand); });
+    embryoTriggerButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoTrigger); });
+    embryoBellButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoBell); });
+    embryoConnectButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoConnect); });
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
     autoResizeTextarea(eAtMemo);
@@ -1467,12 +1574,28 @@
     var atScreen = atWin ? state.selectedAtScreen : null;
     var bandColor = hasResult ? state.selectedBand : null;
     var bandBonus = hasResult ? (eBandBonus.value === '' ? null : Number(eBandBonus.value)) : null;
+    // エンブリオが選ばれていない時は関連する選択を保存しない(表示と矛盾しないように)
+    var hasEmbryo = results.indexOf('エンブリオ') !== -1;
+    var isKamihama = hasEmbryo && state.selectedEmbryoTrigger === '神浜当選';
+    var embryoTrigger = hasEmbryo ? state.selectedEmbryoTrigger : null;
+    var embryoBellLevel = isKamihama && state.selectedEmbryoBell ? Number(state.selectedEmbryoBell) : null;
+    var embryoBonus = isKamihama ? (eEmbryoBonus.value === '' ? null : Number(eEmbryoBonus.value)) : null;
+    var embryoConnect = hasEmbryo ? state.selectedEmbryoConnect : null;
+    var embryoConnectBonus = hasEmbryo ? (eEmbryoConnectBonus.value === '' ? null : Number(eEmbryoConnectBonus.value)) : null;
+    var embryoPattern = hasEmbryo && eEmbryoPattern.value ? Number(eEmbryoPattern.value) : null;
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
       e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreen = atScreen; e.bandColor = bandColor; e.bandBonus = bandBonus;
+      e.embryoTrigger = embryoTrigger; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
+      e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern;
     } else {
-      v.entries.push({ id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo, bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen, bandColor: bandColor, bandBonus: bandBonus });
+      v.entries.push({
+        id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
+        bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen, bandColor: bandColor, bandBonus: bandBonus,
+        embryoTrigger: embryoTrigger, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
+        embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern
+      });
     }
     save();
     overlayEntry.classList.add('hidden');
