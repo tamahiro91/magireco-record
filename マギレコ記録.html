@@ -514,7 +514,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-12j</div>
+    <div class="app-version">v2026-09-13a</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -755,6 +755,10 @@
       <label>at終了後の画面</label>
       <button type="button" class="picker-trigger" id="e-at-screen-trigger">未選択 ▾</button>
     </div>
+    <div class="field" id="field-story-order" hidden>
+      <label>ストーリー順番示唆</label>
+      <button type="button" class="picker-trigger" id="e-story-order-trigger">未選択 ▾</button>
+    </div>
     <div class="field" id="field-wee-chances" hidden>
       <label>ストーリー示唆</label>
       <div id="wee-chances-list"></div>
@@ -831,7 +835,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [] };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null };
   // 設定示唆パターン(1〜9)ごとの示唆レベル
   var EMBRYO_PATTERN_LEVEL = {
     '1': '基本', '2': '基本', '3': '基本', '4': '基本',
@@ -957,6 +961,36 @@
       id: uid(), trigger: null, triggerGame: null, storyType: null,
       normalNumber: null, spColor: null, magiaStock: null, bonusGame: null, connectColor: null
     };
+  }
+
+  // ストーリー順番示唆(1-A〜5-F)の選択肢
+  var STORY_ORDER_PATTERNS = [
+    { v: '1-A', order: '1⇒2⇒3⇒4⇒5', suggestion: '奇数設定示唆デフォルト' },
+    { v: '1-B', order: '1⇒2⇒3⇒5⇒4', suggestion: '奇数設定示唆+高設定示唆①' },
+    { v: '1-C', order: '1⇒3⇒2⇒4⇒5', suggestion: '奇数設定示唆(弱)' },
+    { v: '1-D', order: '1⇒3⇒2⇒5⇒4', suggestion: '奇数設定示唆+高設定示唆②' },
+    { v: '2-A', order: '2⇒1⇒3⇒4⇒5', suggestion: '偶数設定示唆デフォルト' },
+    { v: '2-B', order: '2⇒1⇒3⇒5⇒4', suggestion: '偶数設定示唆+高設定示唆①' },
+    { v: '2-C', order: '2⇒4⇒1⇒3⇒5', suggestion: '偶数設定示唆(弱)' },
+    { v: '2-D', order: '2⇒4⇒1⇒5⇒3', suggestion: '偶数設定示唆+高設定示唆②' },
+    { v: '3-A', order: '3⇒1⇒2⇒4⇒5', suggestion: '奇数設定示唆(弱)' },
+    { v: '3-B', order: '3⇒1⇒2⇒5⇒4', suggestion: '奇数設定示唆+高設定示唆③' },
+    { v: '4-A', order: '4⇒1⇒2⇒3⇒5', suggestion: '偶数設定示唆(弱)' },
+    { v: '4-B', order: '4⇒1⇒2⇒5⇒3', suggestion: '偶数設定示唆+高設定示唆③' },
+    { v: '5-A', order: '5⇒①⇒2⇒3⇒4', suggestion: '設定1否定!?' },
+    { v: '5-B', order: '5⇒②⇒1⇒3⇒4', suggestion: '設定2否定!?' },
+    { v: '5-C', order: '5⇒③⇒1⇒2⇒4', suggestion: '設定3否定!?' },
+    { v: '5-D', order: '5⇒4⇒②⇒1⇒3', suggestion: '設定2否定!?' },
+    { v: '5-E', order: '5⇒4⇒3⇒①⇒2', suggestion: '設定1否定!?+高設定示唆!?' },
+    { v: '5-F', order: '⑤⇒④⇒③⇒②⇒①', suggestion: '設定5以上濃厚!?' }
+  ];
+  var STORY_ORDER_SUGGESTION = {};
+  STORY_ORDER_PATTERNS.forEach(function (p) { STORY_ORDER_SUGGESTION[p.v] = p.suggestion; });
+  var STORY_ORDER_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
+    STORY_ORDER_PATTERNS.map(function (p) { return { v: p.v, text: p.v + ': ' + p.order + '(' + p.suggestion + ')' }; })
+  );
+  function storyOrderShortLabel(v) {
+    return v ? (v + '(' + STORY_ORDER_SUGGESTION[v] + ')') : '未選択';
   }
 
   // 古い形式のデータを新形式(game/point/results[]/atWin/atMemo)に変換する
@@ -1398,6 +1432,7 @@
         extraLines.push('画面: ' + e.bigScreen + (screenSuggestion ? '(' + screenSuggestion + ')' : ''));
       }
       if (e.atScreen) extraLines.push('at画面: ' + e.atScreen + '(' + AT_SCREEN_SUGGESTION[e.atScreen] + ')');
+      if (e.storyOrderPattern) extraLines.push('順番示唆: ' + storyOrderShortLabel(e.storyOrderPattern));
       extraLines.forEach(function (text) {
         var lineDiv = document.createElement('div');
         lineDiv.textContent = text;
@@ -1563,6 +1598,7 @@
   var eBigVoiceTrigger = document.getElementById('e-big-voice-trigger');
   var eBigScreenTrigger = document.getElementById('e-big-screen-trigger');
   var eAtScreenTrigger = document.getElementById('e-at-screen-trigger');
+  var eStoryOrderTrigger = document.getElementById('e-story-order-trigger');
   var eAtWin = document.getElementById('e-atwin');
   var eAtMemo = document.getElementById('e-atmemo');
   var eDeleteBtn = document.getElementById('e-delete');
@@ -1574,6 +1610,7 @@
   var fieldBigVoice = document.getElementById('field-big-voice');
   var fieldBigScreen = document.getElementById('field-big-screen');
   var fieldAtScreen = document.getElementById('field-at-screen');
+  var fieldStoryOrder = document.getElementById('field-story-order');
   var fieldWeeChances = document.getElementById('field-wee-chances');
   var fieldBand = document.getElementById('field-band');
   var fieldStartGame = document.getElementById('field-start-game');
@@ -1591,6 +1628,7 @@
     fieldBigVoice.hidden = !hasBig;
     fieldBigScreen.hidden = !hasBig;
     fieldAtScreen.hidden = !eAtWin.checked;
+    fieldStoryOrder.hidden = !eAtWin.checked;
     fieldWeeChances.hidden = !eAtWin.checked;
     fieldBand.hidden = !hasEmbryo;
     fieldStartGame.hidden = !hasEmbryo;
@@ -1677,6 +1715,12 @@
     openPicker('at終了後の画面', AT_SCREEN_OPTIONS, state.selectedAtScreen || '', function (v) {
       state.selectedAtScreen = v || null;
       eAtScreenTrigger.textContent = atScreenFullLabel(v) + ' ▾';
+    });
+  });
+  eStoryOrderTrigger.addEventListener('click', function () {
+    openPicker('ストーリー順番示唆', STORY_ORDER_OPTIONS, state.selectedStoryOrder || '', function (v) {
+      state.selectedStoryOrder = v || null;
+      eStoryOrderTrigger.textContent = storyOrderShortLabel(v) + ' ▾';
     });
   });
 
@@ -1843,6 +1887,7 @@
       eEmbryoConnectBonus.value = (typeof e.embryoConnectBonus === 'number') ? e.embryoConnectBonus : '';
       state.selectedEmbryoPattern = e.embryoPattern ? String(e.embryoPattern) : null;
       state.weeChances = (e.weeChances || []).map(function (c) { return Object.assign({}, c); });
+      state.selectedStoryOrder = e.storyOrderPattern || null;
       eAtWin.checked = !!e.atWin;
       eAtMemo.value = e.atMemo || '';
       eDeleteBtn.style.display = '';
@@ -1867,6 +1912,7 @@
       eEmbryoConnectBonus.value = '';
       state.selectedEmbryoPattern = null;
       state.weeChances = [];
+      state.selectedStoryOrder = null;
       eAtWin.checked = false;
       eAtMemo.value = '';
       eDeleteBtn.style.display = 'none';
@@ -1881,6 +1927,7 @@
     eBigVoiceTrigger.textContent = bigVoiceFullLabel(state.selectedBigVoice, eAtWin.checked) + ' ▾';
     eBigScreenTrigger.textContent = bigScreenFullLabel(state.selectedBigScreen) + ' ▾';
     eAtScreenTrigger.textContent = atScreenFullLabel(state.selectedAtScreen) + ' ▾';
+    eStoryOrderTrigger.textContent = storyOrderShortLabel(state.selectedStoryOrder) + ' ▾';
     renderWeeChances();
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
@@ -1918,20 +1965,23 @@
     var embryoConnect = hasEmbryo ? state.selectedEmbryoConnect : null;
     var embryoConnectBonus = hasEmbryo ? (eEmbryoConnectBonus.value === '' ? null : Number(eEmbryoConnectBonus.value)) : null;
     var embryoPattern = hasEmbryo && state.selectedEmbryoPattern ? Number(state.selectedEmbryoPattern) : null;
-    // at当選がOFFの時はうぃチャンスの記録も保存しない
+    // at当選がOFFの時はうぃチャンス・ストーリー順番示唆の記録も保存しない
     var weeChances = atWin ? state.weeChances.map(function (c) { return Object.assign({}, c); }) : [];
+    var storyOrderPattern = atWin ? state.selectedStoryOrder : null;
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
       e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreen = atScreen; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
+      e.storyOrderPattern = storyOrderPattern;
     } else {
       v.entries.push({
         id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
         bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
-        embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances
+        embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
+        storyOrderPattern: storyOrderPattern
       });
     }
     save();
