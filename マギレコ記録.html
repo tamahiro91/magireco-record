@@ -513,7 +513,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14c</div>
+    <div class="app-version">v2026-09-14d</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -675,30 +675,10 @@
         <button type="button" data-v="アリナ">アリナ</button>
       </div>
     </div>
-    <div class="field" id="field-doppel" hidden>
-      <label>ドッペル種別</label>
-      <div class="cat-select" id="e-doppel">
-        <button type="button" data-v="環いろは">環いろは</button>
-        <button type="button" data-v="七海やちよ">七海やちよ</button>
-        <button type="button" data-v="黒江">黒江</button>
-        <button type="button" data-v="シークレット">シークレット</button>
-      </div>
-    </div>
-    <div class="field" id="field-doppel-trigger" hidden>
-      <label>当選契機(複数選択可)</label>
-      <div class="cat-select" id="e-doppel-trigger">
-        <button type="button" data-v="ストーリー当選">ストーリー当選</button>
-        <button type="button" data-v="神浜当選">神浜当選</button>
-        <button type="button" data-v="小役当選">小役当選</button>
-      </div>
-    </div>
-    <div class="field" id="field-doppel-bonus" hidden>
-      <label>ドッペル上乗せゲーム数</label>
-      <input type="number" inputmode="numeric" id="e-doppel-bonus" placeholder="例: 30">
-    </div>
-    <div class="field" id="field-doppel-pattern" hidden>
-      <label>ストーリー設定示唆</label>
-      <button type="button" class="picker-trigger" id="e-doppel-pattern-trigger">未選択 ▾</button>
+    <div class="field" id="field-doppel-chances" hidden>
+      <label>ドッペルチャンス</label>
+      <div id="doppel-chances-list"></div>
+      <button type="button" class="ghost-btn" id="doppel-chance-add">＋ ドッペルチャンスを追加</button>
     </div>
     <div class="field" id="field-start-game" hidden>
       <label>初期ゲーム数</label>
@@ -771,7 +751,7 @@
       <label>ビッグ終了後の画面</label>
       <button type="button" class="picker-trigger" id="e-big-screen-trigger">未選択 ▾</button>
     </div>
-    <div class="field">
+    <div class="field" id="field-atwin">
       <div class="check-row">
         <input type="checkbox" id="e-atwin">
         <label for="e-atwin">at当選</label>
@@ -861,7 +841,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, selectedDoppel: null, selectedDoppelTriggers: [], selectedDoppelPattern: null };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [] };
   // 設定示唆パターン(1〜9)ごとの示唆レベル
   var EMBRYO_PATTERN_LEVEL = {
     '1': '基本', '2': '基本', '3': '基本', '4': '基本',
@@ -989,6 +969,13 @@
     };
   }
 
+  // ドッペルチャンス(ドッペル当選ごとの内訳)の選択肢
+  var DOPPEL_TYPES = ['環いろは', '七海やちよ', '黒江', 'シークレット'];
+  var DOPPEL_TRIGGER_OPTIONS = ['ストーリー当選', '神浜当選', '小役当選'];
+  function createEmptyDoppelChance() {
+    return { id: uid(), doppelType: null, triggers: [], bonusGame: null, pattern: null };
+  }
+
   // ストーリー順番示唆(1-A〜5-F)の選択肢
   var STORY_ORDER_PATTERNS = [
     { v: '1-A', order: '1⇒2⇒3⇒4⇒5', suggestion: '奇数設定示唆デフォルト' },
@@ -1037,6 +1024,18 @@
       if (!Array.isArray(e.embryoTriggers)) {
         e.embryoTriggers = e.embryoTrigger ? [e.embryoTrigger] : [];
         delete e.embryoTrigger;
+      }
+      // ドッペルの内容が単一項目だった旧形式を繰り返しリスト(配列)に変換する
+      if (!Array.isArray(e.doppelChances)) {
+        if (e.doppelType || (e.doppelTriggers && e.doppelTriggers.length) || typeof e.doppelBonus === 'number' || e.doppelPattern) {
+          e.doppelChances = [{
+            id: uid(), doppelType: e.doppelType || null, triggers: e.doppelTriggers || [],
+            bonusGame: (typeof e.doppelBonus === 'number') ? e.doppelBonus : null, pattern: e.doppelPattern || null
+          }];
+        } else {
+          e.doppelChances = [];
+        }
+        delete e.doppelType; delete e.doppelTriggers; delete e.doppelBonus; delete e.doppelPattern;
       }
       return e;
     }
@@ -1434,10 +1433,15 @@
       var extraContainer = row.querySelector('.extra');
       var extraLines = [];
       if (typeof e.startGame === 'number') extraLines.push('初期ゲーム数 ' + e.startGame + 'G');
-      if (e.doppelType) extraLines.push('ドッペル種別: ' + e.doppelType);
-      if (e.doppelTriggers && e.doppelTriggers.length) extraLines.push('当選契機: ' + e.doppelTriggers.join('・'));
-      if (typeof e.doppelBonus === 'number') extraLines.push('ドッペル上乗せ' + e.doppelBonus + 'G');
-      if (e.doppelPattern) extraLines.push('ストーリー設定示唆: ' + EMBRYO_ROMAN[e.doppelPattern] + ' ' + EMBRYO_PATTERN_LEVEL[String(e.doppelPattern)]);
+      if (e.doppelChances && e.doppelChances.length) {
+        e.doppelChances.forEach(function (c, ci) {
+          var prefix = e.doppelChances.length > 1 ? ('ドッペルチャンス' + (ci + 1) + ' ') : '';
+          if (c.doppelType) extraLines.push(prefix + 'ドッペル種別: ' + c.doppelType);
+          if (c.triggers && c.triggers.length) extraLines.push(prefix + '当選契機: ' + c.triggers.join('・'));
+          if (typeof c.bonusGame === 'number') extraLines.push(prefix + 'ドッペル上乗せ' + c.bonusGame + 'G');
+          if (c.pattern) extraLines.push(prefix + 'ストーリー設定示唆: ' + EMBRYO_ROMAN[c.pattern] + ' ' + EMBRYO_PATTERN_LEVEL[String(c.pattern)]);
+        });
+      }
       if (typeof e.bandBonus === 'number') extraLines.push('上乗せ抽選｜合計' + (10 + e.bandBonus) + 'G');
       if (e.embryoTriggers && e.embryoTriggers.length) {
         var isKamihamaEntry = e.embryoTriggers.indexOf('神浜当選') !== -1;
@@ -1629,8 +1633,6 @@
   var eBigScreenTrigger = document.getElementById('e-big-screen-trigger');
   var eAtScreenTrigger = document.getElementById('e-at-screen-trigger');
   var eStoryOrderTrigger = document.getElementById('e-story-order-trigger');
-  var eDoppelBonus = document.getElementById('e-doppel-bonus');
-  var eDoppelPatternTrigger = document.getElementById('e-doppel-pattern-trigger');
   var eAtWin = document.getElementById('e-atwin');
   var eAtMemo = document.getElementById('e-atmemo');
   var eDeleteBtn = document.getElementById('e-delete');
@@ -1645,10 +1647,8 @@
   var fieldStoryOrder = document.getElementById('field-story-order');
   var fieldWeeChances = document.getElementById('field-wee-chances');
   var fieldBand = document.getElementById('field-band');
-  var fieldDoppel = document.getElementById('field-doppel');
-  var fieldDoppelTrigger = document.getElementById('field-doppel-trigger');
-  var fieldDoppelBonus = document.getElementById('field-doppel-bonus');
-  var fieldDoppelPattern = document.getElementById('field-doppel-pattern');
+  var fieldDoppelChances = document.getElementById('field-doppel-chances');
+  var fieldAtWin = document.getElementById('field-atwin');
   var fieldStartGame = document.getElementById('field-start-game');
   var fieldEmbryo = document.getElementById('field-embryo');
   var fieldEmbryoGameCount = document.getElementById('field-embryo-game-count');
@@ -1662,15 +1662,15 @@
     var hasDoppel = state.selectedResults.indexOf('ドッペル') !== -1;
     var hasAnyTrigger = state.selectedEmbryoTriggers.length > 0;
     var isKamihama = state.selectedEmbryoTriggers.indexOf('神浜当選') !== -1;
+    // ドッペル選択時はat当選の概念自体が不要なため、チェックを外してチェックボックスも隠す
+    if (hasDoppel && eAtWin.checked) { eAtWin.checked = false; }
     fieldBigVoice.hidden = !hasBig;
     fieldBigScreen.hidden = !hasBig;
     fieldAtScreen.hidden = !eAtWin.checked;
     fieldStoryOrder.hidden = !eAtWin.checked;
     fieldWeeChances.hidden = !eAtWin.checked;
-    fieldDoppel.hidden = !hasDoppel;
-    fieldDoppelTrigger.hidden = !hasDoppel;
-    fieldDoppelBonus.hidden = !hasDoppel;
-    fieldDoppelPattern.hidden = !hasDoppel;
+    fieldDoppelChances.hidden = !hasDoppel;
+    fieldAtWin.hidden = hasDoppel;
     fieldBand.hidden = !hasEmbryo;
     fieldStartGame.hidden = !hasEmbryo;
     fieldEmbryo.hidden = !hasEmbryo;
@@ -1738,12 +1738,6 @@
     openPicker('設定示唆', EMBRYO_PATTERN_OPTIONS, state.selectedEmbryoPattern || '', function (v) {
       state.selectedEmbryoPattern = v || null;
       eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(v) + ' ▾';
-    });
-  });
-  eDoppelPatternTrigger.addEventListener('click', function () {
-    openPicker('ストーリー設定示唆', EMBRYO_PATTERN_OPTIONS, state.selectedDoppelPattern || '', function (v) {
-      state.selectedDoppelPattern = v || null;
-      eDoppelPatternTrigger.textContent = embryoPatternShortLabel(v) + ' ▾';
     });
   });
   eBigVoiceTrigger.addEventListener('click', function () {
@@ -1871,6 +1865,89 @@
     renderWeeChances();
   });
 
+  // 複数選択(トグル)のボタングループをその場で組み立てる版(ドッペルチャンスの当選契機で使う)
+  function buildMultiToggleField(labelText, options, selectedArr, onToggle) {
+    var field = document.createElement('div');
+    field.className = 'field';
+    var label = document.createElement('label');
+    label.textContent = labelText;
+    field.appendChild(label);
+    var group = document.createElement('div');
+    group.className = 'cat-select';
+    options.forEach(function (opt) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = opt;
+      if (selectedArr.indexOf(opt) !== -1) btn.classList.add('active');
+      btn.addEventListener('click', function () { onToggle(opt); });
+      group.appendChild(btn);
+    });
+    field.appendChild(group);
+    return field;
+  }
+  function buildDoppelPatternField(chance) {
+    var field = document.createElement('div');
+    field.className = 'field';
+    var label = document.createElement('label');
+    label.textContent = 'ストーリー設定示唆';
+    field.appendChild(label);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'picker-trigger';
+    btn.textContent = embryoPatternShortLabel(chance.pattern) + ' ▾';
+    btn.addEventListener('click', function () {
+      openPicker('ストーリー設定示唆', EMBRYO_PATTERN_OPTIONS, chance.pattern || '', function (v) {
+        chance.pattern = v || null;
+        renderDoppelChances();
+      });
+    });
+    field.appendChild(btn);
+    return field;
+  }
+  var doppelChancesList = document.getElementById('doppel-chances-list');
+  function renderDoppelChances() {
+    doppelChancesList.innerHTML = '';
+    state.doppelChances.forEach(function (chance, idx) {
+      var card = document.createElement('div');
+      card.className = 'wee-chance-card';
+      var title = document.createElement('div');
+      title.className = 'wee-title';
+      title.textContent = 'ドッペルチャンス' + (idx + 1);
+      card.appendChild(title);
+
+      card.appendChild(buildToggleField('ドッペル種別', DOPPEL_TYPES, chance.doppelType, function (v) {
+        chance.doppelType = (chance.doppelType === v) ? null : v;
+        renderDoppelChances();
+      }));
+
+      card.appendChild(buildMultiToggleField('当選契機(複数選択可)', DOPPEL_TRIGGER_OPTIONS, chance.triggers, function (v) {
+        var i = chance.triggers.indexOf(v);
+        if (i === -1) { chance.triggers.push(v); } else { chance.triggers.splice(i, 1); }
+        renderDoppelChances();
+      }));
+
+      card.appendChild(buildNumberField('ドッペル上乗せゲーム数', chance, 'bonusGame', '例: 30'));
+
+      card.appendChild(buildDoppelPatternField(chance));
+
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'ghost-btn wee-chance-delete';
+      delBtn.textContent = 'このドッペルチャンスを削除';
+      delBtn.addEventListener('click', function () {
+        state.doppelChances.splice(idx, 1);
+        renderDoppelChances();
+      });
+      card.appendChild(delBtn);
+
+      doppelChancesList.appendChild(card);
+    });
+  }
+  document.getElementById('doppel-chance-add').addEventListener('click', function () {
+    state.doppelChances.push(createEmptyDoppelChance());
+    renderDoppelChances();
+  });
+
   // 単一選択(もう一度押すと選択解除)のボタングループを作る共通ヘルパー
   // onChangeを渡すと選択が変わるたびに呼び出す(条件付き表示の再判定などに使う)
   function setupSingleSelect(selector, stateKey, onChange) {
@@ -1885,7 +1962,6 @@
     return buttons;
   }
   var bandButtons = setupSingleSelect('#e-band button', 'selectedBand');
-  var doppelButtons = setupSingleSelect('#e-doppel button', 'selectedDoppel');
   var embryoBellButtons = setupSingleSelect('#e-embryo-bell button', 'selectedEmbryoBell');
   var embryoConnectButtons = setupSingleSelect('#e-embryo-connect button', 'selectedEmbryoConnect');
 
@@ -1908,7 +1984,6 @@
     return buttons;
   }
   var embryoTriggerButtons = setupMultiSelect('#e-embryo-trigger button', 'selectedEmbryoTriggers', function () { updateConditionalFields(); });
-  var doppelTriggerButtons = setupMultiSelect('#e-doppel-trigger button', 'selectedDoppelTriggers');
 
   function openEntrySheet(entryId) {
     state.editingEntryId = entryId || null;
@@ -1923,10 +1998,7 @@
       state.selectedBigScreen = e.bigScreen || null;
       state.selectedAtScreen = e.atScreen || null;
       state.selectedBand = e.bandColor || null;
-      state.selectedDoppel = e.doppelType || null;
-      state.selectedDoppelTriggers = (e.doppelTriggers || []).slice();
-      state.selectedDoppelPattern = e.doppelPattern ? String(e.doppelPattern) : null;
-      eDoppelBonus.value = (typeof e.doppelBonus === 'number') ? e.doppelBonus : '';
+      state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); });
       state.selectedEmbryoTriggers = (e.embryoTriggers || []).slice();
       state.selectedEmbryoBell = (e.embryoBellLevel != null) ? String(e.embryoBellLevel) : null;
       state.selectedEmbryoConnect = e.embryoConnect || null;
@@ -1952,10 +2024,7 @@
       state.selectedBigScreen = null;
       state.selectedAtScreen = null;
       state.selectedBand = null;
-      state.selectedDoppel = null;
-      state.selectedDoppelTriggers = [];
-      state.selectedDoppelPattern = null;
-      eDoppelBonus.value = '';
+      state.doppelChances = [];
       state.selectedEmbryoTriggers = [];
       state.selectedEmbryoBell = null;
       state.selectedEmbryoConnect = null;
@@ -1976,9 +2045,6 @@
     }
     resultButtons.forEach(function (b) { b.classList.toggle('active', state.selectedResults.indexOf(b.dataset.v) !== -1); });
     bandButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedBand); });
-    doppelButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedDoppel); });
-    doppelTriggerButtons.forEach(function (b) { b.classList.toggle('active', state.selectedDoppelTriggers.indexOf(b.dataset.v) !== -1); });
-    eDoppelPatternTrigger.textContent = embryoPatternShortLabel(state.selectedDoppelPattern) + ' ▾';
     embryoTriggerButtons.forEach(function (b) { b.classList.toggle('active', state.selectedEmbryoTriggers.indexOf(b.dataset.v) !== -1); });
     embryoBellButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoBell); });
     embryoConnectButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoConnect); });
@@ -1989,6 +2055,7 @@
     eAtScreenTrigger.textContent = atScreenFullLabel(state.selectedAtScreen) + ' ▾';
     eStoryOrderTrigger.textContent = storyOrderShortLabel(state.selectedStoryOrder) + ' ▾';
     renderWeeChances();
+    renderDoppelChances();
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
     autoResizeTextarea(eAtMemo);
@@ -2030,26 +2097,21 @@
     var storyOrderPattern = atWin ? state.selectedStoryOrder : null;
     // ドッペルが選ばれていない時はドッペル関連の項目を保存しない
     var hasDoppel = results.indexOf('ドッペル') !== -1;
-    var doppelType = hasDoppel ? state.selectedDoppel : null;
-    var doppelTriggers = hasDoppel ? state.selectedDoppelTriggers.slice() : [];
-    var doppelBonus = hasDoppel ? (eDoppelBonus.value === '' ? null : Number(eDoppelBonus.value)) : null;
-    var doppelPattern = hasDoppel && state.selectedDoppelPattern ? Number(state.selectedDoppelPattern) : null;
+    var doppelChances = hasDoppel ? state.doppelChances.map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); }) : [];
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
       e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreen = atScreen; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
-      e.storyOrderPattern = storyOrderPattern; e.doppelType = doppelType;
-      e.doppelTriggers = doppelTriggers; e.doppelBonus = doppelBonus; e.doppelPattern = doppelPattern;
+      e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances;
     } else {
       v.entries.push({
         id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
         bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
-        storyOrderPattern: storyOrderPattern, doppelType: doppelType,
-        doppelTriggers: doppelTriggers, doppelBonus: doppelBonus, doppelPattern: doppelPattern
+        storyOrderPattern: storyOrderPattern, doppelChances: doppelChances
       });
     }
     save();
