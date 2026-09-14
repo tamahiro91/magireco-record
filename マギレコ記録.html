@@ -648,7 +648,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14y</div>
+    <div class="app-version">v2026-09-14z</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2403,7 +2403,7 @@
       }));
       if (chance.storyType === 'ストーリー') {
         if (hasEmbryoForWee) {
-          card.appendChild(buildPatternPickerField('設定示唆', chance, 'settingPattern', renderWeeChances));
+          card.appendChild(buildPatternPickerField('キャラ紹介の示唆', chance, 'settingPattern', renderWeeChances));
         } else {
           card.appendChild(buildToggleField('ストーリー番号', WEE_NORMAL_NUMBERS, chance.normalNumber ? String(chance.normalNumber) : null, function (v) {
             chance.normalNumber = (String(chance.normalNumber) === v) ? null : Number(v);
