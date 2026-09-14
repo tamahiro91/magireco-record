@@ -539,7 +539,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14n</div>
+    <div class="app-version">v2026-09-14o</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1572,6 +1572,24 @@
       }
       if (e.atScreen) extraLines.push('at画面: ' + e.atScreen + '(' + AT_SCREEN_SUGGESTION[e.atScreen] + ')');
       if (e.storyOrderPattern) extraLines.push('順番示唆: ' + storyOrderShortLabel(e.storyOrderPattern));
+      if (e.weeChances && e.weeChances.length) {
+        e.weeChances.forEach(function (c, wi) {
+          var weeParts = [];
+          if (c.trigger === 'ゲーム数' && typeof c.triggerGame === 'number') weeParts.push(c.triggerGame + 'G');
+          else if (c.trigger) weeParts.push(c.trigger);
+          if (c.storyType === 'ストーリー') {
+            if (c.settingPattern) weeParts.push(embryoPatternShortLabel(c.settingPattern));
+            else if (c.normalNumber) weeParts.push('ストーリー' + c.normalNumber);
+          } else if (c.storyType === 'SP' && c.spColor) {
+            weeParts.push('SP' + c.spColor);
+          } else if (c.storyType === 'マギアボーナス' && typeof c.magiaStock === 'number') {
+            weeParts.push('ストック' + c.magiaStock);
+          }
+          if (c.connectColor) weeParts.push('コネクト' + c.connectColor);
+          if (typeof c.bonusGame === 'number') weeParts.push('上乗せ' + c.bonusGame + 'G');
+          extraLines.push('うぃチャンス' + (wi + 1) + ': ' + weeParts.join('｜'));
+        });
+      }
       if (e.epiboChar) {
         var epiboCharText = e.epiboChar + (e.epiboKuroeCase ? '(' + (e.epiboKuroeCase === '成功時' ? 'チャレンジ成功時' : 'チャレンジ以外') + ')' : '');
         var epiboSuggestionEntryText = epiboSuggestionText(e.epiboChar, e.epiboKuroeCase);
@@ -1777,10 +1795,8 @@
     var hasArina = state.selectedResults.indexOf('アリナ') !== -1;
     var hasEpibo = state.selectedResults.indexOf('エピボ') !== -1;
     var isKuroe = hasEpibo && state.selectedEpiboChar === '黒江';
-    var hasAnyTrigger = state.selectedEmbryoTriggers.length > 0;
-    var isKamihama = state.selectedEmbryoTriggers.indexOf('神浜当選') !== -1;
-    // ドッペル選択時はat当選の概念自体が不要なため、チェックを外してチェックボックスも隠す
-    if (hasDoppel && eAtWin.checked) { eAtWin.checked = false; }
+    // ドッペル・エンブリオ選択時はat当選のチェックボックスを隠すため、チェックも外しておく
+    if ((hasDoppel || hasEmbryo) && eAtWin.checked) { eAtWin.checked = false; }
     fieldBigVoice.hidden = !hasBig;
     fieldBigScreen.hidden = !hasBig;
     fieldAtScreen.hidden = !eAtWin.checked;
@@ -1794,19 +1810,20 @@
     fieldWeeChances.hidden = !(hasEmbryo || eAtWin.checked);
     renderWeeChances();
     fieldDoppelChances.hidden = !hasDoppel;
-    fieldAtWin.hidden = hasDoppel;
+    fieldAtWin.hidden = hasDoppel || hasEmbryo;
     fieldEpiboChar.hidden = !hasEpibo;
     fieldEpiboKuroeCase.hidden = !isKuroe;
     fieldEpiboSuggestion.hidden = !hasEpibo || !epiboSuggestionText(state.selectedEpiboChar, state.selectedEpiboKuroeCase);
     eEpiboSuggestion.textContent = epiboSuggestionText(state.selectedEpiboChar, state.selectedEpiboKuroeCase);
     fieldBand.hidden = !hasEmbryo;
     fieldStartGame.hidden = !(hasEmbryo || hasArina);
-    fieldEmbryo.hidden = !hasEmbryo;
-    fieldEmbryoGameCount.hidden = !(hasEmbryo && hasAnyTrigger);
-    fieldEmbryoBell.hidden = !(hasEmbryo && isKamihama);
-    fieldEmbryoBonus.hidden = !(hasEmbryo && isKamihama);
-    fieldEmbryoConnect.hidden = !hasEmbryo;
-    fieldEmbryoPattern.hidden = !hasEmbryo;
+    // 当選契機・コネクト・設定示唆はうぃチャンスの各カードに同じ項目があるため、エンブリオ選択時は重複するこちらを隠す
+    fieldEmbryo.hidden = true;
+    fieldEmbryoGameCount.hidden = true;
+    fieldEmbryoBell.hidden = true;
+    fieldEmbryoBonus.hidden = true;
+    fieldEmbryoConnect.hidden = true;
+    fieldEmbryoPattern.hidden = true;
   }
 
   resultButtons.forEach(function (btn) {
