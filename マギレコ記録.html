@@ -109,6 +109,18 @@
   }
   .summary .card .label { font-size: 11px; color: var(--sub); margin-bottom: 4px; }
   .summary .card .value { font-size: 18px; font-weight: 700; }
+  .global-stats-scroll { overflow-x: auto; margin-bottom: 16px; -webkit-overflow-scrolling: touch; }
+  .global-stats-row { display: flex; gap: 10px; }
+  .global-stat-col {
+    flex: 0 0 92px;
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align: center;
+  }
+  .global-stat-col .label { font-size: 11px; color: var(--sub); margin-bottom: 4px; white-space: nowrap; }
+  .global-stat-col .value { font-size: 18px; font-weight: 700; }
+  .global-stat-col .sub { font-size: 12px; color: var(--sub); margin-top: 2px; white-space: nowrap; }
 
   .search-row { margin-bottom: 12px; }
   .search-row input {
@@ -523,11 +535,19 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14g</div>
+    <div class="app-version">v2026-09-14h</div>
 
     <div class="summary">
-      <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
-      <div class="card"><div class="label">当り回数</div><div class="value" id="sum-hits">0</div></div>
+      <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
+    </div>
+    <div class="global-stats-scroll">
+      <div class="global-stats-row">
+        <div class="global-stat-col"><div class="label">総ゲーム数</div><div class="value" id="sum-game">0</div><div class="sub" id="sum-game-avg"></div></div>
+        <div class="global-stat-col"><div class="label">ボーナス回数</div><div class="value" id="sum-bonus">0</div><div class="sub" id="sum-bonus-prob"></div></div>
+        <div class="global-stat-col"><div class="label">at回数</div><div class="value" id="sum-atwin">0</div><div class="sub" id="sum-atwin-prob"></div></div>
+        <div class="global-stat-col"><div class="label">CZ回数</div><div class="value" id="sum-cz">0</div><div class="sub" id="sum-cz-prob"></div></div>
+        <div class="global-stat-col"><div class="label">CZ成功</div><div class="value" id="sum-czwin">0</div><div class="sub" id="sum-czwin-prob"></div></div>
+      </div>
     </div>
 
     <div class="search-row">
@@ -1276,7 +1296,16 @@
   var elEmptyMsg = document.getElementById('empty-msg');
   var elSearch = document.getElementById('search');
   var elSumVisits = document.getElementById('sum-visits');
-  var elSumHits = document.getElementById('sum-hits');
+  var elSumGame = document.getElementById('sum-game');
+  var elSumGameAvg = document.getElementById('sum-game-avg');
+  var elSumBonus = document.getElementById('sum-bonus');
+  var elSumBonusProb = document.getElementById('sum-bonus-prob');
+  var elSumAtWin = document.getElementById('sum-atwin');
+  var elSumAtWinProb = document.getElementById('sum-atwin-prob');
+  var elSumCz = document.getElementById('sum-cz');
+  var elSumCzProb = document.getElementById('sum-cz-prob');
+  var elSumCzWin = document.getElementById('sum-czwin');
+  var elSumCzWinProb = document.getElementById('sum-czwin-prob');
 
   function renderList() {
     var q = (elSearch.value || '').trim();
@@ -1289,13 +1318,28 @@
       });
     }
 
-    var totalHits = 0;
+    var totalGame = 0, totalBonus = 0, totalAtWin = 0, totalCz = 0, totalCzWin = 0, totalSuika = 0;
     state.visits.forEach(function (v) {
       var s = visitStats(v);
-      totalHits += s.hits;
+      var counters = v.counters || { suika: 0, cz: 0, czWin: 0 };
+      totalGame += s.game;
+      totalBonus += s.total;
+      totalAtWin += s.atWin;
+      totalCz += counters.cz || 0;
+      totalCzWin += counters.czWin || 0;
+      totalSuika += counters.suika || 0;
     });
     elSumVisits.textContent = state.visits.length;
-    elSumHits.textContent = totalHits;
+    elSumGame.textContent = totalGame;
+    elSumGameAvg.textContent = state.visits.length ? ('平均' + Math.round(totalGame / state.visits.length) + 'G') : '';
+    elSumBonus.textContent = totalBonus;
+    elSumBonusProb.textContent = fmtProb(totalGame, totalBonus);
+    elSumAtWin.textContent = totalAtWin;
+    elSumAtWinProb.textContent = fmtProb(totalGame, totalAtWin);
+    elSumCz.textContent = totalCz;
+    elSumCzProb.textContent = fmtPercent(totalCz, totalSuika);
+    elSumCzWin.textContent = totalCzWin;
+    elSumCzWinProb.textContent = fmtPercent(totalCzWin, totalCz);
 
     elVisitList.innerHTML = '';
     elEmptyMsg.hidden = state.visits.length > 0;
