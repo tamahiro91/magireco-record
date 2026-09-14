@@ -38,6 +38,7 @@
     --embryo: #4ecdc4;
     --doppel: #9775fa;
     --arina: #94d82d;
+    --true-ending: #f0c987;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -355,9 +356,10 @@
   .tag.エピボ { background: var(--epibo); }
   .tag.引戻し { background: var(--hikimodoshi); }
   .tag.at直撃 { background: var(--chokugeki); }
-  .tag.エンブリオ { background: var(--embryo); font-size: 9.5px; }
+  .tag.エンブリオ { background: var(--embryo); font-size: 8px; }
   .tag.ドッペル { background: var(--doppel); }
   .tag.アリナ { background: var(--arina); }
+  .tag.TrueEnding { background: var(--true-ending); font-size: 8px; }
   .tag.AT { background: var(--at); }
   .tag.メモ { background: var(--memo); color: #000; }
   .entry .entry-num { flex-shrink: 0; width: 16px; text-align: center; font-size: 13px; font-weight: 700; color: var(--sub); margin-top: 4px; }
@@ -573,7 +575,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14t</div>
+    <div class="app-version">v2026-09-14u</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -756,9 +758,10 @@
         <button type="button" data-v="エピボ">エピボ</button>
         <button type="button" data-v="引戻し">引戻し</button>
         <button type="button" data-v="at直撃">at直撃</button>
-        <button type="button" data-v="エンブリオ">エンブリオ</button>
+        <button type="button" data-v="エンブリオ">エンブリオイブ</button>
         <button type="button" data-v="ドッペル">ドッペル</button>
         <button type="button" data-v="アリナ">アリナ</button>
+        <button type="button" data-v="TrueEnding" id="e-result-true-ending" hidden>True Ending</button>
       </div>
     </div>
     <div class="field" id="field-epibo-char" hidden>
@@ -851,6 +854,11 @@
     <div class="field" id="field-embryo-pattern" hidden>
       <label>設定示唆</label>
       <button type="button" class="picker-trigger" id="e-embryo-pattern-trigger">未選択 ▾</button>
+    </div>
+    <div class="field" id="field-card-chances" hidden>
+      <label>エンディング中のカード</label>
+      <div id="card-chances-list"></div>
+      <button type="button" class="ghost-btn" id="card-chance-add">＋ カードを追加</button>
     </div>
     <div class="field" id="field-big-voice" hidden>
       <label>ビッグ終了後のボイス</label>
@@ -950,7 +958,34 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardChances: [] };
+  // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
+  var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
+  // エンディング中に出現するカードとその設定示唆
+  var EMBRYO_CARD_LIST = [
+    { name: '絶交階段のウワサ', suggestion: '奇数設定示唆(弱)' },
+    { name: 'マチビト馬のウワサ', suggestion: '偶数設定示唆(弱)' },
+    { name: 'フクロウ幸運水のウワサ', suggestion: '奇数設定示唆(強)' },
+    { name: 'ひとりぼっちの最果てのウワサ', suggestion: '偶数設定示唆(強)' },
+    { name: '記憶ミュージアムのウワサ', suggestion: '高設定示唆(弱)' },
+    { name: '万年桜のウワサ', suggestion: '高設定示唆(強)' },
+    { name: '委員長の魔女', suggestion: '設定1否定!?+高設定示唆!?' },
+    { name: 'ヨダカの魔女', suggestion: '設定4否定!?+高設定示唆!?' },
+    { name: '石中魚の魔女', suggestion: '設定2否定!?' },
+    { name: '立ち耳の魔女', suggestion: '設定3否定!?' },
+    { name: '振子の魔女', suggestion: '設定4否定!?' },
+    { name: '舞台装置の魔女', suggestion: '設定4以上濃厚!?' }
+  ];
+  var EMBRYO_CARD_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
+    EMBRYO_CARD_LIST.map(function (c) { return { v: c.name, text: c.name + '(' + c.suggestion + ')' }; })
+  );
+  function embryoCardSuggestion(name) {
+    var found = EMBRYO_CARD_LIST.find(function (c) { return c.name === name; });
+    return found ? found.suggestion : '';
+  }
+  function createEmptyCardChance() {
+    return { id: uid(), cardName: null };
+  }
   // 設定示唆パターン(1〜9)ごとの示唆レベル
   var EMBRYO_PATTERN_LEVEL = {
     '1': '基本', '2': '基本', '3': '基本', '4': '基本',
@@ -1344,7 +1379,7 @@
       if (typeof e.point === 'number') point += e.point;
       if (typeof e.game === 'number') game += e.game;
       if (e.results && e.results.length) hits++;
-      if (e.results && e.results.indexOf('BIG') !== -1) big++;
+      if (e.results && (e.results.indexOf('BIG') !== -1 || e.results.indexOf('エピボ') !== -1)) big++;
       if (e.results && e.results.indexOf('みたま') !== -1) mitama++;
       if (e.atWin) atWin++;
     });
@@ -1638,7 +1673,7 @@
       var numsText = [gameText, pointText, atStartGameText].filter(Boolean).join(' / ');
 
       var tags = (e.results || []).map(function (r) {
-        return '<span class="tag ' + r + '">' + r + '</span>';
+        return '<span class="tag ' + r + '">' + (TAG_LABELS[r] || r) + '</span>';
       });
       if (e.atWin) tags.push('<span class="tag AT">at当選</span>');
       var isMemo = !tags.length;
@@ -1672,6 +1707,10 @@
           if (typeof c.bonusGame === 'number') extraLines.push(prefix + 'ドッペル上乗せ' + c.bonusGame + 'G');
           if (c.pattern) extraLines.push(prefix + 'ストーリー設定示唆: ' + EMBRYO_ROMAN[c.pattern] + ' ' + EMBRYO_PATTERN_LEVEL[String(c.pattern)]);
         });
+      }
+      if (e.cardChances && e.cardChances.length) {
+        var cardNames = e.cardChances.filter(function (c) { return c.cardName; }).map(function (c) { return c.cardName; });
+        if (cardNames.length) extraLines.push('カード: ' + cardNames.join('・'));
       }
       if (typeof e.bandBonus === 'number') extraLines.push('上乗せ抽選｜合計' + (10 + e.bandBonus) + 'G');
       if (e.embryoTriggers && e.embryoTriggers.length) {
@@ -1929,6 +1968,8 @@
   var fieldEmbryoBonus = document.getElementById('field-embryo-bonus');
   var fieldEmbryoConnect = document.getElementById('field-embryo-connect');
   var fieldEmbryoPattern = document.getElementById('field-embryo-pattern');
+  var fieldCardChances = document.getElementById('field-card-chances');
+  var eResultTrueEnding = document.getElementById('e-result-true-ending');
   function updateConditionalFields() {
     var hasBig = state.selectedResults.indexOf('BIG') !== -1;
     var hasEmbryo = state.selectedResults.indexOf('エンブリオ') !== -1;
@@ -1965,6 +2006,17 @@
     fieldEmbryoBonus.hidden = true;
     fieldEmbryoConnect.hidden = true;
     fieldEmbryoPattern.hidden = true;
+    fieldCardChances.hidden = !hasEmbryo;
+    renderCardChances();
+    // エンブリオを選択している間だけTrue Endingを選択できる(選択解除時は選択も外す)
+    eResultTrueEnding.hidden = !hasEmbryo;
+    if (!hasEmbryo) {
+      var teIdx = state.selectedResults.indexOf('TrueEnding');
+      if (teIdx !== -1) {
+        state.selectedResults.splice(teIdx, 1);
+        eResultTrueEnding.classList.remove('active');
+      }
+    }
   }
 
   resultButtons.forEach(function (btn) {
@@ -2265,6 +2317,72 @@
     renderDoppelChances();
   });
 
+  // エンディング中に出現したカードの記録
+  function buildCardPickerField(chance) {
+    var field = document.createElement('div');
+    field.className = 'field';
+    var label = document.createElement('label');
+    label.textContent = 'カード名';
+    field.appendChild(label);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'picker-trigger';
+    btn.textContent = (chance.cardName || '未選択') + ' ▾';
+    btn.addEventListener('click', function () {
+      openPicker('カード名', EMBRYO_CARD_OPTIONS, chance.cardName || '', function (v) {
+        chance.cardName = v || null;
+        renderCardChances();
+      });
+    });
+    field.appendChild(btn);
+    return field;
+  }
+  function buildCardSuggestionField(chance) {
+    var field = document.createElement('div');
+    field.className = 'field';
+    var label = document.createElement('label');
+    label.textContent = '示唆';
+    field.appendChild(label);
+    var box = document.createElement('div');
+    box.className = 'suggestion-box';
+    box.textContent = embryoCardSuggestion(chance.cardName);
+    field.appendChild(box);
+    return field;
+  }
+  var cardChancesList = document.getElementById('card-chances-list');
+  function renderCardChances() {
+    cardChancesList.innerHTML = '';
+    state.cardChances.forEach(function (chance, idx) {
+      var card = document.createElement('div');
+      card.className = 'wee-chance-card';
+      var title = document.createElement('div');
+      title.className = 'wee-title';
+      title.textContent = 'カード' + (idx + 1);
+      card.appendChild(title);
+
+      card.appendChild(buildCardPickerField(chance));
+      if (chance.cardName) {
+        card.appendChild(buildCardSuggestionField(chance));
+      }
+
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'ghost-btn wee-chance-delete';
+      delBtn.textContent = 'このカードを削除';
+      delBtn.addEventListener('click', function () {
+        state.cardChances.splice(idx, 1);
+        renderCardChances();
+      });
+      card.appendChild(delBtn);
+
+      cardChancesList.appendChild(card);
+    });
+  }
+  document.getElementById('card-chance-add').addEventListener('click', function () {
+    state.cardChances.push(createEmptyCardChance());
+    renderCardChances();
+  });
+
   // 単一選択(もう一度押すと選択解除)のボタングループを作る共通ヘルパー
   // onChangeを渡すと選択が変わるたびに呼び出す(条件付き表示の再判定などに使う)
   function setupSingleSelect(selector, stateKey, onChange) {
@@ -2318,6 +2436,7 @@
       state.selectedAtScreen = e.atScreen || null;
       state.selectedBand = e.bandColor || null;
       state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); });
+      state.cardChances = (e.cardChances || []).map(function (c) { return Object.assign({}, c); });
       state.selectedEpiboChar = e.epiboChar || null;
       state.selectedEpiboKuroeCase = e.epiboKuroeCase || null;
       state.selectedEmbryoTriggers = (e.embryoTriggers || []).slice();
@@ -2346,6 +2465,7 @@
       state.selectedAtScreen = null;
       state.selectedBand = null;
       state.doppelChances = [];
+      state.cardChances = [];
       state.selectedEpiboChar = null;
       state.selectedEpiboKuroeCase = null;
       state.selectedEmbryoTriggers = [];
@@ -2424,6 +2544,8 @@
     // ドッペルが選ばれていない時はドッペル関連の項目を保存しない
     var hasDoppel = results.indexOf('ドッペル') !== -1;
     var doppelChances = hasDoppel ? state.doppelChances.map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); }) : [];
+    // エンブリオが選ばれていない時はエンディング中のカードの記録も保存しない
+    var cardChances = hasEmbryo ? state.cardChances.map(function (c) { return Object.assign({}, c); }) : [];
     // エピボが選ばれていない時はキャラクター関連の項目を保存しない
     var hasEpibo = results.indexOf('エピボ') !== -1;
     var epiboChar = hasEpibo ? state.selectedEpiboChar : null;
@@ -2434,7 +2556,7 @@
       e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreen = atScreen; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
-      e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances;
+      e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances; e.cardChances = cardChances;
       e.epiboChar = epiboChar; e.epiboKuroeCase = epiboKuroeCase;
     } else {
       v.entries.push({
@@ -2442,7 +2564,7 @@
         bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
-        storyOrderPattern: storyOrderPattern, doppelChances: doppelChances,
+        storyOrderPattern: storyOrderPattern, doppelChances: doppelChances, cardChances: cardChances,
         epiboChar: epiboChar, epiboKuroeCase: epiboKuroeCase
       });
     }
