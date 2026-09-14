@@ -540,7 +540,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14p</div>
+    <div class="app-version">v2026-09-14q</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1572,25 +1572,33 @@
         var screenSuggestion = BIG_SCREEN_SUGGESTION[e.bigScreen];
         extraLines.push('画面: ' + e.bigScreen + (screenSuggestion ? '(' + screenSuggestion + ')' : ''));
       }
-      if (e.atScreen) extraLines.push('at画面: ' + e.atScreen + '(' + AT_SCREEN_SUGGESTION[e.atScreen] + ')');
+      if (e.atScreen) {
+        extraLines.push('at終了画面: ' + e.atScreen);
+        extraLines.push('(' + AT_SCREEN_SUGGESTION[e.atScreen] + ')');
+      }
       if (e.storyOrderPattern) extraLines.push('順番示唆: ' + storyOrderShortLabel(e.storyOrderPattern));
       if (e.weeChances && e.weeChances.length) {
         e.weeChances.forEach(function (c, wi) {
-          var weeParts = [];
-          if (c.trigger === 'ゲーム数' && typeof c.triggerGame === 'number') weeParts.push(c.triggerGame + 'G');
-          else if (c.trigger) weeParts.push(c.trigger);
-          if (c.storyType === 'ストーリー') {
-            if (c.settingPattern) weeParts.push(embryoPatternShortLabel(c.settingPattern));
-            else if (c.normalNumber) weeParts.push('ストーリー' + c.normalNumber);
-          } else if (c.storyType === 'SP' && c.spColor) {
-            weeParts.push('SP' + c.spColor);
-          } else if (c.storyType === 'マギアボーナス' && typeof c.magiaStock === 'number') {
-            weeParts.push('ストック' + c.magiaStock);
+          var weeLine1 = [];
+          if (c.trigger === 'ゲーム数') {
+            weeLine1.push('ゲーム数当選' + (typeof c.triggerGame === 'number' ? '(' + c.triggerGame + 'G)' : ''));
+          } else if (c.trigger) {
+            weeLine1.push(c.trigger);
           }
-          if (c.connectColor) weeParts.push('コネクト' + c.connectColor);
-          if (typeof c.bonusGame === 'number') weeParts.push('上乗せ' + c.bonusGame + 'G');
+          if (c.storyType === 'ストーリー') {
+            if (c.settingPattern) weeLine1.push(embryoPatternShortLabel(c.settingPattern));
+            else if (c.normalNumber) weeLine1.push('ストーリー' + c.normalNumber);
+          } else if (c.storyType === 'SP' && c.spColor) {
+            weeLine1.push('SP' + c.spColor);
+          } else if (c.storyType === 'マギアボーナス' && typeof c.magiaStock === 'number') {
+            weeLine1.push('ストック' + c.magiaStock);
+          }
+          var weeLine2 = [];
+          if (c.connectColor) weeLine2.push('コネクト' + c.connectColor);
+          if (typeof c.bonusGame === 'number') weeLine2.push('上乗せ' + c.bonusGame + 'G');
           extraLines.push('うぃチャンス' + (wi + 1) + ':');
-          extraLines.push(weeParts.join('｜'));
+          extraLines.push(weeLine1.join('｜'));
+          extraLines.push(weeLine2.join('｜'));
         });
       }
       if (e.epiboChar) {
