@@ -334,6 +334,7 @@
   .entry .mode { font-size: 13px; color: var(--accent); margin-top: 2px; }
   .entry .extra { font-size: 12px; color: var(--sub); margin-top: 2px; }
   .entry .extra div { margin-top: 1px; word-break: break-word; }
+  .entry .extra .extra-small { font-size: 9.5px; white-space: nowrap; }
   .entry .note { font-size: 13px; color: var(--sub); margin-top: 2px; word-break: break-word; white-space: pre-wrap; }
   .entry .drag-handle {
     flex-shrink: 0;
@@ -539,7 +540,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14o</div>
+    <div class="app-version">v2026-09-14p</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1564,7 +1565,8 @@
       }
       if (e.bigVoice) {
         var voiceSuggestion = bigVoiceSuggestion(e.bigVoice, e.atWin);
-        extraLines.push('ボイス: ' + e.bigVoice + (voiceSuggestion ? '(' + voiceSuggestion + ')' : ''));
+        extraLines.push('ボイス: ' + e.bigVoice);
+        if (voiceSuggestion) extraLines.push({ text: '(' + voiceSuggestion + ')', small: true });
       }
       if (e.bigScreen) {
         var screenSuggestion = BIG_SCREEN_SUGGESTION[e.bigScreen];
@@ -1587,7 +1589,8 @@
           }
           if (c.connectColor) weeParts.push('コネクト' + c.connectColor);
           if (typeof c.bonusGame === 'number') weeParts.push('上乗せ' + c.bonusGame + 'G');
-          extraLines.push('うぃチャンス' + (wi + 1) + ': ' + weeParts.join('｜'));
+          extraLines.push('うぃチャンス' + (wi + 1) + ':');
+          extraLines.push(weeParts.join('｜'));
         });
       }
       if (e.epiboChar) {
@@ -1595,9 +1598,14 @@
         var epiboSuggestionEntryText = epiboSuggestionText(e.epiboChar, e.epiboKuroeCase);
         extraLines.push('キャラクター: ' + epiboCharText + (epiboSuggestionEntryText ? '｜' + epiboSuggestionEntryText : ''));
       }
-      extraLines.forEach(function (text) {
+      extraLines.forEach(function (item) {
         var lineDiv = document.createElement('div');
-        lineDiv.textContent = text;
+        if (typeof item === 'string') {
+          lineDiv.textContent = item;
+        } else {
+          lineDiv.textContent = item.text;
+          if (item.small) lineDiv.className = 'extra-small';
+        }
         extraContainer.appendChild(lineDiv);
       });
       extraContainer.style.display = extraLines.length ? '' : 'none';
