@@ -549,6 +549,14 @@
   }
   .card-count-item img { width: 100%; display: block; border-radius: 6px; }
   .card-count-item .card-name { font-size: 10px; color: var(--sub); margin-top: 4px; line-height: 1.3; min-height: 26px; }
+  .card-count-item .card-suggestion {
+    font-size: 9px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-top: 4px;
+    line-height: 1.3;
+    word-break: break-word;
+  }
   .card-count-item .card-counter { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; }
   .card-count-item .card-counter button {
     width: 26px;
@@ -598,7 +606,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14v</div>
+    <div class="app-version">v2026-09-14w</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -880,8 +888,7 @@
     </div>
     <div class="field" id="field-card-chances" hidden>
       <label>エンディング中のカード</label>
-      <button type="button" class="ghost-btn" id="card-chance-toggle">＋ エンディング中のカードを追加</button>
-      <div class="card-grid" id="card-chances-grid" hidden></div>
+      <div class="card-grid" id="card-chances-grid"></div>
     </div>
     <div class="field" id="field-big-voice" hidden>
       <label>ビッグ終了後のボイス</label>
@@ -981,7 +988,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {}, cardGridOpen: false };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
   // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
   var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
   // エンディング中に出現するカードとその設定示唆(画像はユーザー提供のスクリーンショットから切り出し)
@@ -999,6 +1006,10 @@
     { name: '振子の魔女', suggestion: '設定4否定!?', img: 'cards/furiko_majo.jpg' },
     { name: '舞台装置の魔女', suggestion: '設定4以上濃厚!?', img: 'cards/butaisouchi_majo.jpg' }
   ];
+  // 一覧表示用に「!?」を除き「+」をスペースに置き換えた簡易な示唆文言にする
+  function cardListSuggestionLabel(suggestion) {
+    return suggestion.replace(/!\?/g, '').replace(/\+/g, ' ').trim();
+  }
   // 設定示唆パターン(1〜9)ごとの示唆レベル
   var EMBRYO_PATTERN_LEVEL = {
     '1': '基本', '2': '基本', '3': '基本', '4': '基本',
@@ -1731,10 +1742,15 @@
         });
       }
       if (e.cardCounts) {
-        var cardSummary = Object.keys(e.cardCounts)
-          .filter(function (name) { return e.cardCounts[name] > 0; })
-          .map(function (name) { return name + '×' + e.cardCounts[name]; });
-        if (cardSummary.length) extraLines.push('カード: ' + cardSummary.join('・'));
+        var usedCardNames = Object.keys(e.cardCounts).filter(function (name) { return e.cardCounts[name] > 0; });
+        if (usedCardNames.length) {
+          extraLines.push('カード:');
+          usedCardNames.forEach(function (name) {
+            var cardInfo = EMBRYO_CARD_LIST.find(function (c) { return c.name === name; });
+            var label = cardInfo ? cardListSuggestionLabel(cardInfo.suggestion) : name;
+            extraLines.push(label + '×' + e.cardCounts[name] + '回');
+          });
+        }
       }
       if (typeof e.bandBonus === 'number') extraLines.push('上乗せ抽選｜合計' + (10 + e.bandBonus) + 'G');
       if (e.embryoTriggers && e.embryoTriggers.length) {
@@ -2343,7 +2359,6 @@
 
   // エンディング中に出現したカードの記録(12種固定グリッド、カードごとに+/-カウンター)
   var cardChancesGrid = document.getElementById('card-chances-grid');
-  var cardChanceToggle = document.getElementById('card-chance-toggle');
   function renderCardChances() {
     cardChancesGrid.innerHTML = '';
     EMBRYO_CARD_LIST.forEach(function (c) {
@@ -2359,6 +2374,11 @@
       name.className = 'card-name';
       name.textContent = c.name;
       item.appendChild(name);
+
+      var suggestion = document.createElement('div');
+      suggestion.className = 'card-suggestion';
+      suggestion.textContent = c.suggestion;
+      item.appendChild(suggestion);
 
       var counter = document.createElement('div');
       counter.className = 'card-counter';
@@ -2389,10 +2409,6 @@
       cardChancesGrid.appendChild(item);
     });
   }
-  cardChanceToggle.addEventListener('click', function () {
-    state.cardGridOpen = !state.cardGridOpen;
-    cardChancesGrid.hidden = !state.cardGridOpen;
-  });
 
   // 単一選択(もう一度押すと選択解除)のボタングループを作る共通ヘルパー
   // onChangeを渡すと選択が変わるたびに呼び出す(条件付き表示の再判定などに使う)
@@ -2448,8 +2464,6 @@
       state.selectedBand = e.bandColor || null;
       state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); });
       state.cardCounts = Object.assign({}, e.cardCounts || {});
-      state.cardGridOpen = Object.keys(state.cardCounts).length > 0;
-      cardChancesGrid.hidden = !state.cardGridOpen;
       state.selectedEpiboChar = e.epiboChar || null;
       state.selectedEpiboKuroeCase = e.epiboKuroeCase || null;
       state.selectedEmbryoTriggers = (e.embryoTriggers || []).slice();
@@ -2479,8 +2493,6 @@
       state.selectedBand = null;
       state.doppelChances = [];
       state.cardCounts = {};
-      state.cardGridOpen = false;
-      cardChancesGrid.hidden = true;
       state.selectedEpiboChar = null;
       state.selectedEpiboKuroeCase = null;
       state.selectedEmbryoTriggers = [];
