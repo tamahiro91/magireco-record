@@ -540,11 +540,11 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14q</div>
+    <div class="app-version">v2026-09-14r</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
-      <div class="card"><div class="label">総ゲーム数</div><div class="value" id="sum-game">0</div><div class="sub" id="sum-game-avg"></div></div>
+      <div class="card"><div class="label">通常総ゲーム数</div><div class="value" id="sum-game">0</div><div class="sub" id="sum-game-avg"></div></div>
     </div>
     <div class="global-stats-scroll">
       <div class="global-stats-row">
@@ -577,7 +577,7 @@
           <div class="sub" id="d-sub"></div>
         </div>
         <div class="visit-game">
-          <div class="visit-game-label">総ゲーム数</div>
+          <div class="visit-game-label">通常総ゲーム数</div>
           <div class="visit-game-value" id="d-header-game">0G</div>
         </div>
       </div>
@@ -1373,7 +1373,7 @@
       card.querySelector('.store').textContent = v.store || '(店舗名未設定)';
       card.querySelector('.date').textContent = fmtDate(v.date);
       card.querySelector('.meta').textContent = v.machine ? (v.machine + ' 番台') : '';
-      card.querySelector('.game-line').textContent = '総G数 ' + s.game + 'G';
+      card.querySelector('.game-line').textContent = '通常ゲーム数 ' + s.game + 'G';
       card.querySelector('.c-bonus').textContent = s.total;
       card.querySelector('.c-bonus-prob').textContent = fmtProb(s.game, s.total);
       card.querySelector('.c-atwin').textContent = s.atWin;
