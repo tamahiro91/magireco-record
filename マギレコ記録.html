@@ -542,6 +542,45 @@
     line-height: 1.5;
     color: var(--accent);
   }
+  .suggestion-summary { margin-top: 12px; }
+  .suggestion-summary-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .suggestion-summary-toggle .chevron { color: var(--sub); transition: transform 0.15s; }
+  .suggestion-summary.closed .suggestion-summary-toggle .chevron { transform: rotate(-90deg); }
+  .suggestion-summary.closed .suggestion-summary-body { display: none; }
+  .suggestion-summary-body {
+    margin-top: 8px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px 14px;
+  }
+  .suggestion-group { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .suggestion-group:last-child, .suggestion-simple-row:last-child { border-bottom: none; }
+  .suggestion-group-title { font-size: 12px; color: var(--sub); font-weight: 700; margin-bottom: 4px; }
+  .suggestion-line { font-size: 13px; color: var(--accent); line-height: 1.6; }
+  .suggestion-simple-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text);
+  }
+  .suggestion-empty { font-size: 13px; color: var(--sub); padding: 10px 0; text-align: center; }
   .card-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
   .card-count-item {
     width: 104px;
@@ -609,7 +648,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14x</div>
+    <div class="app-version">v2026-09-14y</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -703,6 +742,12 @@
           </div>
           <div class="prob" id="d-czwin-prob"></div>
         </div>
+      </div>
+      <div class="suggestion-summary" id="suggestion-summary">
+        <button type="button" class="suggestion-summary-toggle" id="suggestion-summary-toggle">
+          <span>示唆一覧</span><span class="chevron" id="suggestion-summary-chevron">▾</span>
+        </button>
+        <div class="suggestion-summary-body" id="suggestion-summary-body"></div>
       </div>
     </div>
 
@@ -1438,6 +1483,71 @@
     return { point: point, hits: hits, count: (visit.entries || []).length, big: big, mitama: mitama, total: big + mitama, atWin: atWin, game: game };
   }
 
+  var EMBRYO_PATTERN_TEXT = {};
+  EMBRYO_PATTERN_OPTIONS.forEach(function (o) { if (o.v) EMBRYO_PATTERN_TEXT[o.v] = o.text; });
+
+  // 来店1日分のエントリーから、各種示唆情報を集計する(示唆一覧セクション用)
+  function visitSuggestionSummary(visit) {
+    var bigScreen = {}, atScreen = {}, epibo = {}, cards = {}, storyOrder = {}, embryoPattern = {};
+    var hikimodoshi = 0, atChokugeki = 0;
+    (visit.entries || []).forEach(function (e) {
+      if (e.bigScreen) {
+        var bsLabel = e.bigScreen + (BIG_SCREEN_SUGGESTION[e.bigScreen] ? '(' + BIG_SCREEN_SUGGESTION[e.bigScreen] + ')' : '');
+        bigScreen[bsLabel] = (bigScreen[bsLabel] || 0) + 1;
+      }
+      if (e.atScreen) {
+        var asLabel = e.atScreen + '(' + AT_SCREEN_SUGGESTION[e.atScreen] + ')';
+        atScreen[asLabel] = (atScreen[asLabel] || 0) + 1;
+      }
+      var epiboText = epiboSuggestionText(e.epiboChar, e.epiboKuroeCase);
+      if (e.epiboChar && epiboText) {
+        var epiboLabel = e.epiboChar + (e.epiboChar === '黒江' && e.epiboKuroeCase ? '(' + e.epiboKuroeCase + ')' : '') + '(' + epiboText + ')';
+        epibo[epiboLabel] = (epibo[epiboLabel] || 0) + 1;
+      }
+      if (e.cardCounts) {
+        Object.keys(e.cardCounts).forEach(function (name) {
+          var n = e.cardCounts[name];
+          if (!n) return;
+          var cardInfo = EMBRYO_CARD_LIST.find(function (c) { return c.name === name; });
+          var cardLabel = cardInfo ? cardListSuggestionLabel(cardInfo.suggestion) : name;
+          cards[cardLabel] = (cards[cardLabel] || 0) + n;
+        });
+      }
+      if (e.storyOrderPattern) {
+        var soLabel = storyOrderShortLabel(e.storyOrderPattern);
+        storyOrder[soLabel] = (storyOrder[soLabel] || 0) + 1;
+      }
+      if (e.embryoPattern) {
+        var epLabel = EMBRYO_PATTERN_TEXT[e.embryoPattern] || e.embryoPattern;
+        embryoPattern[epLabel] = (embryoPattern[epLabel] || 0) + 1;
+      }
+      if (e.weeChances && e.weeChances.length) {
+        e.weeChances.forEach(function (c) {
+          if (!c.settingPattern) return;
+          var wpLabel = EMBRYO_PATTERN_TEXT[c.settingPattern] || c.settingPattern;
+          embryoPattern[wpLabel] = (embryoPattern[wpLabel] || 0) + 1;
+        });
+      }
+      if (e.results && e.results.indexOf('引戻し') !== -1) hikimodoshi++;
+      if (e.results && e.results.indexOf('at直撃') !== -1) atChokugeki++;
+    });
+    function toList(map) {
+      return Object.keys(map).map(function (label) { return { label: label, count: map[label] }; });
+    }
+    return {
+      groups: [
+        { title: 'BIG終了画面', items: toList(bigScreen) },
+        { title: 'at終了画面', items: toList(atScreen) },
+        { title: 'エピソードボーナスの示唆', items: toList(epibo) },
+        { title: 'エンディング中のカード示唆', items: toList(cards) },
+        { title: 'ストーリーの話数の示唆', items: toList(storyOrder) },
+        { title: 'キャラ紹介の示唆', items: toList(embryoPattern) }
+      ],
+      hikimodoshi: hikimodoshi,
+      atChokugeki: atChokugeki
+    };
+  }
+
   // --- 要素参照 ---
   var elListView = document.getElementById('view-list');
   var elDetailView = document.getElementById('view-detail');
@@ -1555,6 +1665,34 @@
   var elDInvestCount = document.getElementById('d-invest-count');
   var elDInvestTotal = document.getElementById('d-invest-total');
   var elEntryList = document.getElementById('entry-list');
+  var elSuggestionSummary = document.getElementById('suggestion-summary');
+  var elSuggestionSummaryBody = document.getElementById('suggestion-summary-body');
+  var SUGGESTION_SUMMARY_OPEN_KEY = 'magireko.suggestionSummaryOpen';
+  function isSuggestionSummaryOpen() {
+    var v = localStorage.getItem(SUGGESTION_SUMMARY_OPEN_KEY);
+    return v === null ? true : v === '1';
+  }
+  elSuggestionSummary.classList.toggle('closed', !isSuggestionSummaryOpen());
+  document.getElementById('suggestion-summary-toggle').addEventListener('click', function () {
+    var open = !isSuggestionSummaryOpen();
+    localStorage.setItem(SUGGESTION_SUMMARY_OPEN_KEY, open ? '1' : '0');
+    elSuggestionSummary.classList.toggle('closed', !open);
+  });
+  function renderSuggestionSummary(visit) {
+    var summary = visitSuggestionSummary(visit);
+    var html = '';
+    summary.groups.forEach(function (g) {
+      if (!g.items.length) return;
+      html += '<div class="suggestion-group"><div class="suggestion-group-title">' + g.title + '</div>';
+      g.items.forEach(function (item) {
+        html += '<div class="suggestion-line">' + item.label + ' ×' + item.count + '回</div>';
+      });
+      html += '</div>';
+    });
+    html += '<div class="suggestion-simple-row"><span>引き戻し回数</span><span>' + summary.hikimodoshi + '回</span></div>';
+    html += '<div class="suggestion-simple-row"><span>at直撃回数</span><span>' + summary.atChokugeki + '回</span></div>';
+    elSuggestionSummaryBody.innerHTML = html;
+  }
 
   // スイカ/CZ/CZ成功のタップカウンター(来店ごとに保持)
   function changeCounter(key, delta) {
@@ -1713,6 +1851,8 @@
     elDInvestRate.value = String(invest.rate);
     elDInvestCount.textContent = invest.count || 0;
     elDInvestTotal.innerHTML = '＝ ' + (invest.rate * (invest.count || 0)) + '枚 <span class="invest-total-label">(使用枚数)</span>';
+
+    renderSuggestionSummary(v);
 
     elEntryList.innerHTML = '';
     var entryNum = 0;
