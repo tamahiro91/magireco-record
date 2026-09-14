@@ -128,9 +128,10 @@
     color: var(--sub);
     margin-bottom: 6px;
   }
-  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  /* グリッドのauto行サイズは空セル(コンテンツなし)の高さを正しく計算しないことがあるため、
+     行の高さはaspect-ratio/padding手法に頼らず固定pxで確保する */
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 48px; gap: 4px; }
   .calendar-day {
-    aspect-ratio: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -572,7 +573,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14s</div>
+    <div class="app-version">v2026-09-14t</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
