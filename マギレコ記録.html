@@ -305,10 +305,11 @@
   .entry .tag {
     flex-shrink: 0;
     box-sizing: border-box;
+    width: 72px;
     text-align: center;
     font-size: 11px;
     font-weight: 700;
-    padding: 3px 10px;
+    padding: 3px 6px;
     border-radius: 999px;
     color: #000;
     white-space: nowrap;
@@ -321,16 +322,11 @@
   .tag.エピボ { background: var(--epibo); }
   .tag.引戻し { background: var(--hikimodoshi); }
   .tag.at直撃 { background: var(--chokugeki); }
-  .tag.エンブリオ { background: var(--embryo); }
+  .tag.エンブリオ { background: var(--embryo); font-size: 9.5px; }
   .tag.ドッペル { background: var(--doppel); }
   .tag.アリナ { background: var(--arina); }
   .tag.AT { background: var(--at); }
   .tag.メモ { background: var(--memo); color: #000; }
-  .tag.帯青 { background: var(--band-blue); }
-  .tag.帯黄 { background: var(--band-yellow); }
-  .tag.帯緑 { background: var(--band-green); }
-  .tag.帯赤 { background: var(--band-red); color: #fff; }
-  .tag.帯虹 { background: linear-gradient(90deg, #fa5252, #ffe066, #51cf66, #4dabf7, #b98bff); }
   .entry .entry-num { flex-shrink: 0; width: 16px; text-align: center; font-size: 13px; font-weight: 700; color: var(--sub); margin-top: 4px; }
   .entry .tags { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
   .entry .body { flex: 1; min-width: 0; }
@@ -543,7 +539,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14l</div>
+    <div class="app-version">v2026-09-14m</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1518,7 +1514,6 @@
       var tags = (e.results || []).map(function (r) {
         return '<span class="tag ' + r + '">' + r + '</span>';
       });
-      if (e.bandColor) tags.push('<span class="tag 帯' + e.bandColor + '">' + e.bandColor + '</span>');
       if (e.atWin) tags.push('<span class="tag AT">at当選</span>');
       var isMemo = !tags.length;
       if (isMemo) tags.push('<span class="tag メモ">メモ</span>');
