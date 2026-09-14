@@ -648,7 +648,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14za</div>
+    <div class="app-version">v2026-09-14zb</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1192,7 +1192,21 @@
   var WEE_TRIGGER_OPTIONS = ['ゲーム数', '小役当選'];
   var WEE_STORY_TYPES = ['ストーリー', 'SP', '神浜', 'マギアボーナス'];
   var WEE_NORMAL_NUMBERS = ['1', '2', '3', '4', '5', '6', '7', '8'];
-  var WEE_SP_COLORS = ['青', '黄', '緑'];
+  // SPストーリーごとの示唆(コネクトチャンスアイコン色の期待値)
+  var WEE_SP_STORY_SUGGESTION = {
+    '強くなんかねーだろ': 'コネクトチャンスアイコン【青】以上スタート',
+    'そんなのレナに決まってる': 'コネクトチャンスアイコン【青】以上スタート',
+    '私はあの日、何も選ばなかった': 'コネクトチャンスアイコン【青】以上スタート',
+    '本当のマミさんは': 'コネクトチャンスアイコン【青】以上スタート',
+    'だから友達になろう': 'コネクトチャンスアイコン【黄】以上スタート',
+    'みんなでなら魔法少女になれる気がしたの': 'コネクトチャンスアイコン【緑】以上スタート'
+  };
+  var WEE_SP_STORY_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
+    Object.keys(WEE_SP_STORY_SUGGESTION).map(function (v) { return { v: v, text: v + '(' + WEE_SP_STORY_SUGGESTION[v] + ')' }; })
+  );
+  function spStoryShortLabel(v) {
+    return v ? (v + '(' + WEE_SP_STORY_SUGGESTION[v] + ')') : '未選択';
+  }
   var WEE_CONNECT_COLORS = ['白', '青', '黄', '緑', '赤', '虹'];
   function createEmptyWeeChance() {
     return {
@@ -1952,7 +1966,7 @@
             if (c.settingPattern) weeLine1.push(embryoPatternShortLabel(c.settingPattern));
             else if (c.normalNumber) weeLine1.push('ストーリー' + c.normalNumber);
           } else if (c.storyType === 'SP' && c.spColor) {
-            weeLine1.push('SP' + c.spColor);
+            weeLine1.push('SP: ' + spStoryShortLabel(c.spColor));
           } else if (c.storyType === 'マギアボーナス' && typeof c.magiaStock === 'number') {
             weeLine1.push('ストック' + c.magiaStock);
           }
@@ -2411,10 +2425,7 @@
           }));
         }
       } else if (chance.storyType === 'SP') {
-        card.appendChild(buildToggleField('SP色', WEE_SP_COLORS, chance.spColor, function (v) {
-          chance.spColor = (chance.spColor === v) ? null : v;
-          renderWeeChances();
-        }));
+        card.appendChild(buildOptionsPickerField('SPストーリー', WEE_SP_STORY_OPTIONS, spStoryShortLabel, chance, 'spColor', renderWeeChances));
       } else if (chance.storyType === 'マギアボーナス') {
         card.appendChild(buildNumberField('うぃチャンスストック数', chance, 'magiaStock', '例: 3'));
       }
@@ -2430,6 +2441,7 @@
       delBtn.className = 'ghost-btn wee-chance-delete';
       delBtn.textContent = 'このうぃチャンスを削除';
       delBtn.addEventListener('click', function () {
+        if (!confirm('このうぃチャンスを削除しますか？')) return;
         state.weeChances.splice(idx, 1);
         renderWeeChances();
       });
@@ -2476,6 +2488,25 @@
     btn.textContent = embryoPatternShortLabel(obj[key]) + ' ▾';
     btn.addEventListener('click', function () {
       openPicker(labelText, EMBRYO_PATTERN_OPTIONS, obj[key] || '', function (v) {
+        obj[key] = v || null;
+        onSelect();
+      });
+    });
+    field.appendChild(btn);
+    return field;
+  }
+  function buildOptionsPickerField(labelText, options, shortLabelFn, obj, key, onSelect) {
+    var field = document.createElement('div');
+    field.className = 'field';
+    var label = document.createElement('label');
+    label.textContent = labelText;
+    field.appendChild(label);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'picker-trigger';
+    btn.textContent = shortLabelFn(obj[key]) + ' ▾';
+    btn.addEventListener('click', function () {
+      openPicker(labelText, options, obj[key] || '', function (v) {
         obj[key] = v || null;
         onSelect();
       });
