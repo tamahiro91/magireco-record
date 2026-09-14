@@ -441,6 +441,7 @@
   .band-select button[data-v="緑"] { background: var(--band-green); }
   .band-select button[data-v="赤"] { background: var(--band-red); color: #fff; }
   .band-select button[data-v="虹"] { background: linear-gradient(90deg, #fa5252, #ffe066, #51cf66, #4dabf7, #b98bff); }
+  .band-select button[data-v="白"] { background: #ffffff; }
   .band-select button.active { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); }
   .band-bonus { display: flex; align-items: center; gap: 6px; }
   .band-bonus input {
@@ -465,6 +466,8 @@
   .wee-chance-card .field { margin-bottom: 10px; }
   .wee-chance-card .field:last-child { margin-bottom: 0; }
   .wee-chance-card .field label { font-size: 12px; }
+  .wee-chance-card .field-row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .wee-chance-card .field-row .field { flex: 1; margin-bottom: 0; min-width: 0; }
   .wee-chance-delete { color: var(--danger); border-color: var(--danger); width: 100%; margin-top: 4px; }
   .picker-trigger {
     width: 100%;
@@ -537,7 +540,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14i</div>
+    <div class="app-version">v2026-09-14j</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1013,7 +1016,7 @@
 
   // うぃチャンス(at中のストーリー示唆)の選択肢
   var WEE_TRIGGER_OPTIONS = ['ゲーム数', '小役当選'];
-  var WEE_STORY_TYPES = ['ノーマル', 'SP', '神浜', 'マギアボーナス'];
+  var WEE_STORY_TYPES = ['ストーリー', 'SP', '神浜', 'マギアボーナス'];
   var WEE_NORMAL_NUMBERS = ['1', '2', '3', '4', '5', '6', '7', '8'];
   var WEE_SP_COLORS = ['青', '黄', '緑'];
   var WEE_CONNECT_COLORS = ['白', '青', '黄', '緑', '赤', '虹'];
@@ -1110,6 +1113,12 @@
           e.doppelChances = [];
         }
         delete e.doppelType; delete e.doppelTriggers; delete e.doppelBonus; delete e.doppelPattern;
+      }
+      // うぃチャンスの種別「ノーマル」だった旧名称を「ストーリー」に移行する
+      if (Array.isArray(e.weeChances)) {
+        e.weeChances.forEach(function (c) {
+          if (c.storyType === 'ノーマル') c.storyType = 'ストーリー';
+        });
       }
       return e;
     }
@@ -1916,6 +1925,30 @@
     field.appendChild(input);
     return field;
   }
+  // コネクト色は帯色(band-select)と同じ配色ボタンで表示する
+  function buildConnectColorField(chance) {
+    var field = document.createElement('div');
+    field.className = 'field';
+    var label = document.createElement('label');
+    label.textContent = 'コネクト色';
+    field.appendChild(label);
+    var group = document.createElement('div');
+    group.className = 'band-select';
+    WEE_CONNECT_COLORS.forEach(function (opt) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.v = opt;
+      btn.textContent = opt;
+      if (opt === chance.connectColor) btn.classList.add('active');
+      btn.addEventListener('click', function () {
+        chance.connectColor = (chance.connectColor === opt) ? null : opt;
+        renderWeeChances();
+      });
+      group.appendChild(btn);
+    });
+    field.appendChild(group);
+    return field;
+  }
   var weeChancesList = document.getElementById('wee-chances-list');
   function renderWeeChances() {
     weeChancesList.innerHTML = '';
@@ -1927,20 +1960,23 @@
       title.textContent = 'うぃチャンス' + (idx + 1);
       card.appendChild(title);
 
-      card.appendChild(buildToggleField('当選契機', WEE_TRIGGER_OPTIONS, chance.trigger, function (v) {
+      var triggerRow = document.createElement('div');
+      triggerRow.className = 'field-row';
+      triggerRow.appendChild(buildToggleField('当選契機', WEE_TRIGGER_OPTIONS, chance.trigger, function (v) {
         chance.trigger = (chance.trigger === v) ? null : v;
         renderWeeChances();
       }));
       if (chance.trigger === 'ゲーム数') {
-        card.appendChild(buildNumberField('ゲーム数', chance, 'triggerGame', '例: 480'));
+        triggerRow.appendChild(buildNumberField('ゲーム数', chance, 'triggerGame', '例: 480'));
       }
+      card.appendChild(triggerRow);
 
       card.appendChild(buildToggleField('種別', WEE_STORY_TYPES, chance.storyType, function (v) {
         chance.storyType = (chance.storyType === v) ? null : v;
         renderWeeChances();
       }));
-      if (chance.storyType === 'ノーマル') {
-        card.appendChild(buildToggleField('ノーマル番号', WEE_NORMAL_NUMBERS, chance.normalNumber ? String(chance.normalNumber) : null, function (v) {
+      if (chance.storyType === 'ストーリー') {
+        card.appendChild(buildToggleField('ストーリー番号', WEE_NORMAL_NUMBERS, chance.normalNumber ? String(chance.normalNumber) : null, function (v) {
           chance.normalNumber = (String(chance.normalNumber) === v) ? null : Number(v);
           renderWeeChances();
         }));
@@ -1952,14 +1988,12 @@
       } else if (chance.storyType === 'マギアボーナス') {
         card.appendChild(buildNumberField('うぃチャンスストック数', chance, 'magiaStock', '例: 3'));
       }
-      if (chance.storyType && chance.storyType !== 'マギアボーナス') {
-        card.appendChild(buildNumberField('上乗せゲーム数', chance, 'bonusGame', '例: 15'));
-      }
 
-      card.appendChild(buildToggleField('コネクト色', WEE_CONNECT_COLORS, chance.connectColor, function (v) {
-        chance.connectColor = (chance.connectColor === v) ? null : v;
-        renderWeeChances();
-      }));
+      card.appendChild(buildConnectColorField(chance));
+
+      if (chance.storyType && chance.storyType !== 'マギアボーナス') {
+        card.appendChild(buildNumberField('コネクト上乗せゲーム数', chance, 'bonusGame', '例: 15'));
+      }
 
       var delBtn = document.createElement('button');
       delBtn.type = 'button';
