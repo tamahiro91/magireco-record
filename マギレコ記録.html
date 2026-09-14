@@ -113,7 +113,39 @@
   .summary .card .label { font-size: 11px; color: var(--sub); margin-bottom: 4px; }
   .summary .card .value { font-size: 18px; font-weight: 700; }
   .summary .card .sub { font-size: 11px; color: var(--sub); margin-top: 2px; white-space: nowrap; }
+  .summary .calendar-btn { flex: 0 0 56px; font-size: 22px; }
   .global-stats-scroll { overflow-x: auto; margin-bottom: 16px; -webkit-overflow-scrolling: touch; }
+
+  /* カレンダー */
+  .calendar-nav { display: flex; align-items: center; justify-content: space-between; margin: 12px 0; }
+  .calendar-nav .icon-btn { font-size: 20px; padding: 6px 16px; }
+  .calendar-month-label { font-size: 17px; font-weight: 700; }
+  .calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-size: 12px;
+    color: var(--sub);
+    margin-bottom: 6px;
+  }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .calendar-day {
+    aspect-ratio: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--panel);
+    font-size: 14px;
+    cursor: default;
+  }
+  .calendar-day.empty { background: transparent; }
+  .calendar-day.has-record { cursor: pointer; }
+  .calendar-day.has-record:active { background: var(--panel2); }
+  .calendar-day.today { border: 1px solid var(--accent); }
+  .calendar-day .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 3px; }
   .global-stats-row { display: flex; gap: 10px; }
   .global-stat-col {
     flex: 1 1 0;
@@ -540,11 +572,12 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14r</div>
+    <div class="app-version">v2026-09-14s</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
       <div class="card"><div class="label">通常総ゲーム数</div><div class="value" id="sum-game">0</div><div class="sub" id="sum-game-avg"></div></div>
+      <button class="icon-btn calendar-btn" id="btn-calendar" aria-label="遊技履歴カレンダー">📅</button>
     </div>
     <div class="global-stats-scroll">
       <div class="global-stats-row">
@@ -637,6 +670,23 @@
     </div>
 
     <div id="entry-list"></div>
+  </div>
+
+  <div id="view-calendar" hidden>
+    <header>
+      <button class="icon-btn" id="btn-calendar-back">← 一覧</button>
+      <h1>カレンダー</h1>
+      <div style="width:56px;"></div>
+    </header>
+    <div class="calendar-nav">
+      <button class="icon-btn" id="btn-cal-prev">‹</button>
+      <div class="calendar-month-label" id="cal-month-label"></div>
+      <button class="icon-btn" id="btn-cal-next">›</button>
+    </div>
+    <div class="calendar-weekdays">
+      <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+    </div>
+    <div class="calendar-grid" id="calendar-grid"></div>
   </div>
 
   <button class="fab" id="btn-fab">+</button>
@@ -899,7 +949,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null };
   // 設定示唆パターン(1〜9)ごとの示唆レベル
   var EMBRYO_PATTERN_LEVEL = {
     '1': '基本', '2': '基本', '3': '基本', '4': '基本',
@@ -1303,6 +1353,7 @@
   // --- 要素参照 ---
   var elListView = document.getElementById('view-list');
   var elDetailView = document.getElementById('view-detail');
+  var elCalendarView = document.getElementById('view-calendar');
   var elVisitList = document.getElementById('visit-list');
   var elEmptyMsg = document.getElementById('empty-msg');
   var elSearch = document.getElementById('search');
@@ -1460,6 +1511,7 @@
   function openDetail(id) {
     state.currentVisitId = id;
     elListView.hidden = true;
+    elCalendarView.hidden = true;
     elDetailView.hidden = false;
     renderDetail();
   }
@@ -1470,6 +1522,78 @@
     renderList();
   }
   document.getElementById('btn-back').addEventListener('click', closeDetail);
+
+  // --- 遊技履歴カレンダー ---
+  function openCalendar() {
+    var today = new Date();
+    state.calYear = today.getFullYear();
+    state.calMonth = today.getMonth();
+    elListView.hidden = true;
+    elCalendarView.hidden = false;
+    renderCalendar();
+  }
+  function closeCalendar() {
+    elCalendarView.hidden = true;
+    elListView.hidden = false;
+  }
+  function renderCalendar() {
+    var year = state.calYear, month = state.calMonth;
+    document.getElementById('cal-month-label').textContent = year + '年' + (month + 1) + '月';
+    var visitsByDate = {};
+    state.visits.forEach(function (v) {
+      if (!v.date) return;
+      (visitsByDate[v.date] = visitsByDate[v.date] || []).push(v);
+    });
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+    var startWeekday = new Date(year, month, 1).getDay();
+    var grid = document.getElementById('calendar-grid');
+    grid.innerHTML = '';
+    for (var i = 0; i < startWeekday; i++) {
+      var empty = document.createElement('div');
+      empty.className = 'calendar-day empty';
+      grid.appendChild(empty);
+    }
+    var todayStrVal = todayStr();
+    for (var d = 1; d <= daysInMonth; d++) {
+      var dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      var cell = document.createElement('div');
+      cell.className = 'calendar-day';
+      if (dateStr === todayStrVal) cell.classList.add('today');
+      var num = document.createElement('div');
+      num.textContent = d;
+      cell.appendChild(num);
+      var dayVisits = visitsByDate[dateStr];
+      if (dayVisits && dayVisits.length) {
+        cell.classList.add('has-record');
+        var dot = document.createElement('div');
+        dot.className = 'dot';
+        cell.appendChild(dot);
+        cell.addEventListener('click', function (visits) {
+          return function () {
+            if (visits.length === 1) {
+              openDetail(visits[0].id);
+            } else {
+              var options = visits.map(function (v) { return { v: v.id, text: v.store || '(店舗名未設定)' }; });
+              openPicker('来店を選択', options, '', function (id) { openDetail(id); });
+            }
+          };
+        }(dayVisits));
+      }
+      grid.appendChild(cell);
+    }
+  }
+  document.getElementById('btn-calendar').addEventListener('click', openCalendar);
+  document.getElementById('btn-calendar-back').addEventListener('click', closeCalendar);
+  document.getElementById('btn-cal-prev').addEventListener('click', function () {
+    state.calMonth--;
+    if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
+    renderCalendar();
+  });
+  document.getElementById('btn-cal-next').addEventListener('click', function () {
+    state.calMonth++;
+    if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
+    renderCalendar();
+  });
 
   function renderDetail() {
     var v = currentVisit();
