@@ -477,6 +477,16 @@
     cursor: pointer;
   }
   .picker-option.active { border-color: var(--accent); color: var(--accent); }
+  .suggestion-box {
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--accent);
+  }
   .check-row {
     display: flex;
     align-items: center;
@@ -513,7 +523,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-14e</div>
+    <div class="app-version">v2026-09-14f</div>
 
     <div class="summary">
       <div class="card"><div class="label">来店回数</div><div class="value" id="sum-visits">0</div></div>
@@ -674,6 +684,29 @@
         <button type="button" data-v="ドッペル">ドッペル</button>
         <button type="button" data-v="アリナ">アリナ</button>
       </div>
+    </div>
+    <div class="field" id="field-epibo-char" hidden>
+      <label>キャラクター</label>
+      <div class="cat-select" id="e-epibo-char">
+        <button type="button" data-v="やちよ">やちよ</button>
+        <button type="button" data-v="鶴乃">鶴乃</button>
+        <button type="button" data-v="さな">さな</button>
+        <button type="button" data-v="フェリシア">フェリシア</button>
+        <button type="button" data-v="黒江">黒江</button>
+        <button type="button" data-v="いろは">いろは</button>
+        <button type="button" data-v="うい">うい</button>
+      </div>
+    </div>
+    <div class="field" id="field-epibo-kuroe-case" hidden>
+      <label>黒江の状況</label>
+      <div class="cat-select" id="e-epibo-kuroe-case">
+        <button type="button" data-v="成功時">チャレンジ成功時</button>
+        <button type="button" data-v="以外">チャレンジ以外</button>
+      </div>
+    </div>
+    <div class="field" id="field-epibo-suggestion" hidden>
+      <label>示唆/特徴</label>
+      <div class="suggestion-box" id="e-epibo-suggestion"></div>
     </div>
     <div class="field" id="field-doppel-chances" hidden>
       <label>ドッペルチャンス</label>
@@ -841,7 +874,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [] };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null };
   // 設定示唆パターン(1〜9)ごとの示唆レベル
   var EMBRYO_PATTERN_LEVEL = {
     '1': '基本', '2': '基本', '3': '基本', '4': '基本',
@@ -972,6 +1005,25 @@
   // ドッペルチャンス(ドッペル当選ごとの内訳)の選択肢
   var DOPPEL_TYPES = ['環いろは', '七海やちよ', '黒江', 'シークレット'];
   var DOPPEL_TRIGGER_OPTIONS = ['ストーリー当選', '神浜当選', '小役当選'];
+
+  // エピボで出現したキャラクターごとの示唆/特徴(黒江のみチャレンジ成功時/以外で文言が異なる)
+  var EPIBO_SUGGESTION = {
+    'やちよ': '設定2で出現しやすい',
+    '鶴乃': '設定3で出現しやすい',
+    'さな': '設定4・6で出現しやすい',
+    'フェリシア': '設定5で出現しやすい',
+    'いろは': 'ドッペルモード濃厚!?',
+    'うい': 'ロングフリーズ限定・ドッペルモード濃厚!?'
+  };
+  var EPIBO_KUROE_SUGGESTION = {
+    '成功時': '黒江チャレンジ成功時',
+    '以外': '黒江チャレンジ以外で出現すれば設定5・6の期待大!?'
+  };
+  function epiboSuggestionText(char, kuroeCase) {
+    if (!char) return '';
+    if (char === '黒江') return kuroeCase ? EPIBO_KUROE_SUGGESTION[kuroeCase] : '';
+    return EPIBO_SUGGESTION[char] || '';
+  }
   function createEmptyDoppelChance() {
     return { id: uid(), doppelType: null, triggers: [], bonusGame: null, pattern: null };
   }
@@ -1467,6 +1519,11 @@
       }
       if (e.atScreen) extraLines.push('at画面: ' + e.atScreen + '(' + AT_SCREEN_SUGGESTION[e.atScreen] + ')');
       if (e.storyOrderPattern) extraLines.push('順番示唆: ' + storyOrderShortLabel(e.storyOrderPattern));
+      if (e.epiboChar) {
+        var epiboCharText = e.epiboChar + (e.epiboKuroeCase ? '(' + (e.epiboKuroeCase === '成功時' ? 'チャレンジ成功時' : 'チャレンジ以外') + ')' : '');
+        var epiboSuggestionEntryText = epiboSuggestionText(e.epiboChar, e.epiboKuroeCase);
+        extraLines.push('キャラクター: ' + epiboCharText + (epiboSuggestionEntryText ? '｜' + epiboSuggestionEntryText : ''));
+      }
       extraLines.forEach(function (text) {
         var lineDiv = document.createElement('div');
         lineDiv.textContent = text;
@@ -1649,6 +1706,10 @@
   var fieldBand = document.getElementById('field-band');
   var fieldDoppelChances = document.getElementById('field-doppel-chances');
   var fieldAtWin = document.getElementById('field-atwin');
+  var fieldEpiboChar = document.getElementById('field-epibo-char');
+  var fieldEpiboKuroeCase = document.getElementById('field-epibo-kuroe-case');
+  var fieldEpiboSuggestion = document.getElementById('field-epibo-suggestion');
+  var eEpiboSuggestion = document.getElementById('e-epibo-suggestion');
   var fieldStartGame = document.getElementById('field-start-game');
   var fieldEmbryo = document.getElementById('field-embryo');
   var fieldEmbryoGameCount = document.getElementById('field-embryo-game-count');
@@ -1661,6 +1722,8 @@
     var hasEmbryo = state.selectedResults.indexOf('エンブリオ') !== -1;
     var hasDoppel = state.selectedResults.indexOf('ドッペル') !== -1;
     var hasArina = state.selectedResults.indexOf('アリナ') !== -1;
+    var hasEpibo = state.selectedResults.indexOf('エピボ') !== -1;
+    var isKuroe = hasEpibo && state.selectedEpiboChar === '黒江';
     var hasAnyTrigger = state.selectedEmbryoTriggers.length > 0;
     var isKamihama = state.selectedEmbryoTriggers.indexOf('神浜当選') !== -1;
     // ドッペル選択時はat当選の概念自体が不要なため、チェックを外してチェックボックスも隠す
@@ -1672,6 +1735,10 @@
     fieldWeeChances.hidden = !eAtWin.checked;
     fieldDoppelChances.hidden = !hasDoppel;
     fieldAtWin.hidden = hasDoppel;
+    fieldEpiboChar.hidden = !hasEpibo;
+    fieldEpiboKuroeCase.hidden = !isKuroe;
+    fieldEpiboSuggestion.hidden = !hasEpibo || !epiboSuggestionText(state.selectedEpiboChar, state.selectedEpiboKuroeCase);
+    eEpiboSuggestion.textContent = epiboSuggestionText(state.selectedEpiboChar, state.selectedEpiboKuroeCase);
     fieldBand.hidden = !hasEmbryo;
     fieldStartGame.hidden = !(hasEmbryo || hasArina);
     fieldEmbryo.hidden = !hasEmbryo;
@@ -1965,6 +2032,8 @@
   var bandButtons = setupSingleSelect('#e-band button', 'selectedBand');
   var embryoBellButtons = setupSingleSelect('#e-embryo-bell button', 'selectedEmbryoBell');
   var embryoConnectButtons = setupSingleSelect('#e-embryo-connect button', 'selectedEmbryoConnect');
+  var epiboCharButtons = setupSingleSelect('#e-epibo-char button', 'selectedEpiboChar', function () { updateConditionalFields(); });
+  var epiboKuroeCaseButtons = setupSingleSelect('#e-epibo-kuroe-case button', 'selectedEpiboKuroeCase', function () { updateConditionalFields(); });
 
   // 複数選択(ON/OFFをそれぞれ独立して切り替え)のボタングループを作る共通ヘルパー
   function setupMultiSelect(selector, stateKey, onChange) {
@@ -2000,6 +2069,8 @@
       state.selectedAtScreen = e.atScreen || null;
       state.selectedBand = e.bandColor || null;
       state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); });
+      state.selectedEpiboChar = e.epiboChar || null;
+      state.selectedEpiboKuroeCase = e.epiboKuroeCase || null;
       state.selectedEmbryoTriggers = (e.embryoTriggers || []).slice();
       state.selectedEmbryoBell = (e.embryoBellLevel != null) ? String(e.embryoBellLevel) : null;
       state.selectedEmbryoConnect = e.embryoConnect || null;
@@ -2026,6 +2097,8 @@
       state.selectedAtScreen = null;
       state.selectedBand = null;
       state.doppelChances = [];
+      state.selectedEpiboChar = null;
+      state.selectedEpiboKuroeCase = null;
       state.selectedEmbryoTriggers = [];
       state.selectedEmbryoBell = null;
       state.selectedEmbryoConnect = null;
@@ -2049,6 +2122,8 @@
     embryoTriggerButtons.forEach(function (b) { b.classList.toggle('active', state.selectedEmbryoTriggers.indexOf(b.dataset.v) !== -1); });
     embryoBellButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoBell); });
     embryoConnectButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoConnect); });
+    epiboCharButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEpiboChar); });
+    epiboKuroeCaseButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEpiboKuroeCase); });
     eModeTrigger.textContent = modeShortText(state.selectedMode) + ' ▾';
     eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(state.selectedEmbryoPattern) + ' ▾';
     eBigVoiceTrigger.textContent = bigVoiceFullLabel(state.selectedBigVoice, eAtWin.checked) + ' ▾';
@@ -2100,6 +2175,10 @@
     // ドッペルが選ばれていない時はドッペル関連の項目を保存しない
     var hasDoppel = results.indexOf('ドッペル') !== -1;
     var doppelChances = hasDoppel ? state.doppelChances.map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); }) : [];
+    // エピボが選ばれていない時はキャラクター関連の項目を保存しない
+    var hasEpibo = results.indexOf('エピボ') !== -1;
+    var epiboChar = hasEpibo ? state.selectedEpiboChar : null;
+    var epiboKuroeCase = (hasEpibo && epiboChar === '黒江') ? state.selectedEpiboKuroeCase : null;
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
@@ -2107,13 +2186,15 @@
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
       e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances;
+      e.epiboChar = epiboChar; e.epiboKuroeCase = epiboKuroeCase;
     } else {
       v.entries.push({
         id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
         bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
-        storyOrderPattern: storyOrderPattern, doppelChances: doppelChances
+        storyOrderPattern: storyOrderPattern, doppelChances: doppelChances,
+        epiboChar: epiboChar, epiboKuroeCase: epiboKuroeCase
       });
     }
     save();
