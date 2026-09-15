@@ -649,7 +649,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-15h</div>
+    <div class="app-version">v2026-09-15i</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -956,8 +956,9 @@
       </div>
     </div>
     <div class="field" id="field-at-screen" hidden>
-      <label>at終了後の画面</label>
-      <button type="button" class="picker-trigger" id="e-at-screen-trigger">未選択 ▾</button>
+      <label>at終了画面</label>
+      <div id="at-screens-list"></div>
+      <button type="button" class="ghost-btn" id="at-screen-add">＋ at終了画面を追加</button>
     </div>
     <div class="field" id="field-story-order" hidden>
       <label>ストーリー順番示唆</label>
@@ -1039,7 +1040,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, selectedAtScreen: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
   // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
   var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
   // エンディング中に出現するカードとその設定示唆(画像はユーザー提供のスクリーンショットから切り出し)
@@ -1321,6 +1322,11 @@
         e.cardCounts = cardCounts;
         delete e.cardChances;
       }
+      // at終了画面が単一選択(文字列)だった旧形式を複数選択(配列)に変換する
+      if (!Array.isArray(e.atScreens)) {
+        e.atScreens = e.atScreen ? [e.atScreen] : [];
+        delete e.atScreen;
+      }
       return e;
     }
 
@@ -1513,9 +1519,11 @@
         var bsLabel = e.bigScreen + (BIG_SCREEN_SUGGESTION[e.bigScreen] ? '(' + BIG_SCREEN_SUGGESTION[e.bigScreen] + ')' : '');
         bigScreen[bsLabel] = (bigScreen[bsLabel] || 0) + 1;
       }
-      if (e.atScreen) {
-        var asLabel = e.atScreen + '(' + AT_SCREEN_SUGGESTION[e.atScreen] + ')';
-        atScreen[asLabel] = (atScreen[asLabel] || 0) + 1;
+      if (e.atScreens && e.atScreens.length) {
+        e.atScreens.forEach(function (screen) {
+          var asLabel = screen + '(' + AT_SCREEN_SUGGESTION[screen] + ')';
+          atScreen[asLabel] = (atScreen[asLabel] || 0) + 1;
+        });
       }
       var epiboText = epiboSuggestionText(e.epiboChar, e.epiboKuroeCase);
       if (e.epiboChar && epiboText) {
@@ -1953,9 +1961,12 @@
         var screenSuggestion = BIG_SCREEN_SUGGESTION[e.bigScreen];
         extraLines.push('画面: ' + e.bigScreen + (screenSuggestion ? '(' + screenSuggestion + ')' : ''));
       }
-      if (e.atScreen) {
-        extraLines.push('at終了画面: ' + e.atScreen);
-        extraLines.push('(' + AT_SCREEN_SUGGESTION[e.atScreen] + ')');
+      if (e.atScreens && e.atScreens.length) {
+        e.atScreens.forEach(function (screen, si) {
+          var prefix = e.atScreens.length > 1 ? ('at終了画面' + (si + 1)) : 'at終了画面';
+          extraLines.push(prefix + ': ' + screen);
+          extraLines.push('(' + AT_SCREEN_SUGGESTION[screen] + ')');
+        });
       }
       if (e.storyOrderPattern) extraLines.push('順番示唆: ' + storyOrderShortLabel(e.storyOrderPattern));
       if (e.weeChances && e.weeChances.length) {
@@ -2162,7 +2173,6 @@
   var eEmbryoPatternTrigger = document.getElementById('e-embryo-pattern-trigger');
   var eBigVoiceTrigger = document.getElementById('e-big-voice-trigger');
   var eBigScreenTrigger = document.getElementById('e-big-screen-trigger');
-  var eAtScreenTrigger = document.getElementById('e-at-screen-trigger');
   var eStoryOrderTrigger = document.getElementById('e-story-order-trigger');
   var eAtWin = document.getElementById('e-atwin');
   var eAtMemo = document.getElementById('e-atmemo');
@@ -2322,12 +2332,6 @@
     openPicker('ビッグ終了後の画面', BIG_SCREEN_OPTIONS, state.selectedBigScreen || '', function (v) {
       state.selectedBigScreen = v || null;
       eBigScreenTrigger.textContent = bigScreenFullLabel(v) + ' ▾';
-    });
-  });
-  eAtScreenTrigger.addEventListener('click', function () {
-    openPicker('at終了後の画面', AT_SCREEN_OPTIONS, state.selectedAtScreen || '', function (v) {
-      state.selectedAtScreen = v || null;
-      eAtScreenTrigger.textContent = atScreenFullLabel(v) + ' ▾';
     });
   });
   eStoryOrderTrigger.addEventListener('click', function () {
@@ -2589,6 +2593,52 @@
     renderDoppelChances();
   });
 
+  // at終了画面(継続時に複数回見られるため、うぃチャンスと同様に複数追加できる)
+  var atScreensList = document.getElementById('at-screens-list');
+  function renderAtScreens() {
+    atScreensList.innerHTML = '';
+    state.atScreens.forEach(function (val, idx) {
+      var card = document.createElement('div');
+      card.className = 'wee-chance-card';
+      var title = document.createElement('div');
+      title.className = 'wee-title';
+      title.textContent = 'at終了画面' + (idx + 1);
+      card.appendChild(title);
+
+      var field = document.createElement('div');
+      field.className = 'field';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'picker-trigger';
+      btn.textContent = atScreenFullLabel(val) + ' ▾';
+      btn.addEventListener('click', function () {
+        openPicker('at終了画面', AT_SCREEN_OPTIONS, val || '', function (v) {
+          state.atScreens[idx] = v || null;
+          renderAtScreens();
+        });
+      });
+      field.appendChild(btn);
+      card.appendChild(field);
+
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'ghost-btn wee-chance-delete';
+      delBtn.textContent = 'このat終了画面を削除';
+      delBtn.addEventListener('click', function () {
+        if (!confirm('このat終了画面を削除しますか？')) return;
+        state.atScreens.splice(idx, 1);
+        renderAtScreens();
+      });
+      card.appendChild(delBtn);
+
+      atScreensList.appendChild(card);
+    });
+  }
+  document.getElementById('at-screen-add').addEventListener('click', function () {
+    state.atScreens.push(null);
+    renderAtScreens();
+  });
+
   // エンディング中に出現したカードの記録(12種固定グリッド、カードごとに+/-カウンター)
   var cardChancesGrid = document.getElementById('card-chances-grid');
   var fieldCardChancesSummary = document.getElementById('field-card-chances');
@@ -2704,7 +2754,7 @@
       state.selectedMode = e.mode || null;
       state.selectedBigVoice = e.bigVoice || null;
       state.selectedBigScreen = e.bigScreen || null;
-      state.selectedAtScreen = e.atScreen || null;
+      state.atScreens = (e.atScreens || []).slice();
       state.selectedBand = e.bandColor || null;
       state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); });
       state.cardCounts = Object.assign({}, e.cardCounts || {});
@@ -2733,7 +2783,7 @@
       state.selectedMode = null;
       state.selectedBigVoice = null;
       state.selectedBigScreen = null;
-      state.selectedAtScreen = null;
+      state.atScreens = [];
       state.selectedBand = null;
       state.doppelChances = [];
       state.cardCounts = {};
@@ -2768,10 +2818,10 @@
     eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(state.selectedEmbryoPattern) + ' ▾';
     eBigVoiceTrigger.textContent = bigVoiceFullLabel(state.selectedBigVoice, eAtWin.checked) + ' ▾';
     eBigScreenTrigger.textContent = bigScreenFullLabel(state.selectedBigScreen) + ' ▾';
-    eAtScreenTrigger.textContent = atScreenFullLabel(state.selectedAtScreen) + ' ▾';
     eStoryOrderTrigger.textContent = storyOrderShortLabel(state.selectedStoryOrder) + ' ▾';
     renderWeeChances();
     renderDoppelChances();
+    renderAtScreens();
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
     autoResizeTextarea(eAtMemo);
@@ -2793,7 +2843,7 @@
     var hasBig = results.indexOf('BIG') !== -1;
     var bigVoice = (hasBig || results.indexOf('エピボ') !== -1) ? state.selectedBigVoice : null;
     var bigScreen = hasBig ? state.selectedBigScreen : null;
-    var atScreen = (atWin || results.indexOf('エンブリオ') !== -1) ? state.selectedAtScreen : null;
+    var atScreens = (atWin || results.indexOf('エンブリオ') !== -1) ? state.atScreens.filter(Boolean) : [];
     // 帯色・初期ゲーム数・エンブリオが選ばれていない時は関連する選択を保存しない(表示と矛盾しないように)
     var hasEmbryo = results.indexOf('エンブリオ') !== -1;
     var hasArina = results.indexOf('アリナ') !== -1;
@@ -2824,7 +2874,7 @@
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
-      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreen = atScreen; e.bandColor = bandColor; e.bandBonus = bandBonus;
+      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreens = atScreens; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
       e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances; e.cardCounts = cardCounts;
@@ -2832,7 +2882,7 @@
     } else {
       v.entries.push({
         id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
-        bigVoice: bigVoice, bigScreen: bigScreen, atScreen: atScreen, bandColor: bandColor, bandBonus: bandBonus,
+        bigVoice: bigVoice, bigScreen: bigScreen, atScreens: atScreens, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
         storyOrderPattern: storyOrderPattern, doppelChances: doppelChances, cardCounts: cardCounts,
