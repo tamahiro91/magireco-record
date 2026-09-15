@@ -560,6 +560,7 @@
   .suggestion-summary-toggle .chevron { color: var(--sub); transition: transform 0.15s; }
   .suggestion-summary.closed .suggestion-summary-toggle .chevron { transform: rotate(-90deg); }
   .suggestion-summary.closed .suggestion-summary-body { display: none; }
+  .suggestion-summary.closed .card-grid { display: none; }
   .suggestion-summary-body {
     margin-top: 8px;
     background: var(--panel2);
@@ -648,7 +649,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-15f</div>
+    <div class="app-version">v2026-09-15g</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -934,8 +935,10 @@
       <label>設定示唆</label>
       <button type="button" class="picker-trigger" id="e-embryo-pattern-trigger">未選択 ▾</button>
     </div>
-    <div class="field" id="field-card-chances" hidden>
-      <label>エンディング中のカード</label>
+    <div class="field suggestion-summary" id="field-card-chances" hidden>
+      <button type="button" class="suggestion-summary-toggle" id="card-chances-toggle">
+        <span>エンディング中のカード</span><span class="chevron" id="card-chances-chevron">▾</span>
+      </button>
       <div class="card-grid" id="card-chances-grid"></div>
     </div>
     <div class="field" id="field-big-voice" hidden>
@@ -2588,6 +2591,18 @@
 
   // エンディング中に出現したカードの記録(12種固定グリッド、カードごとに+/-カウンター)
   var cardChancesGrid = document.getElementById('card-chances-grid');
+  var fieldCardChancesSummary = document.getElementById('field-card-chances');
+  var CARD_CHANCES_OPEN_KEY = 'magireko.cardChancesOpen';
+  function isCardChancesOpen() {
+    var v = localStorage.getItem(CARD_CHANCES_OPEN_KEY);
+    return v === null ? true : v === '1';
+  }
+  fieldCardChancesSummary.classList.toggle('closed', !isCardChancesOpen());
+  document.getElementById('card-chances-toggle').addEventListener('click', function () {
+    var open = !isCardChancesOpen();
+    localStorage.setItem(CARD_CHANCES_OPEN_KEY, open ? '1' : '0');
+    fieldCardChancesSummary.classList.toggle('closed', !open);
+  });
   function renderCardChances() {
     cardChancesGrid.innerHTML = '';
     EMBRYO_CARD_LIST.forEach(function (c) {
