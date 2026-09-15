@@ -648,7 +648,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-15b</div>
+    <div class="app-version">v2026-09-15c</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1211,7 +1211,8 @@
   function createEmptyWeeChance() {
     return {
       id: uid(), trigger: null, triggerGame: null, storyType: null,
-      normalNumber: null, settingPattern: null, spColor: null, magiaStock: null, bonusGame: null, connectColor: null
+      normalNumber: null, settingPattern: null, spColor: null, magiaStock: null, bonusGame: null, connectColor: null,
+      bellLevel: null, senNumber: null
     };
   }
 
@@ -1969,6 +1970,9 @@
             weeLine1.push('SP: ' + spStoryShortLabel(c.spColor));
           } else if (c.storyType === 'マギアボーナス' && typeof c.magiaStock === 'number') {
             weeLine1.push('ストック' + c.magiaStock);
+          } else if (c.storyType === '神浜') {
+            if (c.bellLevel) weeLine1.push('ベル' + c.bellLevel);
+            if (typeof c.senNumber === 'number') weeLine1.push(c.senNumber + '戦');
           }
           var weeLine2 = [];
           if (c.connectColor) weeLine2.push('コネクト' + c.connectColor);
@@ -2428,12 +2432,26 @@
         card.appendChild(buildOptionsPickerField('SPストーリー', WEE_SP_STORY_OPTIONS, spStoryShortLabel, chance, 'spColor', renderWeeChances));
       } else if (chance.storyType === 'マギアボーナス') {
         card.appendChild(buildNumberField('うぃチャンスストック数', chance, 'magiaStock', '例: 3'));
+      } else if (chance.storyType === '神浜') {
+        var kamihamaRow = document.createElement('div');
+        kamihamaRow.className = 'field-row';
+        kamihamaRow.appendChild(buildToggleField('ベルレベル', ['1', '2', '3'], chance.bellLevel, function (v) {
+          chance.bellLevel = (chance.bellLevel === v) ? null : v;
+          renderWeeChances();
+        }));
+        kamihamaRow.appendChild(buildNumberField('◯戦', chance, 'senNumber', '例: 3'));
+        card.appendChild(kamihamaRow);
       }
 
-      card.appendChild(buildConnectColorField(chance));
+      if (chance.storyType !== '神浜') {
+        card.appendChild(buildConnectColorField(chance));
+      }
 
-      if (chance.storyType && chance.storyType !== 'マギアボーナス') {
+      if (chance.storyType && chance.storyType !== 'マギアボーナス' && chance.storyType !== '神浜') {
         card.appendChild(buildNumberField('コネクト上乗せゲーム数', chance, 'bonusGame', '例: 15'));
+      }
+      if (chance.storyType === '神浜') {
+        card.appendChild(buildNumberField('上乗せゲーム数', chance, 'bonusGame', '例: 15'));
       }
 
       var delBtn = document.createElement('button');
