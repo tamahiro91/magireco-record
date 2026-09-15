@@ -648,7 +648,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-15d</div>
+    <div class="app-version">v2026-09-15e</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2196,7 +2196,7 @@
     var isKuroe = hasEpibo && state.selectedEpiboChar === '黒江';
     // ドッペル・エンブリオ選択時はat当選のチェックボックスを隠すため、チェックも外しておく
     if ((hasDoppel || hasEmbryo) && eAtWin.checked) { eAtWin.checked = false; }
-    fieldBigVoice.hidden = !hasBig;
+    fieldBigVoice.hidden = !(hasBig || hasEpibo);
     fieldBigScreen.hidden = !hasBig;
     fieldAtScreen.hidden = !eAtWin.checked;
     fieldStoryOrder.hidden = !eAtWin.checked;
@@ -2766,7 +2766,7 @@
     var atMemo = eAtMemo.value.trim();
     // BIGが選ばれていない/at当選がOFFの時は、関連する選択を保存しない(表示と矛盾しないように)
     var hasBig = results.indexOf('BIG') !== -1;
-    var bigVoice = hasBig ? state.selectedBigVoice : null;
+    var bigVoice = (hasBig || results.indexOf('エピボ') !== -1) ? state.selectedBigVoice : null;
     var bigScreen = hasBig ? state.selectedBigScreen : null;
     var atScreen = atWin ? state.selectedAtScreen : null;
     // 帯色・初期ゲーム数・エンブリオが選ばれていない時は関連する選択を保存しない(表示と矛盾しないように)
