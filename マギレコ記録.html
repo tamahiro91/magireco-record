@@ -711,7 +711,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-16m</div>
+    <div class="app-version">v2026-09-16n</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1056,6 +1056,10 @@
       <label>ビッグ終了後の画面</label>
       <button type="button" class="picker-trigger" id="e-big-screen-trigger">未選択 ▾</button>
     </div>
+    <div class="field" id="field-mikazuki-stage" hidden>
+      <label>みかづき荘ステージ</label>
+      <button type="button" class="picker-trigger" id="e-mikazuki-stage-trigger">未選択 ▾</button>
+    </div>
     <div class="field" id="field-atwin">
       <div class="check-row">
         <input type="checkbox" id="e-atwin">
@@ -1158,7 +1162,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], univaPlates: [], selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], univaPlates: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
   // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
   var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
   // エンディング中に出現するカードとその設定示唆(画像はユーザー提供のスクリーンショットから切り出し)
@@ -1323,6 +1327,12 @@
   function univaPlateFullLabel(v) {
     return v ? (v + '(' + UNIVA_PLATE_SUGGESTION[v] + ')') : '未選択';
   }
+  // みたま選択時に出現するみかづき荘の高確示唆ステージ(示唆内容は無く、ステージ名のみ記録)
+  var MIKAZUKI_STAGE_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
+    ['発展【青】', '発展【緑】', '調整屋【紫】', '調整屋【赤】', 'マギアラッシュ[AT]'].map(function (v) {
+      return { v: v, text: v };
+    })
+  );
 
   // うぃチャンス(at中のストーリー示唆)の選択肢
   var WEE_TRIGGER_OPTIONS = ['ゲーム数', '小役当選'];
@@ -2170,6 +2180,7 @@
         var screenSuggestion = BIG_SCREEN_SUGGESTION[e.bigScreen];
         extraLines.push('画面: ' + e.bigScreen + (screenSuggestion ? '(' + screenSuggestion + ')' : ''));
       }
+      if (e.mikazukiStage) extraLines.push('みかづき荘: ' + e.mikazukiStage);
       if (e.atScreens && e.atScreens.length) {
         e.atScreens.forEach(function (screen, si) {
           var prefix = e.atScreens.length > 1 ? ('at終了画面' + (si + 1)) : 'at終了画面';
@@ -2395,6 +2406,7 @@
   var eEmbryoPatternTrigger = document.getElementById('e-embryo-pattern-trigger');
   var eBigVoiceTrigger = document.getElementById('e-big-voice-trigger');
   var eBigScreenTrigger = document.getElementById('e-big-screen-trigger');
+  var eMikazukiStageTrigger = document.getElementById('e-mikazuki-stage-trigger');
   var eStoryOrderTrigger = document.getElementById('e-story-order-trigger');
   var eAtWin = document.getElementById('e-atwin');
   var eAtMemo = document.getElementById('e-atmemo');
@@ -2406,6 +2418,7 @@
   // 帯色・エンブリオ関連は結果にエンブリオを含む間だけ表示する
   var fieldBigVoice = document.getElementById('field-big-voice');
   var fieldBigScreen = document.getElementById('field-big-screen');
+  var fieldMikazukiStage = document.getElementById('field-mikazuki-stage');
   var fieldAtScreen = document.getElementById('field-at-screen');
   var fieldUnivaPlates = document.getElementById('field-univa-plates');
   var fieldStoryOrder = document.getElementById('field-story-order');
@@ -2432,11 +2445,13 @@
     var hasDoppel = state.selectedResults.indexOf('ドッペル') !== -1;
     var hasArina = state.selectedResults.indexOf('アリナ') !== -1;
     var hasEpibo = state.selectedResults.indexOf('エピボ') !== -1;
+    var hasMitama = state.selectedResults.indexOf('みたま') !== -1;
     var isKuroe = hasEpibo && state.selectedEpiboChar === '黒江';
     // ドッペル・エンブリオ選択時はat当選のチェックボックスを隠すため、チェックも外しておく
     if ((hasDoppel || hasEmbryo) && eAtWin.checked) { eAtWin.checked = false; }
     fieldBigVoice.hidden = !(hasBig || hasEpibo);
     fieldBigScreen.hidden = !hasBig;
+    fieldMikazukiStage.hidden = !hasMitama;
     fieldAtScreen.hidden = !(eAtWin.checked || hasEmbryo);
     fieldUnivaPlates.hidden = !(eAtWin.checked || hasEmbryo);
     renderUnivaPlates();
@@ -2563,6 +2578,12 @@
     openPicker('ストーリー順番示唆', STORY_ORDER_OPTIONS, state.selectedStoryOrder || '', function (v) {
       state.selectedStoryOrder = v || null;
       eStoryOrderTrigger.textContent = storyOrderShortLabel(v) + ' ▾';
+    });
+  });
+  eMikazukiStageTrigger.addEventListener('click', function () {
+    openPicker('みかづき荘ステージ', MIKAZUKI_STAGE_OPTIONS, state.selectedMikazukiStage || '', function (v) {
+      state.selectedMikazukiStage = v || null;
+      eMikazukiStageTrigger.textContent = (v || '未選択') + ' ▾';
     });
   });
 
@@ -3053,6 +3074,7 @@
       state.selectedMode = e.mode || null;
       state.selectedBigVoice = e.bigVoice || null;
       state.selectedBigScreen = e.bigScreen || null;
+      state.selectedMikazukiStage = e.mikazukiStage || null;
       state.atScreens = (e.atScreens || []).slice();
       state.univaPlates = (e.univaPlates || []).slice();
       state.selectedBand = e.bandColor || null;
@@ -3083,6 +3105,7 @@
       state.selectedMode = null;
       state.selectedBigVoice = null;
       state.selectedBigScreen = null;
+      state.selectedMikazukiStage = null;
       state.atScreens = [];
       state.univaPlates = [];
       state.selectedBand = null;
@@ -3119,6 +3142,7 @@
     eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(state.selectedEmbryoPattern) + ' ▾';
     eBigVoiceTrigger.textContent = bigVoiceFullLabel(state.selectedBigVoice, eAtWin.checked) + ' ▾';
     eBigScreenTrigger.textContent = bigScreenFullLabel(state.selectedBigScreen) + ' ▾';
+    eMikazukiStageTrigger.textContent = (state.selectedMikazukiStage || '未選択') + ' ▾';
     eStoryOrderTrigger.textContent = storyOrderShortLabel(state.selectedStoryOrder) + ' ▾';
     renderWeeChances();
     renderDoppelChances();
@@ -3154,6 +3178,8 @@
     var hasBig = results.indexOf('BIG') !== -1;
     var bigVoice = (hasBig || results.indexOf('エピボ') !== -1) ? state.selectedBigVoice : null;
     var bigScreen = hasBig ? state.selectedBigScreen : null;
+    var hasMitama = results.indexOf('みたま') !== -1;
+    var mikazukiStage = hasMitama ? state.selectedMikazukiStage : null;
     var atScreens = (atWin || results.indexOf('エンブリオ') !== -1) ? state.atScreens.filter(Boolean) : [];
     var univaPlates = (atWin || results.indexOf('エンブリオ') !== -1) ? state.univaPlates.filter(Boolean) : [];
     // 帯色・初期ゲーム数・エンブリオが選ばれていない時は関連する選択を保存しない(表示と矛盾しないように)
@@ -3186,7 +3212,7 @@
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
-      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
+      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.mikazukiStage = mikazukiStage; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
       e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances; e.cardCounts = cardCounts;
@@ -3194,7 +3220,7 @@
     } else {
       v.entries.push({
         id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
-        bigVoice: bigVoice, bigScreen: bigScreen, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
+        bigVoice: bigVoice, bigScreen: bigScreen, mikazukiStage: mikazukiStage, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
         storyOrderPattern: storyOrderPattern, doppelChances: doppelChances, cardCounts: cardCounts,
