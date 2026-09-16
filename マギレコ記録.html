@@ -691,7 +691,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-16d</div>
+    <div class="app-version">v2026-09-16e</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1052,6 +1052,11 @@
       <div id="wee-chances-list"></div>
       <button type="button" class="ghost-btn" id="wee-chance-add">＋ うぃチャンスを追加</button>
     </div>
+    <div class="field" id="field-univa-plates" hidden>
+      <label>ユニバプレート</label>
+      <div id="univa-plates-list"></div>
+      <button type="button" class="ghost-btn" id="univa-plate-add">＋ ユニバプレートを追加</button>
+    </div>
     <div class="field">
       <label>自由メモ</label>
       <textarea id="e-atmemo" placeholder="例：穢れ/きゅうべえ会話など"></textarea>
@@ -1123,7 +1128,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], univaPlates: [], selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
   // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
   var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
   // エンディング中に出現するカードとその設定示唆(画像はユーザー提供のスクリーンショットから切り出し)
@@ -1273,6 +1278,20 @@
   }
   function atScreenFullLabel(v) {
     return v ? (v + '(' + AT_SCREEN_SUGGESTION[v] + ')') : '未選択';
+  }
+  // at終了時に出現する可能性があるユニバプレートごとの設定示唆
+  var UNIVA_PLATE_SUGGESTION = {
+    '銅プレート': '設定2以上濃厚',
+    '銀プレート': '設定3以上濃厚',
+    '金プレート': '設定4以上濃厚',
+    '花火柄プレート': '設定5以上濃厚',
+    'レインボープレート': '設定6濃厚'
+  };
+  var UNIVA_PLATE_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
+    Object.keys(UNIVA_PLATE_SUGGESTION).map(function (v) { return { v: v, text: v + '(' + UNIVA_PLATE_SUGGESTION[v] + ')' }; })
+  );
+  function univaPlateFullLabel(v) {
+    return v ? (v + '(' + UNIVA_PLATE_SUGGESTION[v] + ')') : '未選択';
   }
 
   // うぃチャンス(at中のストーリー示唆)の選択肢
@@ -1595,7 +1614,7 @@
 
   // 来店1日分のエントリーから、各種示唆情報を集計する(示唆一覧セクション用)
   function visitSuggestionSummary(visit) {
-    var bigScreen = {}, atScreen = {}, epibo = {}, cards = {}, storyOrder = {}, embryoPattern = {};
+    var bigScreen = {}, atScreen = {}, epibo = {}, cards = {}, storyOrder = {}, embryoPattern = {}, univaPlate = {};
     var hikimodoshi = 0, atChokugeki = 0;
     (visit.entries || []).forEach(function (e) {
       if (e.bigScreen) {
@@ -1606,6 +1625,12 @@
         e.atScreens.forEach(function (screen) {
           var asLabel = screen + '(' + AT_SCREEN_SUGGESTION[screen] + ')';
           atScreen[asLabel] = (atScreen[asLabel] || 0) + 1;
+        });
+      }
+      if (e.univaPlates && e.univaPlates.length) {
+        e.univaPlates.forEach(function (plate) {
+          var upLabel = plate + '(' + UNIVA_PLATE_SUGGESTION[plate] + ')';
+          univaPlate[upLabel] = (univaPlate[upLabel] || 0) + 1;
         });
       }
       var epiboText = epiboSuggestionText(e.epiboChar, e.epiboKuroeCase);
@@ -1647,6 +1672,7 @@
       groups: [
         { title: 'BIG終了画面', items: toList(bigScreen) },
         { title: 'at終了画面', items: toList(atScreen) },
+        { title: 'ユニバプレート', items: toList(univaPlate) },
         { title: 'エピソードボーナスの示唆', items: toList(epibo) },
         { title: 'エンディング中のカード示唆', items: toList(cards) },
         { title: 'ストーリーの話数の示唆', items: toList(storyOrder) },
@@ -2108,6 +2134,13 @@
           extraLines.push('(' + AT_SCREEN_SUGGESTION[screen] + ')');
         });
       }
+      if (e.univaPlates && e.univaPlates.length) {
+        e.univaPlates.forEach(function (plate, pi) {
+          var prefix = e.univaPlates.length > 1 ? ('ユニバプレート' + (pi + 1)) : 'ユニバプレート';
+          extraLines.push(prefix + ': ' + plate);
+          extraLines.push('(' + UNIVA_PLATE_SUGGESTION[plate] + ')');
+        });
+      }
       if (e.storyOrderPattern) extraLines.push('順番示唆: ' + storyOrderShortLabel(e.storyOrderPattern));
       if (e.weeChances && e.weeChances.length) {
         e.weeChances.forEach(function (c, wi) {
@@ -2331,6 +2364,7 @@
   var fieldBigVoice = document.getElementById('field-big-voice');
   var fieldBigScreen = document.getElementById('field-big-screen');
   var fieldAtScreen = document.getElementById('field-at-screen');
+  var fieldUnivaPlates = document.getElementById('field-univa-plates');
   var fieldStoryOrder = document.getElementById('field-story-order');
   var fieldWeeChances = document.getElementById('field-wee-chances');
   var fieldBand = document.getElementById('field-band');
@@ -2361,6 +2395,8 @@
     fieldBigVoice.hidden = !(hasBig || hasEpibo);
     fieldBigScreen.hidden = !hasBig;
     fieldAtScreen.hidden = !(eAtWin.checked || hasEmbryo);
+    fieldUnivaPlates.hidden = !(eAtWin.checked || hasEmbryo);
+    renderUnivaPlates();
     fieldStoryOrder.hidden = !eAtWin.checked;
     // エンブリオ選択時は帯色の上乗せ入力の直後に、そうでなければat当選時の元の位置に表示する
     if (hasEmbryo) {
@@ -2805,6 +2841,52 @@
     renderAtScreens();
   });
 
+  // ユニバプレート(at終了時に出現する可能性があるプレート、継続時に複数回見られるためat終了画面と同様に複数追加できる)
+  var univaPlatesList = document.getElementById('univa-plates-list');
+  function renderUnivaPlates() {
+    univaPlatesList.innerHTML = '';
+    state.univaPlates.forEach(function (val, idx) {
+      var card = document.createElement('div');
+      card.className = 'wee-chance-card';
+      var title = document.createElement('div');
+      title.className = 'wee-title';
+      title.textContent = 'ユニバプレート' + (idx + 1);
+      card.appendChild(title);
+
+      var field = document.createElement('div');
+      field.className = 'field';
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'picker-trigger';
+      btn.textContent = univaPlateFullLabel(val) + ' ▾';
+      btn.addEventListener('click', function () {
+        openPicker('ユニバプレート', UNIVA_PLATE_OPTIONS, val || '', function (v) {
+          state.univaPlates[idx] = v || null;
+          renderUnivaPlates();
+        });
+      });
+      field.appendChild(btn);
+      card.appendChild(field);
+
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'ghost-btn wee-chance-delete';
+      delBtn.textContent = 'このユニバプレートを削除';
+      delBtn.addEventListener('click', function () {
+        if (!confirm('このユニバプレートを削除しますか？')) return;
+        state.univaPlates.splice(idx, 1);
+        renderUnivaPlates();
+      });
+      card.appendChild(delBtn);
+
+      univaPlatesList.appendChild(card);
+    });
+  }
+  document.getElementById('univa-plate-add').addEventListener('click', function () {
+    state.univaPlates.push(null);
+    renderUnivaPlates();
+  });
+
   // エンディング中に出現したカードの記録(12種固定グリッド、カードごとに+/-カウンター)
   var cardChancesGrid = document.getElementById('card-chances-grid');
   var fieldCardChancesSummary = document.getElementById('field-card-chances');
@@ -2921,6 +3003,7 @@
       state.selectedBigVoice = e.bigVoice || null;
       state.selectedBigScreen = e.bigScreen || null;
       state.atScreens = (e.atScreens || []).slice();
+      state.univaPlates = (e.univaPlates || []).slice();
       state.selectedBand = e.bandColor || null;
       state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); });
       state.cardCounts = Object.assign({}, e.cardCounts || {});
@@ -2950,6 +3033,7 @@
       state.selectedBigVoice = null;
       state.selectedBigScreen = null;
       state.atScreens = [];
+      state.univaPlates = [];
       state.selectedBand = null;
       state.doppelChances = [];
       state.cardCounts = {};
@@ -3010,6 +3094,7 @@
     var bigVoice = (hasBig || results.indexOf('エピボ') !== -1) ? state.selectedBigVoice : null;
     var bigScreen = hasBig ? state.selectedBigScreen : null;
     var atScreens = (atWin || results.indexOf('エンブリオ') !== -1) ? state.atScreens.filter(Boolean) : [];
+    var univaPlates = (atWin || results.indexOf('エンブリオ') !== -1) ? state.univaPlates.filter(Boolean) : [];
     // 帯色・初期ゲーム数・エンブリオが選ばれていない時は関連する選択を保存しない(表示と矛盾しないように)
     var hasEmbryo = results.indexOf('エンブリオ') !== -1;
     var hasArina = results.indexOf('アリナ') !== -1;
@@ -3040,7 +3125,7 @@
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
-      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreens = atScreens; e.bandColor = bandColor; e.bandBonus = bandBonus;
+      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
       e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances; e.cardCounts = cardCounts;
@@ -3048,7 +3133,7 @@
     } else {
       v.entries.push({
         id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
-        bigVoice: bigVoice, bigScreen: bigScreen, atScreens: atScreens, bandColor: bandColor, bandBonus: bandBonus,
+        bigVoice: bigVoice, bigScreen: bigScreen, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
         storyOrderPattern: storyOrderPattern, doppelChances: doppelChances, cardCounts: cardCounts,
