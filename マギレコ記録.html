@@ -421,10 +421,17 @@
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
   }
 
-  .fab {
+  .bottom-actions {
     position: fixed;
-    right: max(20px, calc((100vw - 640px) / 2 + 20px));
+    left: 50%;
+    transform: translateX(-50%);
     bottom: max(24px, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    z-index: 10;
+  }
+  .fab {
     width: 56px; height: 56px;
     border-radius: 50%;
     background: var(--accent);
@@ -433,12 +440,9 @@
     border: none;
     box-shadow: 0 4px 14px rgba(0,0,0,0.4);
     cursor: pointer;
-    z-index: 10;
   }
   .fab:active { opacity: 0.7; }
   .scroll-btn {
-    position: fixed;
-    bottom: max(24px, env(safe-area-inset-bottom));
     width: 44px; height: 44px;
     border-radius: 50%;
     background: var(--panel2);
@@ -447,11 +451,8 @@
     font-size: 18px;
     box-shadow: 0 4px 14px rgba(0,0,0,0.4);
     cursor: pointer;
-    z-index: 10;
   }
   .scroll-btn:active { opacity: 0.6; }
-  #btn-scroll-bottom { right: calc(max(20px, calc((100vw - 640px) / 2 + 20px)) + 66px); }
-  #btn-scroll-top { right: calc(max(20px, calc((100vw - 640px) / 2 + 20px)) + 120px); }
 
   /* モーダル */
   .overlay {
@@ -710,7 +711,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-16l</div>
+    <div class="app-version">v2026-09-16m</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -874,9 +875,11 @@
     <div class="calendar-grid" id="calendar-grid"></div>
   </div>
 
-  <button class="fab" id="btn-fab">+</button>
-  <button class="scroll-btn" id="btn-scroll-top" title="一番上へ">↑</button>
-  <button class="scroll-btn" id="btn-scroll-bottom" title="一番下へ">↓</button>
+  <div class="bottom-actions">
+    <button class="scroll-btn" id="btn-scroll-top" title="一番上へ">↑</button>
+    <button class="fab" id="btn-fab">+</button>
+    <button class="scroll-btn" id="btn-scroll-bottom" title="一番下へ">↓</button>
+  </div>
 </div>
 
 <!-- 来店 追加/編集 -->
