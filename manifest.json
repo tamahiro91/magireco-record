@@ -1,6 +1,6 @@
 {
-  "name": "マギレコ実戦記録",
-  "short_name": "マギレコ記録",
+  "name": "MagirecoRecord",
+  "short_name": "MagirecoRecord",
   "start_url": "マギレコ記録.html",
   "display": "standalone",
   "background_color": "#000000",
