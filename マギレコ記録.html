@@ -388,6 +388,8 @@
   .entry .extra div { margin-top: 1px; word-break: break-word; }
   .entry .extra .extra-small { font-size: 9.5px; white-space: nowrap; }
   .entry .note { font-size: 13px; color: var(--sub); margin-top: 2px; word-break: break-word; white-space: pre-wrap; }
+  .entry .collapsed-preview { font-size: 11px; color: var(--sub); margin-top: 2px; }
+  .entry .collapsed-preview div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .entry.closed .extra { display: none !important; }
   .entry.closed .note { display: none !important; }
   .entry-list-toolbar { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 8px; }
@@ -707,7 +709,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-16j</div>
+    <div class="app-version">v2026-09-16k</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2092,6 +2094,7 @@
         '<div class="body">' +
           '<div class="nums"></div>' +
           '<div class="mode"></div>' +
+          '<div class="collapsed-preview"></div>' +
           '<div class="extra"></div>' +
           '<div class="note"></div>' +
         '</div>' +
@@ -2103,6 +2106,18 @@
       row.querySelector('.nums').style.display = numsText ? '' : 'none';
       row.querySelector('.mode').textContent = e.mode ? modeShortText(e.mode) : '';
       row.querySelector('.mode').style.display = e.mode ? '' : 'none';
+
+      // 閉じた時、モードがあれば「モード+ボイス」、無ければ「ボイス+メモ」を数行分の空きに表示する
+      var previewLines = [];
+      if (e.bigVoice) previewLines.push('ボイス: ' + e.bigVoice);
+      if (!e.mode && e.atMemo) previewLines.push(e.atMemo);
+      var previewEl = row.querySelector('.collapsed-preview');
+      previewEl.innerHTML = previewLines.map(function (line) {
+        var div = document.createElement('div');
+        div.textContent = line;
+        return div.outerHTML;
+      }).join('');
+      previewEl.style.display = (previewLines.length && isEntryClosed(e.id)) ? '' : 'none';
 
       var extraContainer = row.querySelector('.extra');
       var extraLines = [];
