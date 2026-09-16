@@ -362,7 +362,9 @@
   .tag.TrueEnding { background: var(--true-ending); font-size: 8px; }
   .tag.AT { background: var(--at); }
   .tag.メモ { background: var(--memo); color: #000; }
-  .entry .entry-num { flex-shrink: 0; width: 16px; text-align: center; font-size: 13px; font-weight: 700; color: var(--sub); margin-top: 4px; }
+  .entry .entry-num { flex-shrink: 0; width: 24px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .entry .entry-num-text { text-align: center; font-size: 13px; font-weight: 700; color: var(--sub); margin-top: 4px; }
+  .entry .entry-toggle { background: none; border: none; padding: 4px; margin: -4px; color: var(--sub); font-size: 12px; line-height: 1; cursor: pointer; }
   .entry .tags { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
   .entry .body { flex: 1; min-width: 0; }
   .entry .nums { font-size: 15px; font-weight: 700; }
@@ -371,6 +373,12 @@
   .entry .extra div { margin-top: 1px; word-break: break-word; }
   .entry .extra .extra-small { font-size: 9.5px; white-space: nowrap; }
   .entry .note { font-size: 13px; color: var(--sub); margin-top: 2px; word-break: break-word; white-space: pre-wrap; }
+  .entry.closed .extra { display: none !important; }
+  .entry.closed .note { display: none !important; }
+  .entry-list-toolbar { display: flex; align-items: center; justify-content: space-between; margin: 14px 0 8px; }
+  .entry-list-title { font-size: 13px; color: var(--sub); font-weight: 700; }
+  .entry-list-toolbar-buttons { display: flex; gap: 8px; }
+  .entry-list-toolbar-buttons .ghost-btn { padding: 6px 12px; font-size: 12px; }
   .entry .drag-handle {
     flex-shrink: 0;
     width: 34px;
@@ -668,7 +676,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-16b</div>
+    <div class="app-version">v2026-09-16c</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -805,6 +813,13 @@
       </div>
     </div>
 
+    <div class="entry-list-toolbar">
+      <span class="entry-list-title">記録一覧</span>
+      <div class="entry-list-toolbar-buttons">
+        <button type="button" class="ghost-btn" id="btn-entries-expand-all">全て開く</button>
+        <button type="button" class="ghost-btn" id="btn-entries-collapse-all">全て閉じる</button>
+      </div>
+    </div>
     <div id="entry-list"></div>
   </div>
 
@@ -1924,6 +1939,28 @@
     renderCalendar();
   });
 
+  // 記録一覧の各行の開閉状態(記録ごとにlocalStorageへ保存し、次に開いた時も維持する)
+  var ENTRY_CLOSED_PREFIX = 'magireko.entryClosed.';
+  function isEntryClosed(id) {
+    return localStorage.getItem(ENTRY_CLOSED_PREFIX + id) === '1';
+  }
+  function setEntryClosed(id, closed) {
+    if (closed) { localStorage.setItem(ENTRY_CLOSED_PREFIX + id, '1'); }
+    else { localStorage.removeItem(ENTRY_CLOSED_PREFIX + id); }
+  }
+  document.getElementById('btn-entries-expand-all').addEventListener('click', function () {
+    var v = currentVisit();
+    if (!v) return;
+    (v.entries || []).forEach(function (e) { setEntryClosed(e.id, false); });
+    renderDetail();
+  });
+  document.getElementById('btn-entries-collapse-all').addEventListener('click', function () {
+    var v = currentVisit();
+    if (!v) return;
+    (v.entries || []).forEach(function (e) { setEntryClosed(e.id, true); });
+    renderDetail();
+  });
+
   function renderDetail() {
     var v = currentVisit();
     if (!v) { closeDetail(); return; }
@@ -1983,8 +2020,12 @@
       if (!isMemo) entryNum++;
 
       row.dataset.entryId = e.id;
+      if (isEntryClosed(e.id)) row.classList.add('closed');
       row.innerHTML =
-        '<div class="entry-num">' + (isMemo ? '' : entryNum) + '</div>' +
+        '<div class="entry-num">' +
+          '<div class="entry-num-text">' + (isMemo ? '' : entryNum) + '</div>' +
+          '<button type="button" class="entry-toggle">' + (isEntryClosed(e.id) ? '▸' : '▾') + '</button>' +
+        '</div>' +
         '<div class="tags">' + tags.join('') + '</div>' +
         '<div class="body">' +
           '<div class="nums"></div>' +
@@ -2103,8 +2144,13 @@
       row.querySelector('.note').textContent = e.atMemo || '';
       row.querySelector('.note').style.display = e.atMemo ? '' : 'none';
       row.addEventListener('click', function (ev) {
-        if (ev.target.closest('.drag-handle')) return;
+        if (ev.target.closest('.drag-handle') || ev.target.closest('.entry-toggle')) return;
         openEntrySheet(e.id);
+      });
+      row.querySelector('.entry-toggle').addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        setEntryClosed(e.id, !isEntryClosed(e.id));
+        renderDetail();
       });
       row.querySelector('.drag-handle').addEventListener('touchstart', function (ev) {
         startDrag(ev, v, e.id, row);
@@ -2151,6 +2197,7 @@
       // 指をほぼ動かさなかった = タップとみなして削除確認を出す
       if (confirm('この記録を削除しますか？')) {
         ds.visit.entries = ds.visit.entries.filter(function (x) { return x.id !== ds.entryId; });
+        setEntryClosed(ds.entryId, false);
         save();
       }
       renderDetail();
@@ -3001,6 +3048,7 @@
     var v = currentVisit();
     if (!confirm('この記録を削除しますか？')) return;
     v.entries = v.entries.filter(function (x) { return x.id !== state.editingEntryId; });
+    setEntryClosed(state.editingEntryId, false);
     save();
     overlayEntry.classList.add('hidden');
     renderDetail();
