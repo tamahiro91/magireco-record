@@ -723,7 +723,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17m</div>
+    <div class="app-version">v2026-09-17n</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -767,6 +767,7 @@
       </div>
       <div class="sub" id="d-memo"></div>
       <div class="sub" id="d-takeover"></div>
+      <div class="sub" id="d-takeover-prob"></div>
       <div class="invest-row">
         <div class="invest-rate-wrap">
           <select class="invest-rate" id="d-invest-rate">
@@ -926,9 +927,15 @@
           <label>BIG回数</label>
           <input type="number" inputmode="numeric" id="v-takeover-big" placeholder="例: 8">
         </div>
+      </div>
+      <div class="row2">
         <div class="field">
           <label>AT回数</label>
           <input type="number" inputmode="numeric" id="v-takeover-at" placeholder="例: 5">
+        </div>
+        <div class="field">
+          <label>at初当たり回数</label>
+          <input type="number" inputmode="numeric" id="v-takeover-at-hatsu" placeholder="例: 3">
         </div>
       </div>
     </div>
@@ -1917,6 +1924,7 @@
   var elDSub = document.getElementById('d-sub');
   var elDMemo = document.getElementById('d-memo');
   var elDTakeover = document.getElementById('d-takeover');
+  var elDTakeoverProb = document.getElementById('d-takeover-prob');
   var elDBig = document.getElementById('d-big');
   var elDMitama = document.getElementById('d-mitama');
   var elDTotal = document.getElementById('d-total');
@@ -2150,10 +2158,21 @@
     if (typeof v.takeoverGame === 'number') takeoverParts.push(v.takeoverGame + 'G');
     if (typeof v.takeoverBig === 'number') takeoverParts.push('BIG' + v.takeoverBig + '回');
     if (typeof v.takeoverAt === 'number') takeoverParts.push('AT' + v.takeoverAt + '回');
+    if (typeof v.takeoverAtHatsu === 'number') takeoverParts.push('at初当たり' + v.takeoverAtHatsu + '回');
     elDTakeover.textContent = takeoverParts.length ? ('引き継ぎ: ' + takeoverParts.join(' / ')) : '';
     elDTakeover.style.display = takeoverParts.length ? '' : 'none';
 
     var s = visitStats(v);
+    if (typeof v.takeoverGame === 'number') {
+      var combinedGame = v.takeoverGame + s.game;
+      var combinedBig = (v.takeoverBig || 0) + s.big;
+      var combinedAtHatsu = (v.takeoverAtHatsu || 0) + s.atWin;
+      elDTakeoverProb.textContent = '引き継ぎ込み確率: BIG ' + fmtProb(combinedGame, combinedBig) + '　at初当たり ' + fmtProb(combinedGame, combinedAtHatsu);
+      elDTakeoverProb.style.display = '';
+    } else {
+      elDTakeoverProb.textContent = '';
+      elDTakeoverProb.style.display = 'none';
+    }
     elDBig.textContent = s.big;
     elDMitama.textContent = s.mitama;
     elDTotal.textContent = s.total;
@@ -2449,6 +2468,7 @@
   var vTakeoverGame = document.getElementById('v-takeover-game');
   var vTakeoverBig = document.getElementById('v-takeover-big');
   var vTakeoverAt = document.getElementById('v-takeover-at');
+  var vTakeoverAtHatsu = document.getElementById('v-takeover-at-hatsu');
   var vDeleteBtn = document.getElementById('v-delete');
   setupAutoResize(vNote);
 
@@ -2464,6 +2484,7 @@
       vTakeoverGame.value = '';
       vTakeoverBig.value = '';
       vTakeoverAt.value = '';
+      vTakeoverAtHatsu.value = '';
       vDeleteBtn.style.display = 'none';
     } else {
       var v = currentVisit();
@@ -2475,6 +2496,7 @@
       vTakeoverGame.value = (typeof v.takeoverGame === 'number') ? v.takeoverGame : '';
       vTakeoverBig.value = (typeof v.takeoverBig === 'number') ? v.takeoverBig : '';
       vTakeoverAt.value = (typeof v.takeoverAt === 'number') ? v.takeoverAt : '';
+      vTakeoverAtHatsu.value = (typeof v.takeoverAtHatsu === 'number') ? v.takeoverAtHatsu : '';
       vDeleteBtn.style.display = '';
     }
     overlayVisit.classList.remove('hidden');
@@ -2491,8 +2513,9 @@
     var takeoverGame = vTakeoverGame.value === '' ? null : Number(vTakeoverGame.value);
     var takeoverBig = vTakeoverBig.value === '' ? null : Number(vTakeoverBig.value);
     var takeoverAt = vTakeoverAt.value === '' ? null : Number(vTakeoverAt.value);
+    var takeoverAtHatsu = vTakeoverAtHatsu.value === '' ? null : Number(vTakeoverAtHatsu.value);
     if (state.editingVisitMode === 'new') {
-      var v = { id: uid(), store: store, date: date, machine: machine, note: note, takeoverGame: takeoverGame, takeoverBig: takeoverBig, takeoverAt: takeoverAt, createdAt: Date.now().toString(), entries: [], counters: { suika: 0, cz: 0, czWin: 0 }, invest: { rate: 46, count: 0 } };
+      var v = { id: uid(), store: store, date: date, machine: machine, note: note, takeoverGame: takeoverGame, takeoverBig: takeoverBig, takeoverAt: takeoverAt, takeoverAtHatsu: takeoverAtHatsu, createdAt: Date.now().toString(), entries: [], counters: { suika: 0, cz: 0, czWin: 0 }, invest: { rate: 46, count: 0 } };
       state.visits.push(v);
       save();
       overlayVisit.classList.add('hidden');
@@ -2500,7 +2523,7 @@
     } else {
       var cv = currentVisit();
       cv.store = store; cv.date = date; cv.machine = machine; cv.note = note;
-      cv.takeoverGame = takeoverGame; cv.takeoverBig = takeoverBig; cv.takeoverAt = takeoverAt;
+      cv.takeoverGame = takeoverGame; cv.takeoverBig = takeoverBig; cv.takeoverAt = takeoverAt; cv.takeoverAtHatsu = takeoverAtHatsu;
       save();
       overlayVisit.classList.add('hidden');
       renderDetail();
