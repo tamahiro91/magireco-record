@@ -721,7 +721,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17e</div>
+    <div class="app-version">v2026-09-17f</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1178,7 +1178,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], atScreensClosed: [], univaPlates: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], atContinue40: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], atScreensClosed: [], univaPlates: [], univaPlatesClosed: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], atContinue40: [], atContinue40Closed: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
   // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
   var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
   // エンディング中に出現するカードとその設定示唆(画像はユーザー提供のスクリーンショットから切り出し)
@@ -3001,12 +3001,22 @@
   function renderUnivaPlates() {
     univaPlatesList.innerHTML = '';
     state.univaPlates.forEach(function (item, idx) {
+      var closed = !!state.univaPlatesClosed[idx];
       var card = document.createElement('div');
-      card.className = 'wee-chance-card';
-      var title = document.createElement('div');
-      title.className = 'wee-title';
-      title.textContent = 'ユニバプレート' + (idx + 1);
-      card.appendChild(title);
+      card.className = 'wee-chance-card' + (closed ? ' closed' : '');
+
+      var titleBtn = document.createElement('button');
+      titleBtn.type = 'button';
+      titleBtn.className = 'wee-title-toggle';
+      titleBtn.innerHTML = '<span>ユニバプレート' + (idx + 1) + '</span><span class="chevron">▾</span>';
+      titleBtn.addEventListener('click', function () {
+        state.univaPlatesClosed[idx] = !closed;
+        renderUnivaPlates();
+      });
+      card.appendChild(titleBtn);
+
+      var body = document.createElement('div');
+      body.className = 'wee-chance-body';
 
       var field = document.createElement('div');
       field.className = 'field';
@@ -3021,9 +3031,9 @@
         });
       });
       field.appendChild(btn);
-      card.appendChild(field);
+      body.appendChild(field);
 
-      card.appendChild(buildTimeField('表示時刻', item, 'time'));
+      body.appendChild(buildTimeField('表示時刻', item, 'time'));
 
       var delBtn = document.createElement('button');
       delBtn.type = 'button';
@@ -3032,15 +3042,18 @@
       delBtn.addEventListener('click', function () {
         if (!confirm('このユニバプレートを削除しますか？')) return;
         state.univaPlates.splice(idx, 1);
+        state.univaPlatesClosed.splice(idx, 1);
         renderUnivaPlates();
       });
-      card.appendChild(delBtn);
+      body.appendChild(delBtn);
 
+      card.appendChild(body);
       univaPlatesList.appendChild(card);
     });
   }
   document.getElementById('univa-plate-add').addEventListener('click', function () {
     state.univaPlates.push(createEmptyUnivaPlate());
+    state.univaPlatesClosed.push(false);
     renderUnivaPlates();
   });
 
@@ -3050,14 +3063,24 @@
   function renderAtContinue40() {
     atContinue40List.innerHTML = '';
     state.atContinue40.forEach(function (val, idx) {
+      var closed = !!state.atContinue40Closed[idx];
       var card = document.createElement('div');
-      card.className = 'wee-chance-card';
-      var title = document.createElement('div');
-      title.className = 'wee-title';
-      title.textContent = 'at継続40ゲーム' + (idx + 1);
-      card.appendChild(title);
+      card.className = 'wee-chance-card' + (closed ? ' closed' : '');
 
-      card.appendChild(buildToggleField('選択', ATCONTINUE40_OPTIONS, val, function (v) {
+      var titleBtn = document.createElement('button');
+      titleBtn.type = 'button';
+      titleBtn.className = 'wee-title-toggle';
+      titleBtn.innerHTML = '<span>at継続40ゲーム' + (idx + 1) + '</span><span class="chevron">▾</span>';
+      titleBtn.addEventListener('click', function () {
+        state.atContinue40Closed[idx] = !closed;
+        renderAtContinue40();
+      });
+      card.appendChild(titleBtn);
+
+      var body = document.createElement('div');
+      body.className = 'wee-chance-body';
+
+      body.appendChild(buildToggleField('選択', ATCONTINUE40_OPTIONS, val, function (v) {
         state.atContinue40[idx] = (val === v) ? null : v;
         renderAtContinue40();
       }));
@@ -3069,15 +3092,18 @@
       delBtn.addEventListener('click', function () {
         if (!confirm('このat継続40ゲームを削除しますか？')) return;
         state.atContinue40.splice(idx, 1);
+        state.atContinue40Closed.splice(idx, 1);
         renderAtContinue40();
       });
-      card.appendChild(delBtn);
+      body.appendChild(delBtn);
 
+      card.appendChild(body);
       atContinue40List.appendChild(card);
     });
   }
   document.getElementById('atcontinue40-add').addEventListener('click', function () {
     state.atContinue40.push(null);
+    state.atContinue40Closed.push(false);
     renderAtContinue40();
   });
 
@@ -3200,6 +3226,7 @@
       state.atScreens = (e.atScreens || []).slice();
       state.atScreensClosed = state.atScreens.map(function () { return false; });
       state.univaPlates = (e.univaPlates || []).map(function (p) { return Object.assign({}, p); });
+      state.univaPlatesClosed = state.univaPlates.map(function () { return false; });
       state.selectedBand = e.bandColor || null;
       state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); });
       state.cardCounts = Object.assign({}, e.cardCounts || {});
@@ -3219,6 +3246,7 @@
       state.selectedEmbryoPattern = e.embryoPattern ? String(e.embryoPattern) : null;
       state.weeChances = (e.weeChances || []).map(function (c) { return Object.assign({}, c, { spStoryNumbers: (c.spStoryNumbers || []).slice() }); });
       state.atContinue40 = (e.atContinue40 || []).slice();
+      state.atContinue40Closed = state.atContinue40.map(function () { return false; });
       state.selectedStoryOrder = e.storyOrderPattern || null;
       eAtWin.checked = !!e.atWin;
       eAtMemo.value = e.atMemo || '';
@@ -3233,6 +3261,7 @@
       state.atScreens = [];
       state.atScreensClosed = [];
       state.univaPlates = [];
+      state.univaPlatesClosed = [];
       state.selectedBand = null;
       state.doppelChances = [];
       state.cardCounts = {};
@@ -3252,6 +3281,7 @@
       state.selectedEmbryoPattern = null;
       state.weeChances = [];
       state.atContinue40 = [];
+      state.atContinue40Closed = [];
       state.selectedStoryOrder = null;
       eAtWin.checked = false;
       eAtMemo.value = '';
