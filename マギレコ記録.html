@@ -721,7 +721,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17c</div>
+    <div class="app-version">v2026-09-17d</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1178,7 +1178,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], univaPlates: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], atContinue40: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], atScreensClosed: [], univaPlates: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], atContinue40: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
   // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
   var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
   // エンディング中に出現するカードとその設定示唆(画像はユーザー提供のスクリーンショットから切り出し)
@@ -2917,12 +2917,22 @@
   function renderAtScreens() {
     atScreensList.innerHTML = '';
     state.atScreens.forEach(function (val, idx) {
+      var closed = !!state.atScreensClosed[idx];
       var card = document.createElement('div');
-      card.className = 'wee-chance-card';
-      var title = document.createElement('div');
-      title.className = 'wee-title';
-      title.textContent = 'at終了画面' + (idx + 1);
-      card.appendChild(title);
+      card.className = 'wee-chance-card' + (closed ? ' closed' : '');
+
+      var titleBtn = document.createElement('button');
+      titleBtn.type = 'button';
+      titleBtn.className = 'wee-title-toggle';
+      titleBtn.innerHTML = '<span>at終了画面' + (idx + 1) + '</span><span class="chevron">▾</span>';
+      titleBtn.addEventListener('click', function () {
+        state.atScreensClosed[idx] = !closed;
+        renderAtScreens();
+      });
+      card.appendChild(titleBtn);
+
+      var body = document.createElement('div');
+      body.className = 'wee-chance-body';
 
       var field = document.createElement('div');
       field.className = 'field';
@@ -2937,7 +2947,7 @@
         });
       });
       field.appendChild(btn);
-      card.appendChild(field);
+      body.appendChild(field);
 
       var delBtn = document.createElement('button');
       delBtn.type = 'button';
@@ -2946,15 +2956,18 @@
       delBtn.addEventListener('click', function () {
         if (!confirm('このat終了画面を削除しますか？')) return;
         state.atScreens.splice(idx, 1);
+        state.atScreensClosed.splice(idx, 1);
         renderAtScreens();
       });
-      card.appendChild(delBtn);
+      body.appendChild(delBtn);
 
+      card.appendChild(body);
       atScreensList.appendChild(card);
     });
   }
   document.getElementById('at-screen-add').addEventListener('click', function () {
     state.atScreens.push(null);
+    state.atScreensClosed.push(false);
     renderAtScreens();
   });
 
@@ -3158,6 +3171,7 @@
       state.selectedBigScreen = e.bigScreen || null;
       state.selectedMikazukiStage = e.mikazukiStage || null;
       state.atScreens = (e.atScreens || []).slice();
+      state.atScreensClosed = state.atScreens.map(function () { return false; });
       state.univaPlates = (e.univaPlates || []).slice();
       state.selectedBand = e.bandColor || null;
       state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); });
@@ -3190,6 +3204,7 @@
       state.selectedBigScreen = null;
       state.selectedMikazukiStage = null;
       state.atScreens = [];
+      state.atScreensClosed = [];
       state.univaPlates = [];
       state.selectedBand = null;
       state.doppelChances = [];
