@@ -725,7 +725,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17p</div>
+    <div class="app-version">v2026-09-17q</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2845,17 +2845,40 @@
     if (closed) { localStorage.setItem(WEE_CHANCE_CLOSED_PREFIX + id, '1'); }
     else { localStorage.removeItem(WEE_CHANCE_CLOSED_PREFIX + id); }
   }
+  // 閉じたうぃチャンスカードのタイトル横に表示する簡易サマリー(ストーリー番号/神浜などの種別＋加算ゲーム数)
+  function weeChanceShortSummary(c) {
+    var parts = [];
+    if (c.storyType === 'ストーリー') {
+      if (c.settingPattern) parts.push(embryoPatternShortLabel(c.settingPattern));
+      else if (c.normalNumber) parts.push('ストーリー' + c.normalNumber);
+    } else if (c.storyType === 'SP') {
+      if (c.spStoryNumbers && c.spStoryNumbers.length) {
+        parts.push('ストーリー' + c.spStoryNumbers.slice().sort(function (a, b) { return a - b; }).join('・'));
+      } else {
+        parts.push('SP');
+      }
+    } else if (c.storyType === 'マギアボーナス') {
+      parts.push('マギアボーナス');
+    } else if (c.storyType === '神浜') {
+      parts.push('神浜');
+    }
+    var bonus = (typeof c.bonusGame === 'number' ? c.bonusGame : 0) + (typeof c.consumedGame === 'number' ? c.consumedGame : 0);
+    if (bonus) parts.push(bonus + 'G');
+    return parts.join('・');
+  }
   function renderWeeChances() {
     weeChancesList.innerHTML = '';
     var hasEmbryoForWee = state.selectedResults.indexOf('エンブリオ') !== -1;
     state.weeChances.forEach(function (chance, idx) {
+      var closed = isWeeChanceClosed(chance.id);
       var card = document.createElement('div');
-      card.className = 'wee-chance-card' + (isWeeChanceClosed(chance.id) ? ' closed' : '');
+      card.className = 'wee-chance-card' + (closed ? ' closed' : '');
 
+      var weeSummary = weeChanceShortSummary(chance);
       var titleBtn = document.createElement('button');
       titleBtn.type = 'button';
       titleBtn.className = 'wee-title-toggle';
-      titleBtn.innerHTML = '<span>うぃチャンス' + (idx + 1) + '</span><span class="chevron">▾</span>';
+      titleBtn.innerHTML = '<span class="wee-title-text">うぃチャンス' + (idx + 1) + (closed && weeSummary ? '（' + weeSummary + '）' : '') + '</span><span class="chevron">▾</span>';
       titleBtn.addEventListener('click', function () {
         setWeeChanceClosed(chance.id, !isWeeChanceClosed(chance.id));
         renderWeeChances();
