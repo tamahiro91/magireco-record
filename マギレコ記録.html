@@ -725,7 +725,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17o</div>
+    <div class="app-version">v2026-09-17p</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1394,12 +1394,12 @@
   var MIKAZUKI_STAGE_SUGGESTION = { 'みかづき荘': '穢れpt+50:75%／+100:25%' };
   // 選択肢名に含まれる色に合わせたドット表示用(視認性向上のため)
   var MIKAZUKI_STAGE_COLOR = {
-    'みかづき荘': 'var(--accent)',
+    'みかづき荘': '#fff',
     '発展【青】': 'var(--band-blue)',
     '発展【緑】': 'var(--band-green)',
     '調整屋【紫】': 'var(--doppel)',
     '調整屋【赤】': 'var(--band-red)',
-    'マギアラッシュ[AT]': 'var(--at)'
+    'マギアラッシュ[AT]': 'linear-gradient(90deg, #fa5252, #ffe066, #51cf66, #4dabf7, #b98bff)'
   };
   var MIKAZUKI_STAGE_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
     ['みかづき荘', '発展【青】', '発展【緑】', '調整屋【紫】', '調整屋【赤】', 'マギアラッシュ[AT]'].map(function (v) {
