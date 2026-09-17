@@ -565,7 +565,8 @@
     color: var(--accent);
     cursor: pointer;
   }
-  .wee-chance-card .wee-title-toggle .chevron { color: var(--sub); font-size: 20px; font-weight: 700; transition: transform 0.15s; }
+  .wee-chance-card .wee-title-toggle .wee-title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .wee-chance-card .wee-title-toggle .chevron { flex-shrink: 0; margin-left: 8px; color: var(--sub); font-size: 20px; font-weight: 700; transition: transform 0.15s; }
   .wee-chance-card.closed .wee-title-toggle { margin-bottom: 0; }
   .wee-chance-card.closed .wee-title-toggle .chevron { transform: rotate(-90deg); }
   .wee-chance-card.closed .wee-chance-body { display: none; }
@@ -722,7 +723,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17i</div>
+    <div class="app-version">v2026-09-17j</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1197,7 +1198,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], atScreensClosed: [], univaPlates: [], univaPlatesClosed: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], weeBonusExtra1: 0, weeBonusExtra2: null, atContinue40: [], atContinue40Closed: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], univaPlates: [], univaPlatesClosed: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], weeBonusExtra1: 0, weeBonusExtra2: null, atContinue40: [], atContinue40Closed: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
   // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
   var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
   // エンディング中に出現するカードとその設定示唆(画像はユーザー提供のスクリーンショットから切り出し)
@@ -1508,6 +1509,10 @@
         e.atScreens = e.atScreen ? [e.atScreen] : [];
         delete e.atScreen;
       }
+      // at終了画面が文字列配列だった旧形式を{id, screen}のオブジェクト配列に変換する(開閉状態をidで保持するため)
+      if (e.atScreens.length && typeof e.atScreens[0] === 'string') {
+        e.atScreens = e.atScreens.map(function (s) { return { id: uid(), screen: s }; });
+      }
       // ユニバプレートが文字列配列だった旧形式を{plate, time}のオブジェクト配列に変換する
       if (Array.isArray(e.univaPlates) && e.univaPlates.length && typeof e.univaPlates[0] === 'string') {
         e.univaPlates = e.univaPlates.map(function (p) { return { plate: p, time: null }; });
@@ -1705,7 +1710,9 @@
         bigScreen[bsLabel] = (bigScreen[bsLabel] || 0) + 1;
       }
       if (e.atScreens && e.atScreens.length) {
-        e.atScreens.forEach(function (screen) {
+        e.atScreens.forEach(function (item) {
+          var screen = item.screen;
+          if (!screen) return;
           var asLabel = screen + '(' + AT_SCREEN_SUGGESTION[screen] + ')';
           atScreen[asLabel] = (atScreen[asLabel] || 0) + 1;
         });
@@ -2242,7 +2249,9 @@
       }
       if (e.mikazukiStage) extraLines.push('みたまボーナス: ' + mikazukiStageFullLabel(e.mikazukiStage));
       if (e.atScreens && e.atScreens.length) {
-        e.atScreens.forEach(function (screen, si) {
+        e.atScreens.forEach(function (item, si) {
+          var screen = item.screen;
+          if (!screen) return;
           var prefix = e.atScreens.length > 1 ? ('at終了画面' + (si + 1)) : 'at終了画面';
           extraLines.push(prefix + ': ' + screen);
           extraLines.push('(' + AT_SCREEN_SUGGESTION[screen] + ')');
@@ -2988,20 +2997,30 @@
   });
 
   // at終了画面(継続時に複数回見られるため、うぃチャンスと同様に複数追加できる)
+  // 開閉状態はカードのidごとにlocalStorageへ保存し、次に開いた時も維持する
+  var AT_SCREEN_CLOSED_PREFIX = 'magireko.atScreenClosed.';
+  function isAtScreenClosed(id) {
+    return localStorage.getItem(AT_SCREEN_CLOSED_PREFIX + id) === '1';
+  }
+  function setAtScreenClosed(id, closed) {
+    if (closed) { localStorage.setItem(AT_SCREEN_CLOSED_PREFIX + id, '1'); }
+    else { localStorage.removeItem(AT_SCREEN_CLOSED_PREFIX + id); }
+  }
   var atScreensList = document.getElementById('at-screens-list');
   function renderAtScreens() {
     atScreensList.innerHTML = '';
-    state.atScreens.forEach(function (val, idx) {
-      var closed = !!state.atScreensClosed[idx];
+    state.atScreens.forEach(function (item, idx) {
+      var closed = isAtScreenClosed(item.id);
       var card = document.createElement('div');
       card.className = 'wee-chance-card' + (closed ? ' closed' : '');
 
+      var suggestionText = item.screen ? AT_SCREEN_SUGGESTION[item.screen] : '';
       var titleBtn = document.createElement('button');
       titleBtn.type = 'button';
       titleBtn.className = 'wee-title-toggle';
-      titleBtn.innerHTML = '<span>at終了画面' + (idx + 1) + '</span><span class="chevron">▾</span>';
+      titleBtn.innerHTML = '<span class="wee-title-text">at終了画面' + (idx + 1) + (closed && suggestionText ? '（' + suggestionText + '）' : '') + '</span><span class="chevron">▾</span>';
       titleBtn.addEventListener('click', function () {
-        state.atScreensClosed[idx] = !closed;
+        setAtScreenClosed(item.id, !closed);
         renderAtScreens();
       });
       card.appendChild(titleBtn);
@@ -3014,10 +3033,10 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'picker-trigger';
-      btn.textContent = atScreenFullLabel(val) + ' ▾';
+      btn.textContent = atScreenFullLabel(item.screen) + ' ▾';
       btn.addEventListener('click', function () {
-        openPicker('at終了画面', AT_SCREEN_OPTIONS, val || '', function (v) {
-          state.atScreens[idx] = v || null;
+        openPicker('at終了画面', AT_SCREEN_OPTIONS, item.screen || '', function (v) {
+          item.screen = v || null;
           renderAtScreens();
         });
       });
@@ -3030,8 +3049,8 @@
       delBtn.textContent = 'このat終了画面を削除';
       delBtn.addEventListener('click', function () {
         if (!confirm('このat終了画面を削除しますか？')) return;
+        setAtScreenClosed(item.id, false);
         state.atScreens.splice(idx, 1);
-        state.atScreensClosed.splice(idx, 1);
         renderAtScreens();
       });
       body.appendChild(delBtn);
@@ -3041,8 +3060,7 @@
     });
   }
   document.getElementById('at-screen-add').addEventListener('click', function () {
-    state.atScreens.push(null);
-    state.atScreensClosed.push(false);
+    state.atScreens.push({ id: uid(), screen: null });
     renderAtScreens();
   });
 
@@ -3276,8 +3294,7 @@
       state.selectedBigVoice = e.bigVoice || null;
       state.selectedBigScreen = e.bigScreen || null;
       state.selectedMikazukiStage = e.mikazukiStage || null;
-      state.atScreens = (e.atScreens || []).slice();
-      state.atScreensClosed = state.atScreens.map(function () { return false; });
+      state.atScreens = (e.atScreens || []).map(function (item) { return Object.assign({}, item); });
       state.univaPlates = (e.univaPlates || []).map(function (p) { return Object.assign({}, p); });
       state.univaPlatesClosed = state.univaPlates.map(function () { return false; });
       state.selectedBand = e.bandColor || null;
@@ -3315,7 +3332,6 @@
       state.selectedBigScreen = null;
       state.selectedMikazukiStage = null;
       state.atScreens = [];
-      state.atScreensClosed = [];
       state.univaPlates = [];
       state.univaPlatesClosed = [];
       state.selectedBand = null;
@@ -3395,7 +3411,7 @@
     var bigScreen = hasBig ? state.selectedBigScreen : null;
     var hasMitama = results.indexOf('みたま') !== -1;
     var mikazukiStage = hasMitama ? state.selectedMikazukiStage : null;
-    var atScreens = (atWin || results.indexOf('エンブリオ') !== -1) ? state.atScreens.filter(Boolean) : [];
+    var atScreens = (atWin || results.indexOf('エンブリオ') !== -1) ? state.atScreens.filter(function (item) { return item && item.screen; }) : [];
     var univaPlates = (atWin || results.indexOf('エンブリオ') !== -1) ? state.univaPlates.filter(function (p) { return p && p.plate; }) : [];
     // 帯色・初期ゲーム数・エンブリオが選ばれていない時は関連する選択を保存しない(表示と矛盾しないように)
     var hasEmbryo = results.indexOf('エンブリオ') !== -1;
