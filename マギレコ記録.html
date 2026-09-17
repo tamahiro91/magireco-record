@@ -721,7 +721,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17f</div>
+    <div class="app-version">v2026-09-17g</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1088,10 +1088,28 @@
     </div>
     <div class="field" id="field-wee-chances" hidden>
       <div class="entry-list-toolbar">
-        <label>ストーリー示唆</label>
+        <label>うぃチャンス</label>
         <div class="entry-list-toolbar-buttons">
           <button type="button" class="ghost-btn" id="wee-chances-expand-all">全て開く</button>
           <button type="button" class="ghost-btn" id="wee-chances-collapse-all">全て閉じる</button>
+        </div>
+      </div>
+      <div class="counters">
+        <div class="counter-card">
+          <div class="counter-label">上乗せゲーム数</div>
+          <div class="counter-value" id="wee-bonus-total">0</div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">+10G</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="wee-bonus-extra1-minus">−</button>
+            <div class="counter-value" id="wee-bonus-extra1-value">0</div>
+            <button type="button" class="counter-btn" id="wee-bonus-extra1-plus">＋</button>
+          </div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">その他上乗せ</div>
+          <input type="number" inputmode="numeric" id="e-wee-bonus-extra2" placeholder="例: 15">
         </div>
       </div>
       <div id="wee-chances-list"></div>
@@ -1178,7 +1196,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], atScreensClosed: [], univaPlates: [], univaPlatesClosed: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], atContinue40: [], atContinue40Closed: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], atScreensClosed: [], univaPlates: [], univaPlatesClosed: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], weeBonusExtra1: 0, weeBonusExtra2: null, atContinue40: [], atContinue40Closed: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
   // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
   var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
   // エンディング中に出現するカードとその設定示唆(画像はユーザー提供のスクリーンショットから切り出し)
@@ -2796,10 +2814,14 @@
       }
 
       if (chance.storyType && chance.storyType !== 'マギアボーナス' && chance.storyType !== '神浜') {
-        body.appendChild(buildNumberField('コネクト上乗せゲーム数', chance, 'bonusGame', '例: 15'));
+        var bonusGameField = buildNumberField('コネクト上乗せゲーム数', chance, 'bonusGame', '例: 15');
+        bonusGameField.querySelector('input').addEventListener('input', renderWeeBonusTotal);
+        body.appendChild(bonusGameField);
       }
       if (chance.storyType === '神浜') {
-        body.appendChild(buildNumberField('上乗せゲーム数', chance, 'bonusGame', '例: 30'));
+        var kamihamaBonusField = buildNumberField('上乗せゲーム数', chance, 'bonusGame', '例: 30');
+        kamihamaBonusField.querySelector('input').addEventListener('input', renderWeeBonusTotal);
+        body.appendChild(kamihamaBonusField);
       }
 
       var delBtn = document.createElement('button');
@@ -2817,7 +2839,31 @@
       card.appendChild(body);
       weeChancesList.appendChild(card);
     });
+    renderWeeBonusTotal();
   }
+  // うぃチャンス全体の上乗せゲーム数(各カードのコネクト上乗せ合計＋10Gカウンター＋その他上乗せの自由入力)
+  var eWeeBonusExtra2 = document.getElementById('e-wee-bonus-extra2');
+  var weeBonusExtra1Value = document.getElementById('wee-bonus-extra1-value');
+  var weeBonusTotalEl = document.getElementById('wee-bonus-total');
+  function renderWeeBonusTotal() {
+    var cardTotal = state.weeChances.reduce(function (sum, c) {
+      return sum + (typeof c.bonusGame === 'number' ? c.bonusGame : 0);
+    }, 0);
+    weeBonusExtra1Value.textContent = state.weeBonusExtra1;
+    weeBonusTotalEl.textContent = cardTotal + state.weeBonusExtra1 + (state.weeBonusExtra2 || 0);
+  }
+  document.getElementById('wee-bonus-extra1-plus').addEventListener('click', function () {
+    state.weeBonusExtra1 += 10;
+    renderWeeBonusTotal();
+  });
+  document.getElementById('wee-bonus-extra1-minus').addEventListener('click', function () {
+    state.weeBonusExtra1 = Math.max(0, state.weeBonusExtra1 - 10);
+    renderWeeBonusTotal();
+  });
+  eWeeBonusExtra2.addEventListener('input', function () {
+    state.weeBonusExtra2 = eWeeBonusExtra2.value === '' ? null : Number(eWeeBonusExtra2.value);
+    renderWeeBonusTotal();
+  });
   document.getElementById('wee-chance-add').addEventListener('click', function () {
     state.weeChances.push(createEmptyWeeChance());
     renderWeeChances();
@@ -3245,6 +3291,9 @@
       eEmbryoConnectBonus.value = (typeof e.embryoConnectBonus === 'number') ? e.embryoConnectBonus : '';
       state.selectedEmbryoPattern = e.embryoPattern ? String(e.embryoPattern) : null;
       state.weeChances = (e.weeChances || []).map(function (c) { return Object.assign({}, c, { spStoryNumbers: (c.spStoryNumbers || []).slice() }); });
+      state.weeBonusExtra1 = (typeof e.weeBonusExtra1 === 'number') ? e.weeBonusExtra1 : 0;
+      state.weeBonusExtra2 = (typeof e.weeBonusExtra2 === 'number') ? e.weeBonusExtra2 : null;
+      eWeeBonusExtra2.value = (typeof state.weeBonusExtra2 === 'number') ? state.weeBonusExtra2 : '';
       state.atContinue40 = (e.atContinue40 || []).slice();
       state.atContinue40Closed = state.atContinue40.map(function () { return false; });
       state.selectedStoryOrder = e.storyOrderPattern || null;
@@ -3280,6 +3329,9 @@
       eEmbryoConnectBonus.value = '';
       state.selectedEmbryoPattern = null;
       state.weeChances = [];
+      state.weeBonusExtra1 = 0;
+      state.weeBonusExtra2 = null;
+      eWeeBonusExtra2.value = '';
       state.atContinue40 = [];
       state.atContinue40Closed = [];
       state.selectedStoryOrder = null;
@@ -3355,6 +3407,8 @@
     var embryoPattern = hasEmbryo && state.selectedEmbryoPattern ? Number(state.selectedEmbryoPattern) : null;
     // うぃチャンスはat当選またはエンブリオ選択時のみ保存し、ストーリー順番示唆はat当選がOFFの時は保存しない
     var weeChances = (atWin || hasEmbryo) ? state.weeChances.map(function (c) { return Object.assign({}, c, { spStoryNumbers: (c.spStoryNumbers || []).slice() }); }) : [];
+    var weeBonusExtra1 = (atWin || hasEmbryo) ? state.weeBonusExtra1 : 0;
+    var weeBonusExtra2 = (atWin || hasEmbryo) ? state.weeBonusExtra2 : null;
     var atContinue40 = (atWin || hasEmbryo) ? state.atContinue40.filter(Boolean) : [];
     var storyOrderPattern = atWin ? state.selectedStoryOrder : null;
     // ドッペルが選ばれていない時はドッペル関連の項目を保存しない
@@ -3372,6 +3426,7 @@
       e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.mikazukiStage = mikazukiStage; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
+      e.weeBonusExtra1 = weeBonusExtra1; e.weeBonusExtra2 = weeBonusExtra2;
       e.atContinue40 = atContinue40;
       e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances; e.cardCounts = cardCounts;
       e.epiboChar = epiboChar; e.epiboKuroeCase = epiboKuroeCase;
@@ -3381,6 +3436,7 @@
         bigVoice: bigVoice, bigScreen: bigScreen, mikazukiStage: mikazukiStage, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
+        weeBonusExtra1: weeBonusExtra1, weeBonusExtra2: weeBonusExtra2,
         atContinue40: atContinue40,
         storyOrderPattern: storyOrderPattern, doppelChances: doppelChances, cardCounts: cardCounts,
         epiboChar: epiboChar, epiboKuroeCase: epiboKuroeCase
