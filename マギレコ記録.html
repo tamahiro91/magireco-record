@@ -711,7 +711,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-16p</div>
+    <div class="app-version">v2026-09-17a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1057,7 +1057,7 @@
       <button type="button" class="picker-trigger" id="e-big-screen-trigger">未選択 ▾</button>
     </div>
     <div class="field" id="field-mikazuki-stage" hidden>
-      <label>みかづき荘ステージ</label>
+      <label>みたまボーナス</label>
       <button type="button" class="picker-trigger" id="e-mikazuki-stage-trigger">未選択 ▾</button>
     </div>
     <div class="field" id="field-atwin">
@@ -1327,12 +1327,16 @@
   function univaPlateFullLabel(v) {
     return v ? (v + '(' + UNIVA_PLATE_SUGGESTION[v] + ')') : '未選択';
   }
-  // みたま選択時に出現するみかづき荘の高確示唆ステージ(示唆内容は無く、ステージ名のみ記録)
+  // みたま選択時に出現するみたまボーナス(高確示唆ステージ、およびみかづき荘の穢れポイント振り分け)
+  var MIKAZUKI_STAGE_SUGGESTION = { 'みかづき荘': '穢れpt+50:75%／+100:25%' };
   var MIKAZUKI_STAGE_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
-    ['発展【青】', '発展【緑】', '調整屋【紫】', '調整屋【赤】', 'マギアラッシュ[AT]'].map(function (v) {
-      return { v: v, text: v };
+    ['みかづき荘', '発展【青】', '発展【緑】', '調整屋【紫】', '調整屋【赤】', 'マギアラッシュ[AT]'].map(function (v) {
+      return { v: v, text: v + (MIKAZUKI_STAGE_SUGGESTION[v] ? '(' + MIKAZUKI_STAGE_SUGGESTION[v] + ')' : '') };
     })
   );
+  function mikazukiStageFullLabel(v) {
+    return v ? (v + (MIKAZUKI_STAGE_SUGGESTION[v] ? '(' + MIKAZUKI_STAGE_SUGGESTION[v] + ')' : '')) : '未選択';
+  }
 
   // うぃチャンス(at中のストーリー示唆)の選択肢
   var WEE_TRIGGER_OPTIONS = ['ゲーム数', '小役当選'];
@@ -1654,7 +1658,7 @@
 
   // 来店1日分のエントリーから、各種示唆情報を集計する(示唆一覧セクション用)
   function visitSuggestionSummary(visit) {
-    var bigScreen = {}, atScreen = {}, epibo = {}, cards = {}, storyOrder = {}, embryoPattern = {}, univaPlate = {};
+    var bigScreen = {}, atScreen = {}, epibo = {}, cards = {}, storyOrder = {}, embryoPattern = {}, univaPlate = {}, mikazuki = {};
     var hikimodoshi = 0, atChokugeki = 0;
     (visit.entries || []).forEach(function (e) {
       if (e.bigScreen) {
@@ -1687,6 +1691,10 @@
           cards[cardLabel] = (cards[cardLabel] || 0) + n;
         });
       }
+      if (e.mikazukiStage && MIKAZUKI_STAGE_SUGGESTION[e.mikazukiStage]) {
+        var mkLabel = mikazukiStageFullLabel(e.mikazukiStage);
+        mikazuki[mkLabel] = (mikazuki[mkLabel] || 0) + 1;
+      }
       if (e.storyOrderPattern) {
         var soLabel = storyOrderShortLabel(e.storyOrderPattern);
         storyOrder[soLabel] = (storyOrder[soLabel] || 0) + 1;
@@ -1713,6 +1721,7 @@
         { title: 'BIG終了画面', items: toList(bigScreen) },
         { title: 'at終了画面', items: toList(atScreen) },
         { title: 'ユニバプレート', items: toList(univaPlate) },
+        { title: 'みたまボーナス', items: toList(mikazuki) },
         { title: 'エピソードボーナスの示唆', items: toList(epibo) },
         { title: 'エンディング中のカード示唆', items: toList(cards) },
         { title: 'ストーリーの話数の示唆', items: toList(storyOrder) },
@@ -2180,7 +2189,7 @@
         var screenSuggestion = BIG_SCREEN_SUGGESTION[e.bigScreen];
         extraLines.push('画面: ' + e.bigScreen + (screenSuggestion ? '(' + screenSuggestion + ')' : ''));
       }
-      if (e.mikazukiStage) extraLines.push('みかづき荘: ' + e.mikazukiStage);
+      if (e.mikazukiStage) extraLines.push('みたまボーナス: ' + mikazukiStageFullLabel(e.mikazukiStage));
       if (e.atScreens && e.atScreens.length) {
         e.atScreens.forEach(function (screen, si) {
           var prefix = e.atScreens.length > 1 ? ('at終了画面' + (si + 1)) : 'at終了画面';
@@ -2581,9 +2590,9 @@
     });
   });
   eMikazukiStageTrigger.addEventListener('click', function () {
-    openPicker('みかづき荘ステージ', MIKAZUKI_STAGE_OPTIONS, state.selectedMikazukiStage || '', function (v) {
+    openPicker('みたまボーナス', MIKAZUKI_STAGE_OPTIONS, state.selectedMikazukiStage || '', function (v) {
       state.selectedMikazukiStage = v || null;
-      eMikazukiStageTrigger.textContent = (v || '未選択') + ' ▾';
+      eMikazukiStageTrigger.textContent = mikazukiStageFullLabel(v) + ' ▾';
     });
   });
 
@@ -3142,7 +3151,7 @@
     eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(state.selectedEmbryoPattern) + ' ▾';
     eBigVoiceTrigger.textContent = bigVoiceFullLabel(state.selectedBigVoice, eAtWin.checked) + ' ▾';
     eBigScreenTrigger.textContent = bigScreenFullLabel(state.selectedBigScreen) + ' ▾';
-    eMikazukiStageTrigger.textContent = (state.selectedMikazukiStage || '未選択') + ' ▾';
+    eMikazukiStageTrigger.textContent = mikazukiStageFullLabel(state.selectedMikazukiStage) + ' ▾';
     eStoryOrderTrigger.textContent = storyOrderShortLabel(state.selectedStoryOrder) + ' ▾';
     renderWeeChances();
     renderDoppelChances();
