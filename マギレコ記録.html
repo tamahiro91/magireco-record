@@ -736,7 +736,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17w</div>
+    <div class="app-version">v2026-09-17x</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2194,11 +2194,11 @@
     elDMemo.textContent = v.note || '';
     elDMemo.style.display = v.note ? '' : 'none';
     var takeoverParts = [];
-    if (typeof v.takeoverGame === 'number') takeoverParts.push(v.takeoverGame + 'G');
-    if (typeof v.takeoverBig === 'number') takeoverParts.push('BIG' + v.takeoverBig + '回');
-    if (typeof v.takeoverAt === 'number') takeoverParts.push('AT' + v.takeoverAt + '回');
-    if (typeof v.takeoverAtHatsu === 'number') takeoverParts.push('at初当たり' + v.takeoverAtHatsu + '回');
-    elDTakeover.textContent = takeoverParts.length ? ('引き継ぎ: ' + takeoverParts.join(' / ')) : '';
+    if (typeof v.takeoverGame === 'number') takeoverParts.push('回転数' + v.takeoverGame + 'G');
+    if (typeof v.takeoverBig === 'number') takeoverParts.push('BIG' + v.takeoverBig);
+    if (typeof v.takeoverAt === 'number') takeoverParts.push('at' + v.takeoverAt);
+    if (typeof v.takeoverAtHatsu === 'number') takeoverParts.push('at初当たり' + v.takeoverAtHatsu);
+    elDTakeover.textContent = takeoverParts.length ? ('既存：' + takeoverParts.join(' / ')) : '';
     elDTakeover.style.display = takeoverParts.length ? '' : 'none';
 
     var s = visitStats(v);
@@ -2206,7 +2206,7 @@
       var combinedGame = v.takeoverGame + s.game;
       var combinedBig = (v.takeoverBig || 0) + s.big;
       var combinedAtHatsu = (v.takeoverAtHatsu || 0) + s.atWin;
-      elDTakeoverProb.textContent = '引き継ぎ込み確率: BIG ' + fmtProb(combinedGame, combinedBig) + '　at初当たり ' + fmtProb(combinedGame, combinedAtHatsu);
+      elDTakeoverProb.textContent = 'BIG確率' + fmtProb(combinedGame, combinedBig) + ' / at初当たり確率' + fmtProb(combinedGame, combinedAtHatsu);
       elDTakeoverProb.style.display = '';
     } else {
       elDTakeoverProb.textContent = '';
