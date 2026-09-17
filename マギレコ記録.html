@@ -721,7 +721,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17d</div>
+    <div class="app-version">v2026-09-17e</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1489,6 +1489,10 @@
         e.atScreens = e.atScreen ? [e.atScreen] : [];
         delete e.atScreen;
       }
+      // ユニバプレートが文字列配列だった旧形式を{plate, time}のオブジェクト配列に変換する
+      if (Array.isArray(e.univaPlates) && e.univaPlates.length && typeof e.univaPlates[0] === 'string') {
+        e.univaPlates = e.univaPlates.map(function (p) { return { plate: p, time: null }; });
+      }
       return e;
     }
 
@@ -1688,7 +1692,9 @@
         });
       }
       if (e.univaPlates && e.univaPlates.length) {
-        e.univaPlates.forEach(function (plate) {
+        e.univaPlates.forEach(function (item) {
+          var plate = item.plate;
+          if (!plate) return;
           var upLabel = plate + '(' + UNIVA_PLATE_SUGGESTION[plate] + ')';
           univaPlate[upLabel] = (univaPlate[upLabel] || 0) + 1;
         });
@@ -2224,10 +2230,11 @@
         });
       }
       if (e.univaPlates && e.univaPlates.length) {
-        e.univaPlates.forEach(function (plate, pi) {
+        e.univaPlates.forEach(function (item, pi) {
+          if (!item.plate) return;
           var prefix = e.univaPlates.length > 1 ? ('ユニバプレート' + (pi + 1)) : 'ユニバプレート';
-          extraLines.push(prefix + ': ' + plate);
-          extraLines.push('(' + UNIVA_PLATE_SUGGESTION[plate] + ')');
+          extraLines.push(prefix + ': ' + item.plate + (item.time ? '｜表示時刻 ' + item.time : ''));
+          extraLines.push('(' + UNIVA_PLATE_SUGGESTION[item.plate] + ')');
         });
       }
       if (e.storyOrderPattern) extraLines.push('順番示唆: ' + storyOrderShortLabel(e.storyOrderPattern));
@@ -2669,6 +2676,21 @@
     field.appendChild(input);
     return field;
   }
+  function buildTimeField(labelText, obj, key) {
+    var field = document.createElement('div');
+    field.className = 'field';
+    var label = document.createElement('label');
+    label.textContent = labelText;
+    field.appendChild(label);
+    var input = document.createElement('input');
+    input.type = 'time';
+    input.value = obj[key] || '';
+    input.addEventListener('input', function () {
+      obj[key] = input.value || null;
+    });
+    field.appendChild(input);
+    return field;
+  }
   // コネクト色は帯色(band-select)と同じ配色ボタンで表示する
   function buildConnectColorField(chance) {
     var field = document.createElement('div');
@@ -2971,11 +2993,14 @@
     renderAtScreens();
   });
 
-  // ユニバプレート(at終了時に出現する可能性があるプレート、継続時に複数回見られるためat終了画面と同様に複数追加できる)
+  // ユニバプレート(at終了時に出現する可能性があるプレート、継続時に複数回見られるためat終了画面と同様に複数追加できる。表示時刻も記録できる)
+  function createEmptyUnivaPlate() {
+    return { plate: null, time: null };
+  }
   var univaPlatesList = document.getElementById('univa-plates-list');
   function renderUnivaPlates() {
     univaPlatesList.innerHTML = '';
-    state.univaPlates.forEach(function (val, idx) {
+    state.univaPlates.forEach(function (item, idx) {
       var card = document.createElement('div');
       card.className = 'wee-chance-card';
       var title = document.createElement('div');
@@ -2988,15 +3013,17 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'picker-trigger';
-      btn.textContent = univaPlateFullLabel(val) + ' ▾';
+      btn.textContent = univaPlateFullLabel(item.plate) + ' ▾';
       btn.addEventListener('click', function () {
-        openPicker('ユニバプレート', UNIVA_PLATE_OPTIONS, val || '', function (v) {
-          state.univaPlates[idx] = v || null;
+        openPicker('ユニバプレート', UNIVA_PLATE_OPTIONS, item.plate || '', function (v) {
+          item.plate = v || null;
           renderUnivaPlates();
         });
       });
       field.appendChild(btn);
       card.appendChild(field);
+
+      card.appendChild(buildTimeField('表示時刻', item, 'time'));
 
       var delBtn = document.createElement('button');
       delBtn.type = 'button';
@@ -3013,7 +3040,7 @@
     });
   }
   document.getElementById('univa-plate-add').addEventListener('click', function () {
-    state.univaPlates.push(null);
+    state.univaPlates.push(createEmptyUnivaPlate());
     renderUnivaPlates();
   });
 
@@ -3172,7 +3199,7 @@
       state.selectedMikazukiStage = e.mikazukiStage || null;
       state.atScreens = (e.atScreens || []).slice();
       state.atScreensClosed = state.atScreens.map(function () { return false; });
-      state.univaPlates = (e.univaPlates || []).slice();
+      state.univaPlates = (e.univaPlates || []).map(function (p) { return Object.assign({}, p); });
       state.selectedBand = e.bandColor || null;
       state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); });
       state.cardCounts = Object.assign({}, e.cardCounts || {});
@@ -3280,7 +3307,7 @@
     var hasMitama = results.indexOf('みたま') !== -1;
     var mikazukiStage = hasMitama ? state.selectedMikazukiStage : null;
     var atScreens = (atWin || results.indexOf('エンブリオ') !== -1) ? state.atScreens.filter(Boolean) : [];
-    var univaPlates = (atWin || results.indexOf('エンブリオ') !== -1) ? state.univaPlates.filter(Boolean) : [];
+    var univaPlates = (atWin || results.indexOf('エンブリオ') !== -1) ? state.univaPlates.filter(function (p) { return p && p.plate; }) : [];
     // 帯色・初期ゲーム数・エンブリオが選ばれていない時は関連する選択を保存しない(表示と矛盾しないように)
     var hasEmbryo = results.indexOf('エンブリオ') !== -1;
     var hasArina = results.indexOf('アリナ') !== -1;
