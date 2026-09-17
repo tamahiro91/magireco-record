@@ -723,7 +723,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17k</div>
+    <div class="app-version">v2026-09-17l</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -958,7 +958,7 @@
         <input type="number" inputmode="numeric" id="e-point" placeholder="例: 350">
       </div>
       <div class="field">
-        <label>at初期ゲーム数</label>
+        <label>atゲーム数</label>
         <input type="number" inputmode="numeric" id="e-at-start-game" placeholder="例: 0">
       </div>
     </div>
@@ -1702,6 +1702,13 @@
     if (!base) return '';
     return (count / base * 100).toFixed(1) + '%';
   }
+  // うぃチャンス全体の上乗せゲーム数(各カードのコネクト上乗せ/消化ゲーム数の合計＋10Gカウンター＋その他上乗せ)を、保存済みの記録から算出する
+  function weeBonusTotalOf(e) {
+    var cardTotal = (e.weeChances || []).reduce(function (sum, c) {
+      return sum + (typeof c.bonusGame === 'number' ? c.bonusGame : 0) + (typeof c.consumedGame === 'number' ? c.consumedGame : 0);
+    }, 0);
+    return cardTotal + (e.weeBonusExtra1 || 0) + (e.weeBonusExtra2 || 0);
+  }
   function visitStats(visit) {
     var point = 0, hits = 0, big = 0, mitama = 0, atWin = 0, game = 0;
     (visit.entries || []).forEach(function (e) {
@@ -2181,7 +2188,7 @@
       row.className = 'entry';
       var gameText = (typeof e.game === 'number') ? e.game + 'G' : '';
       var pointText = (typeof e.point === 'number') ? e.point + 'pt' : '';
-      var atStartGameText = (typeof e.atStartGame === 'number') ? 'at初期' + e.atStartGame + 'G' : '';
+      var atStartGameText = (typeof e.atStartGame === 'number') ? 'atゲーム数' + (e.atStartGame + weeBonusTotalOf(e)) + 'G' : '';
       var numsText = [gameText, pointText, atStartGameText].filter(Boolean).join(' / ');
 
       var tags = (e.results || []).map(function (r) {
