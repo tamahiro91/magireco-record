@@ -725,7 +725,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17q</div>
+    <div class="app-version">v2026-09-17r</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1188,11 +1188,15 @@
     <input type="file" id="import-file" accept="application/json">
 
     <div class="field" style="margin-top:20px;">
-      <label>同期コード(Safari・ホーム画面など複数の入口で同じデータを使いたい時に設定)</label>
-      <input type="text" id="sync-code-input" placeholder="例: 自分だけの合言葉">
+      <label>同期コード(複数端末で同じデータを使いたい時に設定)</label>
+      <button class="ghost-btn" id="btn-sync-generate" style="width:100%;">新しい同期コードを発行</button>
+    </div>
+    <div class="field">
+      <label>他の端末で発行したコードを入力して同期</label>
+      <input type="text" id="sync-code-input" placeholder="例: 発行されたコードを入力">
     </div>
     <div class="backup-row">
-      <button class="ghost-btn" id="btn-sync-start">同期を開始</button>
+      <button class="ghost-btn" id="btn-sync-start">このコードで同期</button>
       <button class="ghost-btn" id="btn-sync-stop">同期を解除</button>
     </div>
     <div id="sync-status" style="font-size:12px;color:var(--sub);margin-top:6px;"></div>
@@ -3621,6 +3625,33 @@
   });
   document.getElementById('backup-close').addEventListener('click', function () {
     overlayBackup.classList.add('hidden');
+  });
+  // 同期コードは他人と偶然重複してデータが混ざらないよう、英数字8桁のランダム文字列を自動発行する(0/O/1/Iなど見分けにくい文字は除外)
+  var SYNC_CODE_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  function generateSyncCode() {
+    var s = '';
+    for (var i = 0; i < 8; i++) {
+      s += SYNC_CODE_CHARS[Math.floor(Math.random() * SYNC_CODE_CHARS.length)];
+    }
+    return s;
+  }
+  function tryGenerateUniqueSyncCode(attemptsLeft) {
+    var code = generateSyncCode();
+    window.__mgrSync.getDoc(syncDocRef(code)).then(function (snap) {
+      if (snap.exists() && attemptsLeft > 0) {
+        tryGenerateUniqueSyncCode(attemptsLeft - 1);
+        return;
+      }
+      syncCodeInput.value = code;
+      startSync(code);
+    }).catch(function () {
+      setSyncStatus('同期エラー: コードの発行に失敗しました');
+    });
+  }
+  document.getElementById('btn-sync-generate').addEventListener('click', function () {
+    if (!firebaseReady) { setSyncStatus('接続中です…もう少しお待ちください'); return; }
+    setSyncStatus('コードを発行しています…');
+    tryGenerateUniqueSyncCode(5);
   });
   document.getElementById('btn-sync-start').addEventListener('click', function () {
     var code = syncCodeInput.value.trim();
