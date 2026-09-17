@@ -721,7 +721,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17b</div>
+    <div class="app-version">v2026-09-17c</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1097,6 +1097,11 @@
       <div id="wee-chances-list"></div>
       <button type="button" class="ghost-btn" id="wee-chance-add">＋ うぃチャンスを追加</button>
     </div>
+    <div class="field" id="field-atcontinue40" hidden>
+      <label>at継続40ゲーム</label>
+      <div id="atcontinue40-list"></div>
+      <button type="button" class="ghost-btn" id="atcontinue40-add">＋ at継続40ゲームを追加</button>
+    </div>
     <div class="field" id="field-univa-plates" hidden>
       <label>ユニバプレート</label>
       <div id="univa-plates-list"></div>
@@ -1173,7 +1178,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], univaPlates: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], univaPlates: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], atContinue40: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
   // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
   var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
   // エンディング中に出現するカードとその設定示唆(画像はユーザー提供のスクリーンショットから切り出し)
@@ -1670,7 +1675,7 @@
   // 来店1日分のエントリーから、各種示唆情報を集計する(示唆一覧セクション用)
   function visitSuggestionSummary(visit) {
     var bigScreen = {}, atScreen = {}, epibo = {}, cards = {}, storyOrder = {}, embryoPattern = {}, univaPlate = {}, mikazuki = {};
-    var hikimodoshi = 0, atChokugeki = 0;
+    var hikimodoshi = 0, atChokugeki = 0, atContinue40Iroha = 0, atContinue40Koqube = 0;
     (visit.entries || []).forEach(function (e) {
       if (e.bigScreen) {
         var bsLabel = e.bigScreen + (BIG_SCREEN_SUGGESTION[e.bigScreen] ? '(' + BIG_SCREEN_SUGGESTION[e.bigScreen] + ')' : '');
@@ -1723,6 +1728,12 @@
       }
       if (e.results && e.results.indexOf('引戻し') !== -1) hikimodoshi++;
       if (e.results && e.results.indexOf('at直撃') !== -1) atChokugeki++;
+      if (e.atContinue40 && e.atContinue40.length) {
+        e.atContinue40.forEach(function (v) {
+          if (v === 'いろは') atContinue40Iroha++;
+          else if (v === '小きゅうべえ') atContinue40Koqube++;
+        });
+      }
     });
     function toList(map) {
       return Object.keys(map).map(function (label) { return { label: label, count: map[label] }; });
@@ -1739,7 +1750,9 @@
         { title: 'キャラ紹介の示唆', items: toList(embryoPattern) }
       ],
       hikimodoshi: hikimodoshi,
-      atChokugeki: atChokugeki
+      atChokugeki: atChokugeki,
+      atContinue40Iroha: atContinue40Iroha,
+      atContinue40Koqube: atContinue40Koqube
     };
   }
 
@@ -1904,6 +1917,8 @@
     });
     html += '<div class="suggestion-simple-row"><span>引き戻し回数</span><span>' + summary.hikimodoshi + '回</span></div>';
     html += '<div class="suggestion-simple-row"><span>at直撃回数</span><span>' + summary.atChokugeki + '回</span></div>';
+    html += '<div class="suggestion-simple-row"><span>at継続40ゲーム(いろは)</span><span>' + summary.atContinue40Iroha + '回</span></div>';
+    html += '<div class="suggestion-simple-row"><span>at継続40ゲーム(小きゅうべえ)</span><span>' + summary.atContinue40Koqube + '回</span></div>';
     elSuggestionSummaryBody.innerHTML = html;
   }
 
@@ -2216,6 +2231,12 @@
         });
       }
       if (e.storyOrderPattern) extraLines.push('順番示唆: ' + storyOrderShortLabel(e.storyOrderPattern));
+      if (e.atContinue40 && e.atContinue40.length) {
+        e.atContinue40.forEach(function (v, ai) {
+          var prefix = e.atContinue40.length > 1 ? ('at継続40ゲーム' + (ai + 1)) : 'at継続40ゲーム';
+          extraLines.push(prefix + ': ' + v);
+        });
+      }
       if (e.weeChances && e.weeChances.length) {
         e.weeChances.forEach(function (c, wi) {
           var weeLine1 = [];
@@ -2443,6 +2464,7 @@
   var fieldUnivaPlates = document.getElementById('field-univa-plates');
   var fieldStoryOrder = document.getElementById('field-story-order');
   var fieldWeeChances = document.getElementById('field-wee-chances');
+  var fieldAtContinue40 = document.getElementById('field-atcontinue40');
   var fieldBand = document.getElementById('field-band');
   var fieldDoppelChances = document.getElementById('field-doppel-chances');
   var fieldAtWin = document.getElementById('field-atwin');
@@ -2484,6 +2506,9 @@
     }
     fieldWeeChances.hidden = !(hasEmbryo || eAtWin.checked);
     renderWeeChances();
+    fieldWeeChances.insertAdjacentElement('afterend', fieldAtContinue40);
+    fieldAtContinue40.hidden = !(hasEmbryo || eAtWin.checked);
+    renderAtContinue40();
     fieldDoppelChances.hidden = !hasDoppel;
     fieldAtWin.hidden = hasDoppel || hasEmbryo;
     fieldEpiboChar.hidden = !hasEpibo;
@@ -2979,6 +3004,43 @@
     renderUnivaPlates();
   });
 
+  // at継続40ゲーム(いろは/小きゅうべえのどちらが出たかを複数回記録できる。示唆は本文には出さず、来店ごとの回数だけ集計する)
+  var ATCONTINUE40_OPTIONS = ['いろは', '小きゅうべえ'];
+  var atContinue40List = document.getElementById('atcontinue40-list');
+  function renderAtContinue40() {
+    atContinue40List.innerHTML = '';
+    state.atContinue40.forEach(function (val, idx) {
+      var card = document.createElement('div');
+      card.className = 'wee-chance-card';
+      var title = document.createElement('div');
+      title.className = 'wee-title';
+      title.textContent = 'at継続40ゲーム' + (idx + 1);
+      card.appendChild(title);
+
+      card.appendChild(buildToggleField('選択', ATCONTINUE40_OPTIONS, val, function (v) {
+        state.atContinue40[idx] = (val === v) ? null : v;
+        renderAtContinue40();
+      }));
+
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'ghost-btn wee-chance-delete';
+      delBtn.textContent = 'このat継続40ゲームを削除';
+      delBtn.addEventListener('click', function () {
+        if (!confirm('このat継続40ゲームを削除しますか？')) return;
+        state.atContinue40.splice(idx, 1);
+        renderAtContinue40();
+      });
+      card.appendChild(delBtn);
+
+      atContinue40List.appendChild(card);
+    });
+  }
+  document.getElementById('atcontinue40-add').addEventListener('click', function () {
+    state.atContinue40.push(null);
+    renderAtContinue40();
+  });
+
   // エンディング中に出現したカードの記録(12種固定グリッド、カードごとに+/-カウンター)
   var cardChancesGrid = document.getElementById('card-chances-grid');
   var fieldCardChancesSummary = document.getElementById('field-card-chances');
@@ -3115,6 +3177,7 @@
       eEmbryoConnectBonus.value = (typeof e.embryoConnectBonus === 'number') ? e.embryoConnectBonus : '';
       state.selectedEmbryoPattern = e.embryoPattern ? String(e.embryoPattern) : null;
       state.weeChances = (e.weeChances || []).map(function (c) { return Object.assign({}, c, { spStoryNumbers: (c.spStoryNumbers || []).slice() }); });
+      state.atContinue40 = (e.atContinue40 || []).slice();
       state.selectedStoryOrder = e.storyOrderPattern || null;
       eAtWin.checked = !!e.atWin;
       eAtMemo.value = e.atMemo || '';
@@ -3146,6 +3209,7 @@
       eEmbryoConnectBonus.value = '';
       state.selectedEmbryoPattern = null;
       state.weeChances = [];
+      state.atContinue40 = [];
       state.selectedStoryOrder = null;
       eAtWin.checked = false;
       eAtMemo.value = '';
@@ -3219,6 +3283,7 @@
     var embryoPattern = hasEmbryo && state.selectedEmbryoPattern ? Number(state.selectedEmbryoPattern) : null;
     // うぃチャンスはat当選またはエンブリオ選択時のみ保存し、ストーリー順番示唆はat当選がOFFの時は保存しない
     var weeChances = (atWin || hasEmbryo) ? state.weeChances.map(function (c) { return Object.assign({}, c, { spStoryNumbers: (c.spStoryNumbers || []).slice() }); }) : [];
+    var atContinue40 = (atWin || hasEmbryo) ? state.atContinue40.filter(Boolean) : [];
     var storyOrderPattern = atWin ? state.selectedStoryOrder : null;
     // ドッペルが選ばれていない時はドッペル関連の項目を保存しない
     var hasDoppel = results.indexOf('ドッペル') !== -1;
@@ -3235,6 +3300,7 @@
       e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.mikazukiStage = mikazukiStage; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
+      e.atContinue40 = atContinue40;
       e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances; e.cardCounts = cardCounts;
       e.epiboChar = epiboChar; e.epiboKuroeCase = epiboKuroeCase;
     } else {
@@ -3243,6 +3309,7 @@
         bigVoice: bigVoice, bigScreen: bigScreen, mikazukiStage: mikazukiStage, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
+        atContinue40: atContinue40,
         storyOrderPattern: storyOrderPattern, doppelChances: doppelChances, cardCounts: cardCounts,
         epiboChar: epiboChar, epiboKuroeCase: epiboKuroeCase
       });
