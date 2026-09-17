@@ -209,6 +209,7 @@
   .visit-card .prob-col .p-percent { font-size: 12px; color: var(--sub); margin-top: 2px; }
 
   .counters { display: flex; gap: 8px; margin-top: 10px; }
+  #field-wee-chances .counters { margin-bottom: 10px; }
   .counter-card {
     flex: 1;
     min-width: 0;
@@ -721,7 +722,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17g</div>
+    <div class="app-version">v2026-09-17h</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1096,10 +1097,6 @@
       </div>
       <div class="counters">
         <div class="counter-card">
-          <div class="counter-label">上乗せゲーム数</div>
-          <div class="counter-value" id="wee-bonus-total">0</div>
-        </div>
-        <div class="counter-card">
           <div class="counter-label">+10G</div>
           <div class="counter-controls">
             <button type="button" class="counter-btn" id="wee-bonus-extra1-minus">−</button>
@@ -1110,6 +1107,10 @@
         <div class="counter-card">
           <div class="counter-label">その他上乗せ</div>
           <input type="number" inputmode="numeric" id="e-wee-bonus-extra2" placeholder="例: 15">
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">上乗せゲーム数</div>
+          <div class="counter-value" id="wee-bonus-total">0</div>
         </div>
       </div>
       <div id="wee-chances-list"></div>
