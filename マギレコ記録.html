@@ -723,7 +723,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17l</div>
+    <div class="app-version">v2026-09-17m</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1709,6 +1709,10 @@
     }, 0);
     return cardTotal + (e.weeBonusExtra1 || 0) + (e.weeBonusExtra2 || 0);
   }
+  // atゲーム数の合計(at初期＋うぃチャンス上乗せ＋at継続40ゲーム1件につき40G)
+  function atGameTotalOf(e) {
+    return (e.atStartGame || 0) + weeBonusTotalOf(e) + (e.atContinue40 || []).length * 40;
+  }
   function visitStats(visit) {
     var point = 0, hits = 0, big = 0, mitama = 0, atWin = 0, game = 0;
     (visit.entries || []).forEach(function (e) {
@@ -2188,7 +2192,7 @@
       row.className = 'entry';
       var gameText = (typeof e.game === 'number') ? e.game + 'G' : '';
       var pointText = (typeof e.point === 'number') ? e.point + 'pt' : '';
-      var atStartGameText = (typeof e.atStartGame === 'number') ? 'atゲーム数' + (e.atStartGame + weeBonusTotalOf(e)) + 'G' : '';
+      var atStartGameText = (typeof e.atStartGame === 'number') ? 'atゲーム数' + atGameTotalOf(e) + 'G' : '';
       var numsText = [gameText, pointText, atStartGameText].filter(Boolean).join(' / ');
 
       var tags = (e.results || []).map(function (r) {
