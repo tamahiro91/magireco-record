@@ -43,15 +43,26 @@
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
     margin: 0; padding: 0;
+    height: 100%;
+    overflow: hidden;
     background: var(--bg);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
   }
+  /* #appは画面ぴったりの高さで固定し、中の#scroll-areaだけがスクロールする(下部の＋ボタン列が記録一覧と重ならないようにするため) */
   #app {
     max-width: 640px;
     margin: 0 auto;
-    min-height: 100vh;
-    padding: max(16px, env(safe-area-inset-top)) 14px 90px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  #scroll-area {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: max(16px, env(safe-area-inset-top)) 14px 16px;
   }
   header {
     display: flex;
@@ -422,10 +433,9 @@
   }
 
   .bottom-actions {
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: max(24px, env(safe-area-inset-bottom));
+    flex: 0 0 auto;
+    align-self: center;
+    padding: 10px 0 max(10px, env(safe-area-inset-bottom));
     display: flex;
     align-items: center;
     gap: 14px;
@@ -475,7 +485,6 @@
     overscroll-behavior: contain;
     touch-action: pan-y;
   }
-  body.modal-open { overflow: hidden; }
   .sheet h2 { margin: 0 0 14px; font-size: 17px; }
   .field { margin-bottom: 12px; }
   .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
@@ -705,13 +714,14 @@
 </head>
 <body>
 <div id="app">
+<div id="scroll-area">
 
   <div id="view-list">
     <header>
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17a</div>
+    <div class="app-version">v2026-09-17b</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -875,6 +885,7 @@
     <div class="calendar-grid" id="calendar-grid"></div>
   </div>
 
+</div>
   <div class="bottom-actions">
     <button class="scroll-btn" id="btn-scroll-top" title="一番上へ">↑</button>
     <button class="fab" id="btn-fab">+</button>
@@ -3259,11 +3270,12 @@
       openEntrySheet(null);
     }
   });
+  var elScrollArea = document.getElementById('scroll-area');
   document.getElementById('btn-scroll-top').addEventListener('click', function () {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    elScrollArea.scrollTo({ top: 0, behavior: 'smooth' });
   });
   document.getElementById('btn-scroll-bottom').addEventListener('click', function () {
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    elScrollArea.scrollTo({ top: elScrollArea.scrollHeight, behavior: 'smooth' });
   });
 
   // --- バックアップ ---
@@ -3325,9 +3337,8 @@
     reader.readAsText(file);
   });
 
-  // モーダル(来店/記録/バックアップ)を開いている間、背景のスクロールを止める。
-  // どれか1つでも開いていればロックし、全部閉じたら元のスクロール位置に戻す。
-  var modalScrollY = 0;
+  // モーダル(来店/記録/バックアップ)を開いている間、背景(#scroll-area)のスクロールを止める。
+  // どれか1つでも開いていればロックし、全部閉じたら解除する(スクロール位置はoverflow切り替えだけで自然に保持される)。
   var modalLocked = false;
   function updateBodyScrollLock() {
     var anyOpen = !overlayVisit.classList.contains('hidden') ||
@@ -3336,18 +3347,10 @@
                   !overlayBackup.classList.contains('hidden');
     if (anyOpen && !modalLocked) {
       modalLocked = true;
-      modalScrollY = window.scrollY;
-      document.body.classList.add('modal-open');
-      document.body.style.position = 'fixed';
-      document.body.style.top = '-' + modalScrollY + 'px';
-      document.body.style.width = '100%';
+      elScrollArea.style.overflow = 'hidden';
     } else if (!anyOpen && modalLocked) {
       modalLocked = false;
-      document.body.classList.remove('modal-open');
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
-      window.scrollTo(0, modalScrollY);
+      elScrollArea.style.overflow = '';
     }
   }
   [overlayVisit, overlayEntry, overlayPicker, overlayBackup].forEach(function (el) {
