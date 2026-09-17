@@ -725,7 +725,7 @@
       <h1>マギレコ実戦記録</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-17r</div>
+    <div class="app-version">v2026-09-17s</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1187,7 +1187,10 @@
     </div>
     <input type="file" id="import-file" accept="application/json">
 
-    <div class="field" style="margin-top:20px;">
+    <div style="font-size:12px;color:var(--sub);margin-top:20px;">
+      同期コードを発行・入力すると、記録データがクラウド(Firebase)に送信されます。同期を使わない場合、データは端末内にのみ保存されます。
+    </div>
+    <div class="field" style="margin-top:8px;">
       <label>同期コード(複数端末で同じデータを使いたい時に設定)</label>
       <button class="ghost-btn" id="btn-sync-generate" style="width:100%;">新しい同期コードを発行</button>
     </div>
