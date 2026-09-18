@@ -790,7 +790,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-18d</div>
+    <div class="app-version">v2026-09-18e</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -3306,6 +3306,7 @@
       delBtn.className = 'ghost-btn wee-chance-delete';
       delBtn.textContent = 'このドッペルチャンスを削除';
       delBtn.addEventListener('click', function () {
+        if (!confirm('このドッペルチャンスを削除しますか？')) return;
         state.doppelChances.splice(idx, 1);
         renderDoppelChances();
       });
