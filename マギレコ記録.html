@@ -367,7 +367,22 @@
     padding: 0;
   }
   .mini-btn:active { opacity: 0.6; }
-  .invest-count { font-size: 15px; font-weight: 700; min-width: 18px; text-align: center; }
+  .invest-count {
+    font-size: 15px;
+    font-weight: 700;
+    width: 34px;
+    text-align: center;
+    background: none;
+    border: none;
+    color: var(--text);
+    padding: 0;
+    -moz-appearance: textfield;
+  }
+  .invest-count::-webkit-outer-spin-button,
+  .invest-count::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
   .invest-unit { font-size: 13px; color: var(--sub); flex-shrink: 0; }
   .invest-total {
     padding-left: 10px;
@@ -790,7 +805,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-18e</div>
+    <div class="app-version">v2026-09-19a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -852,7 +867,7 @@
           </div>
           <div class="invest-stepper">
             <button type="button" class="mini-btn" id="d-invest-minus">−</button>
-            <div class="invest-count" id="d-invest-count">0</div>
+            <input type="number" inputmode="numeric" class="invest-count" id="d-invest-count" value="0">
             <span class="invest-unit">本</span>
             <button type="button" class="mini-btn" id="d-invest-plus">＋</button>
           </div>
@@ -2168,6 +2183,15 @@
   });
   document.getElementById('d-invest-plus').addEventListener('click', function () { changeInvestCount(1); });
   document.getElementById('d-invest-minus').addEventListener('click', function () { changeInvestCount(-1); });
+  elDInvestCount.addEventListener('input', function (ev) {
+    var v = currentVisit();
+    if (!v) return;
+    if (!v.invest) v.invest = { rate: 46, count: 0 };
+    v.invest.count = Math.max(0, Number(ev.target.value) || 0);
+    save();
+    updateInvestBalance(v);
+    elDInvestTotal.innerHTML = '＝ ' + (v.invest.rate * v.invest.count) + '枚 <span class="invest-total-label">(使用枚数)</span>';
+  });
 
   // 回収枚数の入力欄に応じて差枚(収支)表示を更新する
   function updateInvestBalance(v) {
@@ -2422,7 +2446,7 @@
 
     var invest = v.invest || { rate: 46, count: 0 };
     elDInvestRate.value = String(invest.rate);
-    elDInvestCount.textContent = invest.count || 0;
+    elDInvestCount.value = invest.count || 0;
     elDInvestTotal.innerHTML = '＝ ' + (invest.rate * (invest.count || 0)) + '枚 <span class="invest-total-label">(使用枚数)</span>';
     elDInvestRecovered.value = invest.recovered || 0;
     updateInvestBalance(v);
