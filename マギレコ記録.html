@@ -387,6 +387,7 @@
   }
   .invest-balance.positive { color: var(--at); }
   .invest-balance.negative { color: var(--danger); }
+  .invest-note { font-size: 10px; color: var(--sub); text-align: right; margin-top: 6px; }
 
   .entry {
     background: var(--panel);
@@ -774,7 +775,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-18b</div>
+    <div class="app-version">v2026-09-18c</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -845,10 +846,11 @@
         <div class="invest-row">
           <div class="invest-recovered-wrap">
             <label class="invest-recovered-label" for="d-invest-recovered">回収枚数</label>
-            <input type="number" inputmode="numeric" class="invest-recovered-input" id="d-invest-recovered" placeholder="例: 400">
+            <input type="number" inputmode="numeric" class="invest-recovered-input" id="d-invest-recovered">
           </div>
           <div class="invest-balance" id="d-invest-balance"></div>
         </div>
+        <div class="invest-note">※換金ギャップは考慮してません</div>
       </div>
       <div class="summary" style="margin-top:10px;">
         <div class="card"><div class="label">BIG</div><div class="value" id="d-big">0</div><div class="prob" id="d-big-prob"></div></div>
@@ -1801,10 +1803,10 @@
     return (e.atStartGame || 0) + weeBonusTotalOf(e) + (e.atContinue40 || []).length * 40;
   }
   // 回収枚数が入力されている来店の差枚(収支)を返す。未入力ならnull
+  // 回収枚数が未入力の場合は0として差枚(収支)を計算する
   function investBalanceOf(v) {
     var invest = v.invest || { rate: 46, count: 0 };
-    if (typeof invest.recovered !== 'number') return null;
-    return invest.recovered - invest.rate * (invest.count || 0);
+    return (invest.recovered || 0) - invest.rate * (invest.count || 0);
   }
   function visitStats(visit) {
     var point = 0, hits = 0, big = 0, mitama = 0, atWin = 0, game = 0, atGame = 0;
@@ -1944,7 +1946,7 @@
       });
     }
 
-    var totalGame = 0, totalAtGame = 0, totalBonus = 0, totalAtWin = 0, totalCz = 0, totalCzWin = 0, totalSuika = 0, totalBalance = 0, hasBalance = false;
+    var totalGame = 0, totalAtGame = 0, totalBonus = 0, totalAtWin = 0, totalCz = 0, totalCzWin = 0, totalSuika = 0, totalBalance = 0;
     state.visits.forEach(function (v) {
       var s = visitStats(v);
       var counters = v.counters || { suika: 0, cz: 0, czWin: 0 };
@@ -1955,8 +1957,7 @@
       totalCz += counters.cz || 0;
       totalCzWin += counters.czWin || 0;
       totalSuika += counters.suika || 0;
-      var balance = investBalanceOf(v);
-      if (balance !== null) { totalBalance += balance; hasBalance = true; }
+      totalBalance += investBalanceOf(v);
     });
     elSumVisits.textContent = state.visits.length;
     elSumGame.textContent = totalGame;
@@ -1971,8 +1972,8 @@
     elSumCzProb.textContent = fmtPercent(totalCz, totalSuika);
     elSumCzWin.textContent = totalCzWin;
     elSumCzWinProb.textContent = fmtPercent(totalCzWin, totalCz);
-    elSumBalance.textContent = hasBalance ? ((totalBalance >= 0 ? '＋' : '') + totalBalance + '枚') : '0枚';
-    elSumBalance.className = 'value' + (hasBalance ? (totalBalance >= 0 ? ' positive' : ' negative') : '');
+    elSumBalance.textContent = (totalBalance >= 0 ? '＋' : '') + totalBalance + '枚';
+    elSumBalance.className = 'value ' + (totalBalance >= 0 ? 'positive' : 'negative');
 
     elVisitList.innerHTML = '';
     elEmptyMsg.hidden = state.visits.length > 0;
@@ -1996,12 +1997,8 @@
       card.querySelector('.date').textContent = fmtDate(v.date);
       var cardBalance = investBalanceOf(v);
       var balanceEl = card.querySelector('.balance');
-      if (cardBalance === null) {
-        balanceEl.textContent = '';
-      } else {
-        balanceEl.textContent = '収支 ' + (cardBalance >= 0 ? '＋' : '') + cardBalance + '枚';
-        balanceEl.className = 'balance ' + (cardBalance >= 0 ? 'positive' : 'negative');
-      }
+      balanceEl.textContent = '収支 ' + (cardBalance >= 0 ? '＋' : '') + cardBalance + '枚';
+      balanceEl.className = 'balance ' + (cardBalance >= 0 ? 'positive' : 'negative');
       card.querySelector('.meta').textContent = v.machine ? (v.machine + ' 番台') : '';
       card.querySelector('.game-line').textContent = '通常ゲーム数 ' + s.game + 'G';
       card.querySelector('.c-bonus').textContent = s.total;
@@ -2145,14 +2142,8 @@
   // 回収枚数の入力欄に応じて差枚(収支)表示を更新する
   function updateInvestBalance(v) {
     var balance = investBalanceOf(v);
-    if (balance === null) {
-      elDInvestBalance.textContent = '';
-      elDInvestBalance.style.display = 'none';
-    } else {
-      elDInvestBalance.textContent = '差枚 ' + (balance >= 0 ? '＋' : '') + balance + '枚';
-      elDInvestBalance.className = 'invest-balance ' + (balance >= 0 ? 'positive' : 'negative');
-      elDInvestBalance.style.display = '';
-    }
+    elDInvestBalance.textContent = '差枚 ' + (balance >= 0 ? '＋' : '') + balance + '枚';
+    elDInvestBalance.className = 'invest-balance ' + (balance >= 0 ? 'positive' : 'negative');
   }
   elDInvestRecovered.addEventListener('input', function (ev) {
     var v = currentVisit();
@@ -2331,7 +2322,7 @@
     elDInvestRate.value = String(invest.rate);
     elDInvestCount.textContent = invest.count || 0;
     elDInvestTotal.innerHTML = '＝ ' + (invest.rate * (invest.count || 0)) + '枚 <span class="invest-total-label">(使用枚数)</span>';
-    elDInvestRecovered.value = (typeof invest.recovered === 'number') ? invest.recovered : '';
+    elDInvestRecovered.value = invest.recovered || 0;
     updateInvestBalance(v);
 
     renderSuggestionSummary(v);
