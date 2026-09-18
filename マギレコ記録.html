@@ -181,6 +181,10 @@
   }
   .global-stat-col .label { font-size: 11px; color: var(--sub); margin-bottom: 4px; white-space: nowrap; }
   .global-stat-col .value { font-size: 18px; font-weight: 700; }
+  .global-stat-col .value.positive { color: var(--at); }
+  .global-stat-col .value.negative { color: var(--danger); }
+  #global-stat-balance { min-width: 88px; }
+  #sum-balance { white-space: nowrap; }
   .global-stat-col .sub { font-size: 12px; color: var(--sub); margin-top: 2px; white-space: nowrap; }
 
   .search-row { margin-bottom: 12px; }
@@ -206,11 +210,15 @@
   .visit-card .top-row {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: flex-start;
     gap: 8px;
   }
   .visit-card .store { font-size: 17px; font-weight: 700; }
+  .visit-card .date-col { display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; }
   .visit-card .date { font-size: 13px; color: var(--sub); white-space: nowrap; }
+  .visit-card .balance { font-size: 13px; font-weight: 700; white-space: nowrap; margin-top: 2px; }
+  .visit-card .balance.positive { color: var(--at); }
+  .visit-card .balance.negative { color: var(--danger); }
   .visit-card .meta { font-size: 13px; color: var(--sub); margin-top: 4px; }
   .visit-card .game-line { font-size: 15px; font-weight: 700; color: var(--text); margin-top: 8px; }
   .visit-card .prob-grid { display: flex; margin-top: 8px; }
@@ -289,15 +297,22 @@
   .visit-game-label { font-size: 11px; color: var(--sub); }
   .visit-game-value { font-size: 24px; font-weight: 800; color: var(--text); margin-top: 2px; }
 
+  .invest-box {
+    margin-top: 10px;
+    background: var(--panel2);
+    border-radius: 12px;
+    padding: 8px 10px;
+  }
   .invest-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 6px;
-    margin-top: 10px;
-    background: var(--panel2);
-    border-radius: 12px;
-    padding: 8px 10px;
+  }
+  .invest-row + .invest-row {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
   }
   .invest-rate-wrap { position: relative; flex-shrink: 0; }
   .invest-rate-wrap::after {
@@ -349,6 +364,29 @@
     flex-shrink: 0;
   }
   .invest-total-label { font-size: 11px; font-weight: 400; color: var(--sub); }
+  .invest-recovered-wrap { display: flex; align-items: center; gap: 8px; }
+  .invest-recovered-label { font-size: 13px; color: var(--sub); white-space: nowrap; }
+  .invest-recovered-input {
+    width: 80px;
+    height: 34px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 0 8px;
+    font-size: 14px;
+  }
+  .invest-balance {
+    padding-left: 10px;
+    border-left: 1px solid var(--border);
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    color: var(--text);
+  }
+  .invest-balance.positive { color: var(--at); }
+  .invest-balance.negative { color: var(--danger); }
 
   .entry {
     background: var(--panel);
@@ -736,7 +774,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-18a</div>
+    <div class="app-version">v2026-09-18b</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -750,6 +788,7 @@
         <div class="global-stat-col"><div class="label">at回数</div><div class="value" id="sum-atwin">0</div><div class="sub" id="sum-atwin-prob"></div></div>
         <div class="global-stat-col"><div class="label">CZ回数</div><div class="value" id="sum-cz">0</div><div class="sub" id="sum-cz-prob"></div></div>
         <div class="global-stat-col"><div class="label">CZ成功</div><div class="value" id="sum-czwin">0</div><div class="sub" id="sum-czwin-prob"></div></div>
+        <div class="global-stat-col" id="global-stat-balance"><div class="label">収支合計</div><div class="value" id="sum-balance">0枚</div></div>
       </div>
     </div>
 
@@ -784,23 +823,32 @@
       <div class="sub" id="d-memo"></div>
       <div class="sub" id="d-takeover"></div>
       <div class="sub" id="d-takeover-prob"></div>
-      <div class="invest-row">
-        <div class="invest-rate-wrap">
-          <select class="invest-rate" id="d-invest-rate">
-            <option value="46">46枚</option>
-            <option value="47">47枚</option>
-            <option value="48">48枚</option>
-            <option value="49">49枚</option>
-            <option value="50">50枚</option>
-          </select>
+      <div class="invest-box">
+        <div class="invest-row">
+          <div class="invest-rate-wrap">
+            <select class="invest-rate" id="d-invest-rate">
+              <option value="46">46枚</option>
+              <option value="47">47枚</option>
+              <option value="48">48枚</option>
+              <option value="49">49枚</option>
+              <option value="50">50枚</option>
+            </select>
+          </div>
+          <div class="invest-stepper">
+            <button type="button" class="mini-btn" id="d-invest-minus">−</button>
+            <div class="invest-count" id="d-invest-count">0</div>
+            <span class="invest-unit">本</span>
+            <button type="button" class="mini-btn" id="d-invest-plus">＋</button>
+          </div>
+          <div class="invest-total" id="d-invest-total">＝0枚</div>
         </div>
-        <div class="invest-stepper">
-          <button type="button" class="mini-btn" id="d-invest-minus">−</button>
-          <div class="invest-count" id="d-invest-count">0</div>
-          <span class="invest-unit">本</span>
-          <button type="button" class="mini-btn" id="d-invest-plus">＋</button>
+        <div class="invest-row">
+          <div class="invest-recovered-wrap">
+            <label class="invest-recovered-label" for="d-invest-recovered">回収枚数</label>
+            <input type="number" inputmode="numeric" class="invest-recovered-input" id="d-invest-recovered" placeholder="例: 400">
+          </div>
+          <div class="invest-balance" id="d-invest-balance"></div>
         </div>
-        <div class="invest-total" id="d-invest-total">＝0枚</div>
       </div>
       <div class="summary" style="margin-top:10px;">
         <div class="card"><div class="label">BIG</div><div class="value" id="d-big">0</div><div class="prob" id="d-big-prob"></div></div>
@@ -1752,6 +1800,12 @@
   function atGameTotalOf(e) {
     return (e.atStartGame || 0) + weeBonusTotalOf(e) + (e.atContinue40 || []).length * 40;
   }
+  // 回収枚数が入力されている来店の差枚(収支)を返す。未入力ならnull
+  function investBalanceOf(v) {
+    var invest = v.invest || { rate: 46, count: 0 };
+    if (typeof invest.recovered !== 'number') return null;
+    return invest.recovered - invest.rate * (invest.count || 0);
+  }
   function visitStats(visit) {
     var point = 0, hits = 0, big = 0, mitama = 0, atWin = 0, game = 0, atGame = 0;
     (visit.entries || []).forEach(function (e) {
@@ -1877,6 +1931,7 @@
   var elSumCzProb = document.getElementById('sum-cz-prob');
   var elSumCzWin = document.getElementById('sum-czwin');
   var elSumCzWinProb = document.getElementById('sum-czwin-prob');
+  var elSumBalance = document.getElementById('sum-balance');
 
   function renderList() {
     var q = (elSearch.value || '').trim();
@@ -1889,7 +1944,7 @@
       });
     }
 
-    var totalGame = 0, totalAtGame = 0, totalBonus = 0, totalAtWin = 0, totalCz = 0, totalCzWin = 0, totalSuika = 0;
+    var totalGame = 0, totalAtGame = 0, totalBonus = 0, totalAtWin = 0, totalCz = 0, totalCzWin = 0, totalSuika = 0, totalBalance = 0, hasBalance = false;
     state.visits.forEach(function (v) {
       var s = visitStats(v);
       var counters = v.counters || { suika: 0, cz: 0, czWin: 0 };
@@ -1900,6 +1955,8 @@
       totalCz += counters.cz || 0;
       totalCzWin += counters.czWin || 0;
       totalSuika += counters.suika || 0;
+      var balance = investBalanceOf(v);
+      if (balance !== null) { totalBalance += balance; hasBalance = true; }
     });
     elSumVisits.textContent = state.visits.length;
     elSumGame.textContent = totalGame;
@@ -1914,6 +1971,8 @@
     elSumCzProb.textContent = fmtPercent(totalCz, totalSuika);
     elSumCzWin.textContent = totalCzWin;
     elSumCzWinProb.textContent = fmtPercent(totalCzWin, totalCz);
+    elSumBalance.textContent = hasBalance ? ((totalBalance >= 0 ? '＋' : '') + totalBalance + '枚') : '0枚';
+    elSumBalance.className = 'value' + (hasBalance ? (totalBalance >= 0 ? ' positive' : ' negative') : '');
 
     elVisitList.innerHTML = '';
     elEmptyMsg.hidden = state.visits.length > 0;
@@ -1924,7 +1983,7 @@
       var card = document.createElement('div');
       card.className = 'visit-card';
       card.innerHTML =
-        '<div class="top-row"><div class="store"></div><div class="date"></div></div>' +
+        '<div class="top-row"><div class="store"></div><div class="date-col"><div class="date"></div><div class="balance"></div></div></div>' +
         '<div class="meta"></div>' +
         '<div class="game-line"></div>' +
         '<div class="prob-grid">' +
@@ -1935,6 +1994,14 @@
         '</div>';
       card.querySelector('.store').textContent = v.store || '(店舗名未設定)';
       card.querySelector('.date').textContent = fmtDate(v.date);
+      var cardBalance = investBalanceOf(v);
+      var balanceEl = card.querySelector('.balance');
+      if (cardBalance === null) {
+        balanceEl.textContent = '';
+      } else {
+        balanceEl.textContent = '収支 ' + (cardBalance >= 0 ? '＋' : '') + cardBalance + '枚';
+        balanceEl.className = 'balance ' + (cardBalance >= 0 ? 'positive' : 'negative');
+      }
       card.querySelector('.meta').textContent = v.machine ? (v.machine + ' 番台') : '';
       card.querySelector('.game-line').textContent = '通常ゲーム数 ' + s.game + 'G';
       card.querySelector('.c-bonus').textContent = s.total;
@@ -1987,6 +2054,8 @@
   var elDInvestRate = document.getElementById('d-invest-rate');
   var elDInvestCount = document.getElementById('d-invest-count');
   var elDInvestTotal = document.getElementById('d-invest-total');
+  var elDInvestRecovered = document.getElementById('d-invest-recovered');
+  var elDInvestBalance = document.getElementById('d-invest-balance');
   var elEntryList = document.getElementById('entry-list');
   var elHighProbSummary = document.getElementById('highprob-summary');
   var HIGHPROB_SUMMARY_OPEN_KEY = 'magireko.highProbSummaryOpen';
@@ -2072,6 +2141,27 @@
   });
   document.getElementById('d-invest-plus').addEventListener('click', function () { changeInvestCount(1); });
   document.getElementById('d-invest-minus').addEventListener('click', function () { changeInvestCount(-1); });
+
+  // 回収枚数の入力欄に応じて差枚(収支)表示を更新する
+  function updateInvestBalance(v) {
+    var balance = investBalanceOf(v);
+    if (balance === null) {
+      elDInvestBalance.textContent = '';
+      elDInvestBalance.style.display = 'none';
+    } else {
+      elDInvestBalance.textContent = '差枚 ' + (balance >= 0 ? '＋' : '') + balance + '枚';
+      elDInvestBalance.className = 'invest-balance ' + (balance >= 0 ? 'positive' : 'negative');
+      elDInvestBalance.style.display = '';
+    }
+  }
+  elDInvestRecovered.addEventListener('input', function (ev) {
+    var v = currentVisit();
+    if (!v) return;
+    if (!v.invest) v.invest = { rate: 46, count: 0 };
+    v.invest.recovered = (ev.target.value === '') ? null : Number(ev.target.value);
+    save();
+    updateInvestBalance(v);
+  });
 
   function currentVisit() {
     return state.visits.find(function (v) { return v.id === state.currentVisitId; });
@@ -2241,6 +2331,8 @@
     elDInvestRate.value = String(invest.rate);
     elDInvestCount.textContent = invest.count || 0;
     elDInvestTotal.innerHTML = '＝ ' + (invest.rate * (invest.count || 0)) + '枚 <span class="invest-total-label">(使用枚数)</span>';
+    elDInvestRecovered.value = (typeof invest.recovered === 'number') ? invest.recovered : '';
+    updateInvestBalance(v);
 
     renderSuggestionSummary(v);
 
