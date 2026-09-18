@@ -153,7 +153,7 @@
   }
   /* グリッドのauto行サイズは空セル(コンテンツなし)の高さを正しく計算しないことがあるため、
      行の高さはaspect-ratio/padding手法に頼らず固定pxで確保する */
-  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 48px; gap: 4px; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 60px; gap: 4px; }
   .calendar-day {
     min-width: 0;
     display: flex;
@@ -169,7 +169,22 @@
   .calendar-day.has-record { cursor: pointer; }
   .calendar-day.has-record:active { background: var(--panel2); }
   .calendar-day.today { border: 1px solid var(--accent); }
-  .calendar-day .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 3px; }
+  .calendar-day-num { font-size: 13px; }
+  .calendar-day-count { font-size: 8px; color: var(--sub); margin-top: 2px; }
+  .calendar-day-balance { font-size: 10px; font-weight: 700; margin-top: 1px; white-space: nowrap; }
+  .calendar-day-balance.positive { color: var(--at); }
+  .calendar-day-balance.negative { color: var(--danger); }
+  .calendar-store-summary { margin-top: 20px; }
+  .calendar-toggle-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .calendar-toggle-row .cat-select button { padding: 6px 12px; font-size: 12px; }
+  .calendar-store-title { font-size: 13px; color: var(--sub); font-weight: 700; margin-bottom: 8px; }
+  .calendar-store-row { background: var(--panel); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+  .calendar-store-row .store-name { font-size: 15px; font-weight: 700; }
+  .calendar-store-row .store-stats { display: flex; justify-content: flex-end; gap: 12px; margin-top: 4px; font-size: 13px; color: var(--sub); }
+  .calendar-store-row .store-stats .balance-value { font-weight: 700; }
+  .calendar-store-row .store-stats .balance-value.positive { color: var(--at); }
+  .calendar-store-row .store-stats .balance-value.negative { color: var(--danger); }
+  .calendar-store-empty { font-size: 13px; color: var(--sub); text-align: center; padding: 20px 0; }
   .global-stats-row { display: flex; gap: 10px; }
   .global-stat-col {
     flex: 1 1 0;
@@ -775,7 +790,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-18c</div>
+    <div class="app-version">v2026-09-18d</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -953,6 +968,21 @@
       <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
     </div>
     <div class="calendar-grid" id="calendar-grid"></div>
+
+    <div class="calendar-store-summary">
+      <div class="calendar-toggle-row">
+        <div class="cat-select" id="cal-scope-toggle">
+          <button type="button" data-v="month" class="active">今月</button>
+          <button type="button" data-v="all">全期間</button>
+        </div>
+        <div class="cat-select" id="cal-sort-toggle">
+          <button type="button" data-v="balance" class="active">差枚順</button>
+          <button type="button" data-v="count">回数順</button>
+        </div>
+      </div>
+      <div class="calendar-store-title">店舗別収支</div>
+      <div id="calendar-store-list"></div>
+    </div>
   </div>
 
 </div>
@@ -2210,14 +2240,21 @@
       cell.className = 'calendar-day';
       if (dateStr === todayStrVal) cell.classList.add('today');
       var num = document.createElement('div');
+      num.className = 'calendar-day-num';
       num.textContent = d;
       cell.appendChild(num);
       var dayVisits = visitsByDate[dateStr];
       if (dayVisits && dayVisits.length) {
         cell.classList.add('has-record');
-        var dot = document.createElement('div');
-        dot.className = 'dot';
-        cell.appendChild(dot);
+        var count = document.createElement('div');
+        count.className = 'calendar-day-count';
+        count.textContent = dayVisits.length + '件';
+        cell.appendChild(count);
+        var dayBalance = dayVisits.reduce(function (sum, v) { return sum + investBalanceOf(v); }, 0);
+        var balanceEl = document.createElement('div');
+        balanceEl.className = 'calendar-day-balance ' + (dayBalance >= 0 ? 'positive' : 'negative');
+        balanceEl.textContent = (dayBalance >= 0 ? '＋' : '') + dayBalance;
+        cell.appendChild(balanceEl);
         cell.addEventListener('click', function (visits) {
           return function () {
             if (visits.length === 1) {
@@ -2231,6 +2268,7 @@
       }
       grid.appendChild(cell);
     }
+    renderCalendarStoreSummary();
   }
   document.getElementById('btn-calendar').addEventListener('click', openCalendar);
   document.getElementById('btn-calendar-back').addEventListener('click', closeCalendar);
@@ -2243,6 +2281,70 @@
     state.calMonth++;
     if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
     renderCalendar();
+  });
+
+  // カレンダー下部の店舗別収支(表示中の月 or 全期間、差枚順 or 回数順で切り替え可能)
+  var calStoreScope = 'month';
+  var calStoreSort = 'balance';
+  function renderCalendarStoreSummary() {
+    var monthPrefix = state.calYear + '-' + String(state.calMonth + 1).padStart(2, '0');
+    var visits = state.visits.filter(function (v) {
+      if (!v.date) return false;
+      return calStoreScope === 'all' || v.date.indexOf(monthPrefix) === 0;
+    });
+    var byStore = {};
+    visits.forEach(function (v) {
+      var name = v.store || '(店舗名未設定)';
+      if (!byStore[name]) byStore[name] = { name: name, count: 0, used: 0, recovered: 0 };
+      var invest = v.invest || { rate: 46, count: 0 };
+      byStore[name].count++;
+      byStore[name].used += invest.rate * (invest.count || 0);
+      byStore[name].recovered += invest.recovered || 0;
+    });
+    var stores = Object.keys(byStore).map(function (k) {
+      var s = byStore[k];
+      s.balance = s.recovered - s.used;
+      return s;
+    });
+    stores.sort(function (a, b) {
+      return calStoreSort === 'count' ? (b.count - a.count) : (b.balance - a.balance);
+    });
+    var listEl = document.getElementById('calendar-store-list');
+    listEl.innerHTML = '';
+    if (!stores.length) {
+      listEl.innerHTML = '<div class="calendar-store-empty">対象期間の記録がありません</div>';
+      return;
+    }
+    stores.forEach(function (s) {
+      var recoveryRateText = s.used ? fmtPercent(s.recovered, s.used) : '';
+      var row = document.createElement('div');
+      row.className = 'calendar-store-row';
+      row.innerHTML =
+        '<div class="store-name"></div>' +
+        '<div class="store-stats">' +
+          '<span></span>' +
+          '<span class="balance-value ' + (s.balance >= 0 ? 'positive' : 'negative') + '"></span>' +
+          (recoveryRateText ? '<span>回収率 ' + recoveryRateText + '</span>' : '') +
+        '</div>';
+      row.querySelector('.store-name').textContent = s.name;
+      row.querySelector('.store-stats span').textContent = s.count + '件';
+      row.querySelector('.balance-value').textContent = '差枚 ' + (s.balance >= 0 ? '＋' : '') + s.balance + '枚';
+      listEl.appendChild(row);
+    });
+  }
+  document.querySelectorAll('#cal-scope-toggle button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      calStoreScope = btn.dataset.v;
+      document.querySelectorAll('#cal-scope-toggle button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+      renderCalendarStoreSummary();
+    });
+  });
+  document.querySelectorAll('#cal-sort-toggle button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      calStoreSort = btn.dataset.v;
+      document.querySelectorAll('#cal-sort-toggle button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+      renderCalendarStoreSummary();
+    });
   });
 
   // 記録一覧の各行の開閉状態(記録ごとにlocalStorageへ保存し、次に開いた時も維持する)
