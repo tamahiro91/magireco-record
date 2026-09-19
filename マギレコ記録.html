@@ -727,7 +727,9 @@
   .suggestion-group { padding: 10px 0; border-bottom: 1px solid var(--border); }
   .suggestion-group:last-child, .suggestion-simple-row:last-child { border-bottom: none; }
   .suggestion-group-title { font-size: 12px; color: var(--sub); font-weight: 700; margin-bottom: 4px; }
-  .suggestion-line { font-size: 13px; color: var(--text); line-height: 1.6; }
+  .suggestion-line { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--text); line-height: 1.6; }
+  .suggestion-line-label { flex: 1; }
+  .suggestion-line-count { flex-shrink: 0; white-space: nowrap; }
   .suggestion-simple-row {
     display: flex;
     justify-content: space-between;
@@ -806,7 +808,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-19g</div>
+    <div class="app-version">v2026-09-19h</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2201,13 +2203,13 @@
       if (!g.items.length) return;
       html += '<div class="suggestion-group"><div class="suggestion-group-title">' + g.title + '</div>';
       g.items.forEach(function (item) {
-        html += '<div class="suggestion-line">' + item.label + ' × ' + item.count + '回</div>';
+        html += '<div class="suggestion-line"><span class="suggestion-line-label">' + item.label + '</span><span class="suggestion-line-count">× ' + item.count + ' 回</span></div>';
       });
       html += '</div>';
     });
-    html += '<div class="suggestion-simple-row"><span>引戻し／at直撃</span><span>引戻し' + summary.hikimodoshi + '回 ／ at直撃' + summary.atChokugeki + '回</span></div>';
-    html += '<div class="suggestion-simple-row"><span>at継続40ゲーム</span><span>いろは' + summary.atContinue40Iroha + '回 ／ 小きゅうべえ' + summary.atContinue40Koqube + '回</span></div>';
-    html += '<div class="suggestion-simple-row"><span>穢れ</span><span>小' + summary.kegareSmall + '回 ／ 中' + summary.kegareMid + '回 ／ 大' + summary.kegareLarge + '回</span></div>';
+    html += '<div class="suggestion-simple-row"><span>引戻し／at直撃</span><span>引戻し ' + summary.hikimodoshi + ' 回 ／ at直撃 ' + summary.atChokugeki + ' 回</span></div>';
+    html += '<div class="suggestion-simple-row"><span>at継続40ゲーム</span><span>いろは ' + summary.atContinue40Iroha + ' 回 ／ 小きゅうべえ ' + summary.atContinue40Koqube + ' 回</span></div>';
+    html += '<div class="suggestion-simple-row"><span>穢れ</span><span>小 ' + summary.kegareSmall + ' 回 ／ 中 ' + summary.kegareMid + ' 回 ／ 大 ' + summary.kegareLarge + ' 回</span></div>';
     elSuggestionSummaryBody.innerHTML = html;
   }
 
