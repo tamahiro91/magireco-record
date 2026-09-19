@@ -805,7 +805,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-19a</div>
+    <div class="app-version">v2026-09-19b</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1083,6 +1083,37 @@
     <div class="field">
       <label>魔法少女モード</label>
       <button type="button" class="picker-trigger" id="e-mode-trigger">未選択 ▾</button>
+    </div>
+    <div class="suggestion-summary" id="kegare-summary">
+      <button type="button" class="suggestion-summary-toggle" id="kegare-toggle">
+        <span>穢れカウント</span><span class="chevron">▾</span>
+      </button>
+      <div class="counters" id="kegare-counters">
+        <div class="counter-card">
+          <div class="counter-label">穢れ小</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="e-kegare-small-minus">−</button>
+            <div class="counter-value" id="e-kegare-small-value">0</div>
+            <button type="button" class="counter-btn" id="e-kegare-small-plus">＋</button>
+          </div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">穢れ中</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="e-kegare-mid-minus">−</button>
+            <div class="counter-value" id="e-kegare-mid-value">0</div>
+            <button type="button" class="counter-btn" id="e-kegare-mid-plus">＋</button>
+          </div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">穢れ大</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="e-kegare-large-minus">−</button>
+            <div class="counter-value" id="e-kegare-large-value">0</div>
+            <button type="button" class="counter-btn" id="e-kegare-large-plus">＋</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="field">
       <label>結果(複数選択可)</label>
@@ -1874,6 +1905,7 @@
   function visitSuggestionSummary(visit) {
     var bigScreen = {}, atScreen = {}, epibo = {}, cards = {}, storyOrder = {}, embryoPattern = {}, univaPlate = {}, mikazuki = {};
     var hikimodoshi = 0, atChokugeki = 0, atContinue40Iroha = 0, atContinue40Koqube = 0;
+    var kegareSmall = 0, kegareMid = 0, kegareLarge = 0;
     (visit.entries || []).forEach(function (e) {
       if (e.bigScreen) {
         var bsLabel = e.bigScreen + (BIG_SCREEN_SUGGESTION[e.bigScreen] ? '(' + BIG_SCREEN_SUGGESTION[e.bigScreen] + ')' : '');
@@ -1930,6 +1962,9 @@
       }
       if (e.results && e.results.indexOf('引戻し') !== -1) hikimodoshi++;
       if (e.results && e.results.indexOf('at直撃') !== -1) atChokugeki++;
+      kegareSmall += e.kegareSmall || 0;
+      kegareMid += e.kegareMid || 0;
+      kegareLarge += e.kegareLarge || 0;
       if (e.atContinue40 && e.atContinue40.length) {
         e.atContinue40.forEach(function (v) {
           if (v === 'いろは') atContinue40Iroha++;
@@ -1954,7 +1989,10 @@
       hikimodoshi: hikimodoshi,
       atChokugeki: atChokugeki,
       atContinue40Iroha: atContinue40Iroha,
-      atContinue40Koqube: atContinue40Koqube
+      atContinue40Koqube: atContinue40Koqube,
+      kegareSmall: kegareSmall,
+      kegareMid: kegareMid,
+      kegareLarge: kegareLarge
     };
   }
 
@@ -2111,6 +2149,33 @@
     localStorage.setItem(HIGHPROB_SUMMARY_OPEN_KEY, open ? '1' : '0');
     elHighProbSummary.classList.toggle('closed', !open);
   });
+  // 穢れ小・中・大のタップカウンター(記録ごとに保持)
+  var elKegareSummary = document.getElementById('kegare-summary');
+  var elKegareSmallValue = document.getElementById('e-kegare-small-value');
+  var elKegareMidValue = document.getElementById('e-kegare-mid-value');
+  var elKegareLargeValue = document.getElementById('e-kegare-large-value');
+  var KEGARE_SUMMARY_OPEN_KEY = 'magireko.kegareSummaryOpen';
+  function isKegareSummaryOpen() {
+    var v = localStorage.getItem(KEGARE_SUMMARY_OPEN_KEY);
+    return v === null ? true : v === '1';
+  }
+  elKegareSummary.classList.toggle('closed', !isKegareSummaryOpen());
+  document.getElementById('kegare-toggle').addEventListener('click', function () {
+    var open = !isKegareSummaryOpen();
+    localStorage.setItem(KEGARE_SUMMARY_OPEN_KEY, open ? '1' : '0');
+    elKegareSummary.classList.toggle('closed', !open);
+  });
+  function renderKegareCounters() {
+    elKegareSmallValue.textContent = state.kegareSmall;
+    elKegareMidValue.textContent = state.kegareMid;
+    elKegareLargeValue.textContent = state.kegareLarge;
+  }
+  document.getElementById('e-kegare-small-plus').addEventListener('click', function () { state.kegareSmall++; renderKegareCounters(); });
+  document.getElementById('e-kegare-small-minus').addEventListener('click', function () { state.kegareSmall = Math.max(0, state.kegareSmall - 1); renderKegareCounters(); });
+  document.getElementById('e-kegare-mid-plus').addEventListener('click', function () { state.kegareMid++; renderKegareCounters(); });
+  document.getElementById('e-kegare-mid-minus').addEventListener('click', function () { state.kegareMid = Math.max(0, state.kegareMid - 1); renderKegareCounters(); });
+  document.getElementById('e-kegare-large-plus').addEventListener('click', function () { state.kegareLarge++; renderKegareCounters(); });
+  document.getElementById('e-kegare-large-minus').addEventListener('click', function () { state.kegareLarge = Math.max(0, state.kegareLarge - 1); renderKegareCounters(); });
   var elSuggestionSummary = document.getElementById('suggestion-summary');
   var elSuggestionSummaryBody = document.getElementById('suggestion-summary-body');
   var SUGGESTION_SUMMARY_OPEN_KEY = 'magireko.suggestionSummaryOpen';
@@ -2139,6 +2204,9 @@
     html += '<div class="suggestion-simple-row"><span>at直撃回数</span><span>' + summary.atChokugeki + '回</span></div>';
     html += '<div class="suggestion-simple-row"><span>at継続40ゲーム(いろは)</span><span>' + summary.atContinue40Iroha + '回</span></div>';
     html += '<div class="suggestion-simple-row"><span>at継続40ゲーム(小きゅうべえ)</span><span>' + summary.atContinue40Koqube + '回</span></div>';
+    html += '<div class="suggestion-simple-row"><span>穢れ小</span><span>' + summary.kegareSmall + '回</span></div>';
+    html += '<div class="suggestion-simple-row"><span>穢れ中</span><span>' + summary.kegareMid + '回</span></div>';
+    html += '<div class="suggestion-simple-row"><span>穢れ大</span><span>' + summary.kegareLarge + '回</span></div>';
     elSuggestionSummaryBody.innerHTML = html;
   }
 
@@ -3666,6 +3734,9 @@
       state.weeBonusExtra1 = (typeof e.weeBonusExtra1 === 'number') ? e.weeBonusExtra1 : 0;
       state.weeBonusExtra2 = (typeof e.weeBonusExtra2 === 'number') ? e.weeBonusExtra2 : null;
       eWeeBonusExtra2.value = (typeof state.weeBonusExtra2 === 'number') ? state.weeBonusExtra2 : '';
+      state.kegareSmall = e.kegareSmall || 0;
+      state.kegareMid = e.kegareMid || 0;
+      state.kegareLarge = e.kegareLarge || 0;
       state.atContinue40 = (e.atContinue40 || []).slice();
       state.atContinue40Closed = state.atContinue40.map(function () { return false; });
       state.selectedStoryOrder = e.storyOrderPattern || null;
@@ -3703,6 +3774,9 @@
       state.weeBonusExtra1 = 0;
       state.weeBonusExtra2 = null;
       eWeeBonusExtra2.value = '';
+      state.kegareSmall = 0;
+      state.kegareMid = 0;
+      state.kegareLarge = 0;
       state.atContinue40 = [];
       state.atContinue40Closed = [];
       state.selectedStoryOrder = null;
@@ -3726,6 +3800,7 @@
     renderWeeChances();
     renderDoppelChances();
     renderAtScreens();
+    renderKegareCounters();
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
     autoResizeTextarea(eAtMemo);
@@ -3791,6 +3866,9 @@
     var hasEpibo = results.indexOf('エピボ') !== -1;
     var epiboChar = hasEpibo ? state.selectedEpiboChar : null;
     var epiboKuroeCase = (hasEpibo && epiboChar === '黒江') ? state.selectedEpiboKuroeCase : null;
+    var kegareSmall = state.kegareSmall;
+    var kegareMid = state.kegareMid;
+    var kegareLarge = state.kegareLarge;
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
@@ -3801,6 +3879,7 @@
       e.atContinue40 = atContinue40;
       e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances; e.cardCounts = cardCounts;
       e.epiboChar = epiboChar; e.epiboKuroeCase = epiboKuroeCase;
+      e.kegareSmall = kegareSmall; e.kegareMid = kegareMid; e.kegareLarge = kegareLarge;
     } else {
       v.entries.push({
         id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
@@ -3810,7 +3889,8 @@
         weeBonusExtra1: weeBonusExtra1, weeBonusExtra2: weeBonusExtra2,
         atContinue40: atContinue40,
         storyOrderPattern: storyOrderPattern, doppelChances: doppelChances, cardCounts: cardCounts,
-        epiboChar: epiboChar, epiboKuroeCase: epiboKuroeCase
+        epiboChar: epiboChar, epiboKuroeCase: epiboKuroeCase,
+        kegareSmall: kegareSmall, kegareMid: kegareMid, kegareLarge: kegareLarge
       });
     }
     save();
