@@ -806,7 +806,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-19d</div>
+    <div class="app-version">v2026-09-19e</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1224,7 +1224,7 @@
       <input type="number" inputmode="numeric" id="e-embryo-connect-bonus" placeholder="例: 20">
     </div>
     <div class="field" id="field-embryo-pattern" hidden>
-      <label>設定示唆</label>
+      <label>キャラ紹介の示唆</label>
       <button type="button" class="picker-trigger" id="e-embryo-pattern-trigger">未選択 ▾</button>
     </div>
     <div class="field suggestion-summary" id="field-card-chances" hidden>
@@ -2932,6 +2932,10 @@
       fieldStoryOrder.insertAdjacentElement('afterend', fieldWeeChances);
     }
     fieldWeeChances.hidden = !(hasEmbryo || eAtWin.checked);
+    // エンブリオ未選択時は、at当選時にストーリー順番示唆の下にキャラ紹介の示唆を表示する
+    // (エンブリオ選択時はうぃチャンスの各カードに同じ項目があるため重複を避けて隠す)
+    fieldStoryOrder.insertAdjacentElement('afterend', fieldEmbryoPattern);
+    fieldEmbryoPattern.hidden = hasEmbryo || !eAtWin.checked;
     renderWeeChances();
     fieldWeeChances.insertAdjacentElement('afterend', fieldAtContinue40);
     fieldAtContinue40.hidden = !(hasEmbryo || eAtWin.checked);
@@ -2944,13 +2948,12 @@
     eEpiboSuggestion.textContent = epiboSuggestionText(state.selectedEpiboChar, state.selectedEpiboKuroeCase);
     fieldBand.hidden = !hasEmbryo;
     fieldStartGame.hidden = !(hasEmbryo || hasArina);
-    // 当選契機・コネクト・設定示唆はうぃチャンスの各カードに同じ項目があるため、エンブリオ選択時は重複するこちらを隠す
+    // 当選契機・コネクトはうぃチャンスの各カードに同じ項目があるため、エンブリオ選択時は重複するこちらを隠す
     fieldEmbryo.hidden = true;
     fieldEmbryoGameCount.hidden = true;
     fieldEmbryoBell.hidden = true;
     fieldEmbryoBonus.hidden = true;
     fieldEmbryoConnect.hidden = true;
-    fieldEmbryoPattern.hidden = true;
     fieldCardChances.hidden = !hasEmbryo;
     renderCardChances();
     // エンブリオを選択している間だけTrue Endingを選択できる(選択解除時は選択も外す)
@@ -3038,7 +3041,7 @@
     });
   });
   eEmbryoPatternTrigger.addEventListener('click', function () {
-    openPicker('設定示唆', EMBRYO_PATTERN_OPTIONS, state.selectedEmbryoPattern || '', function (v) {
+    openPicker('キャラ紹介の示唆', EMBRYO_PATTERN_OPTIONS, state.selectedEmbryoPattern || '', function (v) {
       state.selectedEmbryoPattern = v || null;
       eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(v) + ' ▾';
     });
@@ -3853,7 +3856,7 @@
     var embryoBonus = isKamihama ? (eEmbryoBonus.value === '' ? null : Number(eEmbryoBonus.value)) : null;
     var embryoConnect = hasEmbryo ? state.selectedEmbryoConnect : null;
     var embryoConnectBonus = hasEmbryo ? (eEmbryoConnectBonus.value === '' ? null : Number(eEmbryoConnectBonus.value)) : null;
-    var embryoPattern = hasEmbryo && state.selectedEmbryoPattern ? Number(state.selectedEmbryoPattern) : null;
+    var embryoPattern = (hasEmbryo || atWin) && state.selectedEmbryoPattern ? Number(state.selectedEmbryoPattern) : null;
     // うぃチャンスはat当選またはエンブリオ選択時のみ保存し、ストーリー順番示唆はat当選がOFFの時は保存しない
     var weeChances = (atWin || hasEmbryo) ? state.weeChances.map(function (c) { return Object.assign({}, c, { spStoryNumbers: (c.spStoryNumbers || []).slice() }); }) : [];
     var weeBonusExtra1 = (atWin || hasEmbryo) ? state.weeBonusExtra1 : 0;
