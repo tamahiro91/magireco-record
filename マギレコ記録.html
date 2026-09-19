@@ -286,8 +286,11 @@
     padding: 14px;
     margin-bottom: 14px;
   }
-  .visit-header .store { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+  .visit-header .store { font-size: 19px; font-weight: 700; }
   .visit-header .sub { font-size: 13px; color: var(--sub); }
+  .visit-info-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .visit-info-left { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
+  .visit-info-row .sub { flex-shrink: 0; white-space: nowrap; }
   .visit-header .actions { display: flex; gap: 8px; margin-top: 10px; }
   .visit-header .summary .card { padding: 8px 4px; }
   .visit-header .summary .label { font-size: 11px; font-weight: 600; white-space: nowrap; }
@@ -808,7 +811,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-19h</div>
+    <div class="app-version">v2026-09-19i</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -843,9 +846,12 @@
 
     <div class="visit-header">
       <div class="visit-top">
-        <div class="visit-info">
-          <div class="store" id="d-store"></div>
-          <div class="sub" id="d-sub"></div>
+        <div class="visit-info-row">
+          <div class="visit-info-left">
+            <span class="store" id="d-store"></span>
+            <span class="sub" id="d-machine"></span>
+          </div>
+          <div class="sub" id="d-date"></div>
         </div>
         <div class="visit-game">
           <div class="visit-game-col">
@@ -2113,7 +2119,8 @@
 
   // --- 詳細ビュー ---
   var elDStore = document.getElementById('d-store');
-  var elDSub = document.getElementById('d-sub');
+  var elDMachine = document.getElementById('d-machine');
+  var elDDate = document.getElementById('d-date');
   var elDMemo = document.getElementById('d-memo');
   var elDTakeover = document.getElementById('d-takeover');
   var elDTakeoverProb = document.getElementById('d-takeover-prob');
@@ -2468,7 +2475,8 @@
     var v = currentVisit();
     if (!v) { closeDetail(); return; }
     elDStore.textContent = v.store || '(店舗名未設定)';
-    elDSub.textContent = fmtDate(v.date) + (v.machine ? '　' + v.machine + ' 番台' : '');
+    elDDate.textContent = fmtDate(v.date);
+    elDMachine.textContent = v.machine ? v.machine + ' 番台' : '';
     elDMemo.textContent = v.note || '';
     elDMemo.style.display = v.note ? '' : 'none';
     var takeoverParts = [];
