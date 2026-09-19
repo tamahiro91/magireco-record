@@ -806,7 +806,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-19c</div>
+    <div class="app-version">v2026-09-19d</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2209,9 +2209,7 @@
     html += '<div class="suggestion-simple-row"><span>at直撃回数</span><span>' + summary.atChokugeki + '回</span></div>';
     html += '<div class="suggestion-simple-row"><span>at継続40ゲーム(いろは)</span><span>' + summary.atContinue40Iroha + '回</span></div>';
     html += '<div class="suggestion-simple-row"><span>at継続40ゲーム(小きゅうべえ)</span><span>' + summary.atContinue40Koqube + '回</span></div>';
-    html += '<div class="suggestion-simple-row"><span>穢れ小</span><span>' + summary.kegareSmall + '回</span></div>';
-    html += '<div class="suggestion-simple-row"><span>穢れ中</span><span>' + summary.kegareMid + '回</span></div>';
-    html += '<div class="suggestion-simple-row"><span>穢れ大</span><span>' + summary.kegareLarge + '回</span></div>';
+    html += '<div class="suggestion-simple-row"><span>穢れ</span><span>小' + summary.kegareSmall + '回／中' + summary.kegareMid + '回／大' + summary.kegareLarge + '回</span></div>';
     elSuggestionSummaryBody.innerHTML = html;
   }
 
