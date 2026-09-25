@@ -812,7 +812,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-25d</div>
+    <div class="app-version">v2026-09-25e</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2546,7 +2546,15 @@
       var gameText = (typeof e.game === 'number') ? e.game + 'G' : '';
       var pointText = (typeof e.point === 'number') ? e.point + 'pt' : '';
       var atStartGameText = (typeof e.atStartGame === 'number') ? 'atゲーム数' + atGameTotalOf(e) + 'G' : '';
-      var numsText = [gameText, pointText, atStartGameText].filter(Boolean).join(' / ');
+      var embryoSummaryParts = [];
+      if ((e.results || []).indexOf('エンブリオ') !== -1) {
+        if (typeof e.startGame === 'number') embryoSummaryParts.push('初期ゲーム数' + e.startGame + 'G');
+        var weeCount = (e.weeChances || []).length;
+        if (weeCount) embryoSummaryParts.push('うぃチャンス' + weeCount + '回');
+        var weeBonusTotal = weeBonusTotalOf(e);
+        if (weeBonusTotal) embryoSummaryParts.push('上乗せ計' + weeBonusTotal + 'G');
+      }
+      var numsText = [gameText, pointText, atStartGameText].concat(embryoSummaryParts).filter(Boolean).join(' / ');
 
       var tags = (e.results || []).map(function (r) {
         return '<span class="tag ' + r + '">' + (TAG_LABELS[r] || r) + '</span>';
