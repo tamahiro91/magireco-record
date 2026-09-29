@@ -731,10 +731,9 @@
   .suggestion-summary-preview { color: var(--sub); font-size: 12px; font-weight: 400; }
   .rare-role-card .wee-title-toggle { color: var(--text); }
   #rare-role-list { margin-top: 10px; }
-  .rare-role-game-row { margin-bottom: 8px; }
   .rare-role-row-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px 6px;
   }
   .rare-role-field {
@@ -748,15 +747,15 @@
   }
   .rare-role-field span { white-space: nowrap; }
   .rare-role-field input {
-    width: 3.6em;
+    width: 3.4em;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 6px;
-    padding: 4px 6px;
+    padding: 4px 5px;
     color: var(--text);
     font-size: 14px;
   }
-  .rare-role-game-row .rare-role-field input { width: 5em; }
+  .rare-role-field input.rare-role-input-game { width: 4.2em; }
   .rare-role-field input.rare-role-input-narrow { width: 1.6em; }
   .suggestion-summary-body {
     margin-top: 8px;
@@ -849,7 +848,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-30d</div>
+    <div class="app-version">v2026-09-30e</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2356,6 +2355,7 @@
         input.inputMode = 'numeric';
         input.pattern = '[0-9]*';
         if (pair[1] === 'strongCherry') input.classList.add('rare-role-input-narrow');
+        if (pair[1] === 'game') input.classList.add('rare-role-input-game');
         input.value = (typeof r[pair[1]] === 'number') ? r[pair[1]] : '';
         // 入力中に他の場所(集計カードなど)のDOMを書き換えると、スマホでキーボードが
         // 閉じて画面がチラつく原因になるため、入力中(input)はこのフィールド自身の値の
@@ -2372,13 +2372,9 @@
         label.appendChild(input);
         return label;
       }
-      var gameRow = document.createElement('div');
-      gameRow.className = 'rare-role-game-row';
-      gameRow.appendChild(buildRareRoleField(RARE_ROLE_FIELDS[0]));
-      body.appendChild(gameRow);
       var grid = document.createElement('div');
       grid.className = 'rare-role-row-grid';
-      RARE_ROLE_FIELDS.slice(1).forEach(function (pair) {
+      RARE_ROLE_FIELDS.forEach(function (pair) {
         grid.appendChild(buildRareRoleField(pair));
       });
       body.appendChild(grid);
