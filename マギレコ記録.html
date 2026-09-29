@@ -847,7 +847,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-29f</div>
+    <div class="app-version">v2026-09-30a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2311,13 +2311,28 @@
       var card = document.createElement('div');
       card.className = 'wee-chance-card rare-role-card' + (closed ? ' closed' : '');
 
-      var setAllRoles = (r.weakCherry || 0) + (r.strongCherry || 0) + (r.suika || 0) + (r.chanceA || 0) + (r.chanceB || 0) + (r.midCherry || 0);
-      var setPreview = '弱チェ' + fmtProb(r.game || 0, r.weakCherry || 0) + ' ／ 合算' + fmtProb(r.game || 0, setAllRoles);
+      function computeSetPreview() {
+        var allRoles = (r.weakCherry || 0) + (r.strongCherry || 0) + (r.suika || 0) + (r.chanceA || 0) + (r.chanceB || 0) + (r.midCherry || 0);
+        return '弱チェ' + fmtProb(r.game || 0, r.weakCherry || 0) + ' ／ 合算' + fmtProb(r.game || 0, allRoles);
+      }
       var titleBtn = document.createElement('button');
       titleBtn.type = 'button';
       titleBtn.className = 'wee-title-toggle';
-      titleBtn.innerHTML = '<span class="wee-title-text">レア役合算' + (idx + 1) + '</span>' +
-        '<span class="wee-title-right"><span class="suggestion-summary-preview">' + setPreview + '</span><span class="chevron">▾</span></span>';
+      var titleTextSpan = document.createElement('span');
+      titleTextSpan.className = 'wee-title-text';
+      titleTextSpan.textContent = 'レア役合算' + (idx + 1);
+      var titleRight = document.createElement('span');
+      titleRight.className = 'wee-title-right';
+      var previewSpan = document.createElement('span');
+      previewSpan.className = 'suggestion-summary-preview';
+      previewSpan.textContent = computeSetPreview();
+      var chevronSpan = document.createElement('span');
+      chevronSpan.className = 'chevron';
+      chevronSpan.textContent = '▾';
+      titleRight.appendChild(previewSpan);
+      titleRight.appendChild(chevronSpan);
+      titleBtn.appendChild(titleTextSpan);
+      titleBtn.appendChild(titleRight);
       titleBtn.addEventListener('click', function () {
         setRareRoleClosed(r.id, !closed);
         renderRareRoleList(v);
@@ -2350,7 +2365,10 @@
         input.addEventListener('change', function () {
           save();
           renderRareRoleSummary(v);
-          renderRareRoleList(v);
+          // フィールド移動のたびに一覧全体(全入力欄)を作り直すと、その度にキーボードが
+          // 閉じて画面がチラつく原因になるため、このセット自身のプレビュー表示だけを
+          // その場で書き換える(入力欄そのものは作り直さない)
+          previewSpan.textContent = computeSetPreview();
         });
         label.appendChild(input);
         return label;
