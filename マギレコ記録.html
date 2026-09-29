@@ -728,18 +728,9 @@
   .suggestion-summary.closed .rare-role-body { display: none; }
   .suggestion-summary-toggle-right { display: flex; align-items: center; gap: 8px; }
   .suggestion-summary-preview { color: var(--sub); font-size: 12px; font-weight: 400; }
-  .rare-role-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
-  }
   .rare-role-row-grid {
-    flex: 1;
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
   }
   .rare-role-field { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--sub); }
@@ -752,7 +743,6 @@
     font-size: 14px;
     width: 100%;
   }
-  .rare-role-row-delete { flex-shrink: 0; padding: 8px; font-size: 16px; }
   .suggestion-summary-body {
     margin-top: 8px;
     background: var(--panel2);
@@ -844,7 +834,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-29b</div>
+    <div class="app-version">v2026-09-29c</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2290,11 +2280,34 @@
       ? ('弱チェ' + fmtProb(last.game || 0, last.weakCherry || 0) + ' ／ 合算' + fmtProb(t.game, t.allRoles))
       : '';
   }
+  // 各セットの開閉状態(セットごとにlocalStorageへ保存し、次に開いた時も維持する)
+  var RARE_ROLE_CLOSED_PREFIX = 'magireko.rareRoleClosed.';
+  function isRareRoleClosed(id) {
+    return localStorage.getItem(RARE_ROLE_CLOSED_PREFIX + id) === '1';
+  }
+  function setRareRoleClosed(id, closed) {
+    if (closed) { localStorage.setItem(RARE_ROLE_CLOSED_PREFIX + id, '1'); }
+    else { localStorage.removeItem(RARE_ROLE_CLOSED_PREFIX + id); }
+  }
   function renderRareRoleList(v) {
     elRareRoleList.innerHTML = '';
     (v.rareRoleCounts || []).forEach(function (r, idx) {
-      var row = document.createElement('div');
-      row.className = 'rare-role-row';
+      var closed = isRareRoleClosed(r.id);
+      var card = document.createElement('div');
+      card.className = 'wee-chance-card' + (closed ? ' closed' : '');
+
+      var titleBtn = document.createElement('button');
+      titleBtn.type = 'button';
+      titleBtn.className = 'wee-title-toggle';
+      titleBtn.innerHTML = '<span class="wee-title-text">レア役合算' + (idx + 1) + '</span><span class="chevron">▾</span>';
+      titleBtn.addEventListener('click', function () {
+        setRareRoleClosed(r.id, !closed);
+        renderRareRoleList(v);
+      });
+      card.appendChild(titleBtn);
+
+      var body = document.createElement('div');
+      body.className = 'wee-chance-body';
       var grid = document.createElement('div');
       grid.className = 'rare-role-row-grid';
       RARE_ROLE_FIELDS.forEach(function (pair) {
@@ -2307,28 +2320,36 @@
         input.type = 'number';
         input.inputMode = 'numeric';
         input.value = (typeof r[pair[1]] === 'number') ? r[pair[1]] : '';
+        // 1文字ごとにsave()すると、クラウド同期の受信処理が一覧を再描画して入力欄からフォーカスが外れてしまうため、
+        // 値の更新と集計表示はinputで、実際の保存はフィールドを離れたタイミング(change)で行う
         input.addEventListener('input', function () {
           r[pair[1]] = input.value === '' ? null : Number(input.value);
-          save();
           renderRareRoleSummary(v);
+        });
+        input.addEventListener('change', function () {
+          save();
         });
         label.appendChild(input);
         grid.appendChild(label);
       });
-      row.appendChild(grid);
+      body.appendChild(grid);
+
       var delBtn = document.createElement('button');
       delBtn.type = 'button';
-      delBtn.className = 'ghost-btn rare-role-row-delete';
-      delBtn.textContent = '🗑';
+      delBtn.className = 'ghost-btn wee-chance-delete';
+      delBtn.textContent = 'このレア役合算記録を削除';
       delBtn.addEventListener('click', function () {
-        if (!confirm('このレア役カウントを削除しますか？')) return;
+        if (!confirm('このレア役合算記録を削除しますか？')) return;
+        setRareRoleClosed(r.id, false);
         v.rareRoleCounts.splice(idx, 1);
         save();
         renderRareRoleList(v);
         renderRareRoleSummary(v);
       });
-      row.appendChild(delBtn);
-      elRareRoleList.appendChild(row);
+      body.appendChild(delBtn);
+
+      card.appendChild(body);
+      elRareRoleList.appendChild(card);
     });
   }
   document.getElementById('rare-role-add').addEventListener('click', function () {
