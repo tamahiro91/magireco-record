@@ -728,20 +728,31 @@
   .suggestion-summary.closed .rare-role-body { display: none; }
   .suggestion-summary-toggle-right { display: flex; align-items: center; gap: 8px; }
   .suggestion-summary-preview { color: var(--sub); font-size: 12px; font-weight: 400; }
+  .rare-role-card .wee-title-toggle { color: var(--text); }
+  .rare-role-game-row { margin-bottom: 8px; }
   .rare-role-row-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
   }
-  .rare-role-field { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--sub); }
+  .rare-role-field {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--sub);
+    min-width: 0;
+  }
+  .rare-role-field span { flex-shrink: 0; white-space: nowrap; }
   .rare-role-field input {
+    min-width: 0;
+    flex: 1;
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 8px;
+    border-radius: 6px;
+    padding: 4px 6px;
     color: var(--text);
-    font-size: 14px;
-    width: 100%;
+    font-size: 13px;
   }
   .suggestion-summary-body {
     margin-top: 8px;
@@ -834,7 +845,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-29c</div>
+    <div class="app-version">v2026-09-29d</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2244,17 +2255,20 @@
     ['チャンス目B', 'chanceB'],
     ['中チェ', 'midCherry'],
   ];
+  // 台の小役カウンター表示をその都度メモした「累計値」として1セットずつ記録する想定のため、
+  // 各セットを合算はせず、最新のセットの値だけを上部の集計に反映する
   function rareRoleTotals(v) {
-    var t = { game: 0, weak: 0, strong: 0, suika: 0, chanceA: 0, chanceB: 0, mid: 0 };
-    (v.rareRoleCounts || []).forEach(function (r) {
-      t.game += r.game || 0;
-      t.weak += r.weakCherry || 0;
-      t.strong += r.strongCherry || 0;
-      t.suika += r.suika || 0;
-      t.chanceA += r.chanceA || 0;
-      t.chanceB += r.chanceB || 0;
-      t.mid += r.midCherry || 0;
-    });
+    var list = v.rareRoleCounts || [];
+    var last = list[list.length - 1] || {};
+    var t = {
+      game: last.game || 0,
+      weak: last.weakCherry || 0,
+      strong: last.strongCherry || 0,
+      suika: last.suika || 0,
+      chanceA: last.chanceA || 0,
+      chanceB: last.chanceB || 0,
+      mid: last.midCherry || 0,
+    };
     t.allRoles = t.weak + t.strong + t.suika + t.chanceA + t.chanceB + t.mid;
     return t;
   }
@@ -2275,9 +2289,8 @@
     elRrMidValue.textContent = t.mid;
     elRrMidProb.textContent = fmtProb(t.game, t.mid);
     var list = v.rareRoleCounts || [];
-    var last = list[list.length - 1];
-    elRrPreview.textContent = last
-      ? ('弱チェ' + fmtProb(last.game || 0, last.weakCherry || 0) + ' ／ 合算' + fmtProb(t.game, t.allRoles))
+    elRrPreview.textContent = list.length
+      ? ('弱チェ' + fmtProb(t.game, t.weak) + ' ／ 合算' + fmtProb(t.game, t.allRoles))
       : '';
   }
   // 各セットの開閉状態(セットごとにlocalStorageへ保存し、次に開いた時も維持する)
@@ -2294,7 +2307,7 @@
     (v.rareRoleCounts || []).forEach(function (r, idx) {
       var closed = isRareRoleClosed(r.id);
       var card = document.createElement('div');
-      card.className = 'wee-chance-card' + (closed ? ' closed' : '');
+      card.className = 'wee-chance-card rare-role-card' + (closed ? ' closed' : '');
 
       var titleBtn = document.createElement('button');
       titleBtn.type = 'button';
@@ -2308,29 +2321,41 @@
 
       var body = document.createElement('div');
       body.className = 'wee-chance-body';
-      var grid = document.createElement('div');
-      grid.className = 'rare-role-row-grid';
-      RARE_ROLE_FIELDS.forEach(function (pair) {
+      function buildRareRoleField(pair) {
         var label = document.createElement('label');
         label.className = 'rare-role-field';
         var span = document.createElement('span');
         span.textContent = pair[0];
         label.appendChild(span);
         var input = document.createElement('input');
-        input.type = 'number';
+        // type="number"はスマホでの入力中にキーボードの表示が不安定になることがあるため、
+        // 数字専用のtext入力(inputmode/pattern指定)に変更する
+        input.type = 'text';
         input.inputMode = 'numeric';
+        input.pattern = '[0-9]*';
         input.value = (typeof r[pair[1]] === 'number') ? r[pair[1]] : '';
         // 1文字ごとにsave()すると、クラウド同期の受信処理が一覧を再描画して入力欄からフォーカスが外れてしまうため、
         // 値の更新と集計表示はinputで、実際の保存はフィールドを離れたタイミング(change)で行う
         input.addEventListener('input', function () {
-          r[pair[1]] = input.value === '' ? null : Number(input.value);
+          var digits = input.value.replace(/[^0-9]/g, '');
+          if (digits !== input.value) input.value = digits;
+          r[pair[1]] = digits === '' ? null : Number(digits);
           renderRareRoleSummary(v);
         });
         input.addEventListener('change', function () {
           save();
         });
         label.appendChild(input);
-        grid.appendChild(label);
+        return label;
+      }
+      var gameRow = document.createElement('div');
+      gameRow.className = 'rare-role-game-row';
+      gameRow.appendChild(buildRareRoleField(RARE_ROLE_FIELDS[0]));
+      body.appendChild(gameRow);
+      var grid = document.createElement('div');
+      grid.className = 'rare-role-row-grid';
+      RARE_ROLE_FIELDS.slice(1).forEach(function (pair) {
+        grid.appendChild(buildRareRoleField(pair));
       });
       body.appendChild(grid);
 
