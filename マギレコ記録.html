@@ -725,6 +725,34 @@
   .suggestion-summary.closed .suggestion-summary-body { display: none; }
   .suggestion-summary.closed .card-grid { display: none; }
   .suggestion-summary.closed .counters { display: none; }
+  .suggestion-summary.closed .rare-role-body { display: none; }
+  .suggestion-summary-toggle-right { display: flex; align-items: center; gap: 8px; }
+  .suggestion-summary-preview { color: var(--sub); font-size: 12px; font-weight: 400; }
+  .rare-role-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .rare-role-row-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .rare-role-field { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--sub); }
+  .rare-role-field input {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 8px;
+    color: var(--text);
+    font-size: 14px;
+    width: 100%;
+  }
+  .rare-role-row-delete { flex-shrink: 0; padding: 8px; font-size: 16px; }
   .suggestion-summary-body {
     margin-top: 8px;
     background: var(--panel2);
@@ -816,7 +844,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-29a</div>
+    <div class="app-version">v2026-09-29b</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -932,6 +960,32 @@
             <button type="button" class="counter-btn" id="d-czwin-plus">＋</button>
           </div>
           <div class="prob" id="d-czwin-prob"></div>
+        </div>
+      </div>
+      <div class="suggestion-summary" id="rare-role-summary">
+        <button type="button" class="suggestion-summary-toggle" id="rare-role-toggle">
+          <span>レア役合算カウント</span>
+          <span class="suggestion-summary-toggle-right">
+            <span class="suggestion-summary-preview" id="rare-role-preview"></span>
+            <span class="chevron" id="rare-role-chevron">▾</span>
+          </span>
+        </button>
+        <div class="rare-role-body">
+          <div class="summary" style="margin-top:10px;">
+            <div class="card"><div class="label">ゲーム数</div><div class="value" id="rr-total-game">0G</div><div class="prob" id="rr-total-prob"></div></div>
+          </div>
+          <div class="counters">
+            <div class="counter-card"><div class="counter-label">弱チェ</div><div class="counter-value" id="rr-weak-value">0</div><div class="prob" id="rr-weak-prob"></div></div>
+            <div class="counter-card"><div class="counter-label">強チェ</div><div class="counter-value" id="rr-strong-value">0</div><div class="prob" id="rr-strong-prob"></div></div>
+            <div class="counter-card"><div class="counter-label">スイカ</div><div class="counter-value" id="rr-suika-value">0</div><div class="prob" id="rr-suika-prob"></div></div>
+          </div>
+          <div class="counters">
+            <div class="counter-card"><div class="counter-label">チャンス目A</div><div class="counter-value" id="rr-chancea-value">0</div><div class="prob" id="rr-chancea-prob"></div></div>
+            <div class="counter-card"><div class="counter-label">チャンス目B</div><div class="counter-value" id="rr-chanceb-value">0</div><div class="prob" id="rr-chanceb-prob"></div></div>
+            <div class="counter-card"><div class="counter-label">中チェ</div><div class="counter-value" id="rr-mid-value">0</div><div class="prob" id="rr-mid-prob"></div></div>
+          </div>
+          <div id="rare-role-list"></div>
+          <button type="button" class="ghost-btn" id="rare-role-add">＋ レア役カウントを追加</button>
         </div>
       </div>
       <div class="suggestion-summary" id="highprob-summary">
@@ -2162,6 +2216,130 @@
   var elDInvestRecovered = document.getElementById('d-invest-recovered');
   var elDInvestBalance = document.getElementById('d-invest-balance');
   var elEntryList = document.getElementById('entry-list');
+  // レア役合算カウント(来店ごとに、任意のタイミングで区間ごとの内訳を追加して合算する独立カウンター)
+  var elRareRoleSummary = document.getElementById('rare-role-summary');
+  var elRrPreview = document.getElementById('rare-role-preview');
+  var elRareRoleList = document.getElementById('rare-role-list');
+  var elRrTotalGame = document.getElementById('rr-total-game');
+  var elRrTotalProb = document.getElementById('rr-total-prob');
+  var elRrWeakValue = document.getElementById('rr-weak-value');
+  var elRrWeakProb = document.getElementById('rr-weak-prob');
+  var elRrStrongValue = document.getElementById('rr-strong-value');
+  var elRrStrongProb = document.getElementById('rr-strong-prob');
+  var elRrSuikaValue = document.getElementById('rr-suika-value');
+  var elRrSuikaProb = document.getElementById('rr-suika-prob');
+  var elRrChanceAValue = document.getElementById('rr-chancea-value');
+  var elRrChanceAProb = document.getElementById('rr-chancea-prob');
+  var elRrChanceBValue = document.getElementById('rr-chanceb-value');
+  var elRrChanceBProb = document.getElementById('rr-chanceb-prob');
+  var elRrMidValue = document.getElementById('rr-mid-value');
+  var elRrMidProb = document.getElementById('rr-mid-prob');
+  var RARE_ROLE_SUMMARY_OPEN_KEY = 'magireko.rareRoleSummaryOpen';
+  function isRareRoleSummaryOpen() {
+    var v = localStorage.getItem(RARE_ROLE_SUMMARY_OPEN_KEY);
+    return v === null ? true : v === '1';
+  }
+  elRareRoleSummary.classList.toggle('closed', !isRareRoleSummaryOpen());
+  document.getElementById('rare-role-toggle').addEventListener('click', function () {
+    var open = !isRareRoleSummaryOpen();
+    localStorage.setItem(RARE_ROLE_SUMMARY_OPEN_KEY, open ? '1' : '0');
+    elRareRoleSummary.classList.toggle('closed', !open);
+  });
+  var RARE_ROLE_FIELDS = [
+    ['ゲーム数', 'game'],
+    ['弱チェ', 'weakCherry'],
+    ['強チェ', 'strongCherry'],
+    ['スイカ', 'suika'],
+    ['チャンス目A', 'chanceA'],
+    ['チャンス目B', 'chanceB'],
+    ['中チェ', 'midCherry'],
+  ];
+  function rareRoleTotals(v) {
+    var t = { game: 0, weak: 0, strong: 0, suika: 0, chanceA: 0, chanceB: 0, mid: 0 };
+    (v.rareRoleCounts || []).forEach(function (r) {
+      t.game += r.game || 0;
+      t.weak += r.weakCherry || 0;
+      t.strong += r.strongCherry || 0;
+      t.suika += r.suika || 0;
+      t.chanceA += r.chanceA || 0;
+      t.chanceB += r.chanceB || 0;
+      t.mid += r.midCherry || 0;
+    });
+    t.allRoles = t.weak + t.strong + t.suika + t.chanceA + t.chanceB + t.mid;
+    return t;
+  }
+  function renderRareRoleSummary(v) {
+    var t = rareRoleTotals(v);
+    elRrTotalGame.textContent = t.game + 'G';
+    elRrTotalProb.textContent = fmtProb(t.game, t.allRoles);
+    elRrWeakValue.textContent = t.weak;
+    elRrWeakProb.textContent = fmtProb(t.game, t.weak);
+    elRrStrongValue.textContent = t.strong;
+    elRrStrongProb.textContent = fmtProb(t.game, t.strong);
+    elRrSuikaValue.textContent = t.suika;
+    elRrSuikaProb.textContent = fmtProb(t.game, t.suika);
+    elRrChanceAValue.textContent = t.chanceA;
+    elRrChanceAProb.textContent = fmtProb(t.game, t.chanceA);
+    elRrChanceBValue.textContent = t.chanceB;
+    elRrChanceBProb.textContent = fmtProb(t.game, t.chanceB);
+    elRrMidValue.textContent = t.mid;
+    elRrMidProb.textContent = fmtProb(t.game, t.mid);
+    var list = v.rareRoleCounts || [];
+    var last = list[list.length - 1];
+    elRrPreview.textContent = last
+      ? ('弱チェ' + fmtProb(last.game || 0, last.weakCherry || 0) + ' ／ 合算' + fmtProb(t.game, t.allRoles))
+      : '';
+  }
+  function renderRareRoleList(v) {
+    elRareRoleList.innerHTML = '';
+    (v.rareRoleCounts || []).forEach(function (r, idx) {
+      var row = document.createElement('div');
+      row.className = 'rare-role-row';
+      var grid = document.createElement('div');
+      grid.className = 'rare-role-row-grid';
+      RARE_ROLE_FIELDS.forEach(function (pair) {
+        var label = document.createElement('label');
+        label.className = 'rare-role-field';
+        var span = document.createElement('span');
+        span.textContent = pair[0];
+        label.appendChild(span);
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.inputMode = 'numeric';
+        input.value = (typeof r[pair[1]] === 'number') ? r[pair[1]] : '';
+        input.addEventListener('input', function () {
+          r[pair[1]] = input.value === '' ? null : Number(input.value);
+          save();
+          renderRareRoleSummary(v);
+        });
+        label.appendChild(input);
+        grid.appendChild(label);
+      });
+      row.appendChild(grid);
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'ghost-btn rare-role-row-delete';
+      delBtn.textContent = '🗑';
+      delBtn.addEventListener('click', function () {
+        if (!confirm('このレア役カウントを削除しますか？')) return;
+        v.rareRoleCounts.splice(idx, 1);
+        save();
+        renderRareRoleList(v);
+        renderRareRoleSummary(v);
+      });
+      row.appendChild(delBtn);
+      elRareRoleList.appendChild(row);
+    });
+  }
+  document.getElementById('rare-role-add').addEventListener('click', function () {
+    var v = currentVisit();
+    if (!v) return;
+    if (!v.rareRoleCounts) v.rareRoleCounts = [];
+    v.rareRoleCounts.push({ id: uid(), game: null, weakCherry: null, strongCherry: null, suika: null, chanceA: null, chanceB: null, midCherry: null });
+    save();
+    renderRareRoleList(v);
+    renderRareRoleSummary(v);
+  });
   var elHighProbSummary = document.getElementById('highprob-summary');
   var HIGHPROB_SUMMARY_OPEN_KEY = 'magireko.highProbSummaryOpen';
   function isHighProbSummaryOpen() {
@@ -2542,6 +2720,8 @@
     updateInvestBalance(v);
 
     renderSuggestionSummary(v);
+    renderRareRoleSummary(v);
+    renderRareRoleList(v);
 
     elEntryList.innerHTML = '';
     var entryNum = 0;
