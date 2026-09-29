@@ -120,6 +120,10 @@
     font-size: 15px;
     cursor: pointer;
   }
+  .detail-toggle-btn {
+    width: 100%;
+    margin-bottom: 12px;
+  }
 
   /* 全体集計 */
   .summary {
@@ -812,7 +816,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-25e</div>
+    <div class="app-version">v2026-09-29a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1094,7 +1098,8 @@
         <input type="number" inputmode="numeric" id="e-at-start-game" placeholder="例: 0">
       </div>
     </div>
-    <div class="field">
+    <button type="button" class="ghost-btn detail-toggle-btn" id="detail-toggle-btn">詳細をたたむ ▲</button>
+    <div class="field" id="field-mode">
       <label>魔法少女モード</label>
       <button type="button" class="picker-trigger" id="e-mode-trigger">未選択 ▾</button>
     </div>
@@ -1129,7 +1134,7 @@
         </div>
       </div>
     </div>
-    <div class="field">
+    <div class="field" id="field-result">
       <label>結果(複数選択可)</label>
       <div class="cat-select" id="e-result">
         <button type="button" data-v="BIG">BIG</button>
@@ -2930,6 +2935,22 @@
   var fieldEmbryoPattern = document.getElementById('field-embryo-pattern');
   var fieldCardChances = document.getElementById('field-card-chances');
   var eResultTrueEnding = document.getElementById('e-result-true-ending');
+  var fieldMode = document.getElementById('field-mode');
+  var fieldResult = document.getElementById('field-result');
+  var detailToggleBtn = document.getElementById('detail-toggle-btn');
+  var detailsCollapsed = false;
+  // 魔法少女モード〜結果までは常に一括開閉の対象、BIG選択時はビッグ終了後の画面まで、
+  // エンブリオ選択時は上乗せ(+)を含む帯色までを対象に加える
+  function detailToggleFields(hasBig, hasEmbryo) {
+    var fields = [fieldMode, elKegareSummary, fieldResult];
+    if (hasBig) fields.push(fieldBigVoice, fieldBigScreen);
+    if (hasEmbryo) fields.push(fieldCardChances, fieldStartGame, fieldBand);
+    return fields;
+  }
+  detailToggleBtn.addEventListener('click', function () {
+    detailsCollapsed = !detailsCollapsed;
+    updateConditionalFields();
+  });
   function updateConditionalFields() {
     var hasBig = state.selectedResults.indexOf('BIG') !== -1;
     var hasEmbryo = state.selectedResults.indexOf('エンブリオ') !== -1;
@@ -2988,6 +3009,14 @@
         state.selectedResults.splice(teIdx, 1);
         eResultTrueEnding.classList.remove('active');
       }
+    }
+    // 一括開閉ボタン: 魔法少女モード〜結果(＋BIG/エンブリオの詳細)をまとめて閉じたり開いたりする
+    fieldMode.hidden = false;
+    elKegareSummary.hidden = false;
+    fieldResult.hidden = false;
+    detailToggleBtn.textContent = detailsCollapsed ? '詳細を開く ▼' : '詳細をたたむ ▲';
+    if (detailsCollapsed) {
+      detailToggleFields(hasBig, hasEmbryo).forEach(function (f) { f.hidden = true; });
     }
   }
 
@@ -3201,6 +3230,11 @@
     var bonus = (typeof c.bonusGame === 'number' ? c.bonusGame : 0) + (typeof c.consumedGame === 'number' ? c.consumedGame : 0);
     if (bonus) parts.push(bonus + 'G');
     if (c.charSuggestion) parts.push(embryoPatternShortLabel(c.charSuggestion));
+    if (c.trigger === 'ゲーム数') {
+      parts.push('ゲーム数' + (typeof c.triggerGame === 'number' ? c.triggerGame + 'G' : ''));
+    } else if (c.trigger === '小役当選') {
+      parts.push('小役当選');
+    }
     return parts.join('・');
   }
   function renderWeeChances() {
@@ -3735,6 +3769,7 @@
 
   function openEntrySheet(entryId) {
     state.editingEntryId = entryId || null;
+    detailsCollapsed = false;
     var title = document.getElementById('entry-sheet-title');
     if (entryId) {
       var v = currentVisit();
