@@ -734,7 +734,7 @@
   .rare-role-game-row { margin-bottom: 8px; }
   .rare-role-row-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px 6px;
   }
   .rare-role-field {
@@ -757,6 +757,7 @@
     font-size: 14px;
   }
   .rare-role-game-row .rare-role-field input { width: 5em; }
+  .rare-role-field input.rare-role-input-narrow { width: 1.6em; }
   .suggestion-summary-body {
     margin-top: 8px;
     background: var(--panel2);
@@ -848,7 +849,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-30b</div>
+    <div class="app-version">v2026-09-30c</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2254,8 +2255,8 @@
     ['弱チェ', 'weakCherry'],
     ['強チェ', 'strongCherry'],
     ['スイカ', 'suika'],
-    ['チャンス目A', 'chanceA'],
-    ['チャンス目B', 'chanceB'],
+    ['チャンA', 'chanceA'],
+    ['チャンB', 'chanceB'],
     ['中チェ', 'midCherry'],
   ];
   // 台の小役カウンター表示をその都度メモした「累計値」として1セットずつ記録する想定のため、
@@ -2354,6 +2355,7 @@
         input.type = 'text';
         input.inputMode = 'numeric';
         input.pattern = '[0-9]*';
+        if (pair[1] === 'strongCherry') input.classList.add('rare-role-input-narrow');
         input.value = (typeof r[pair[1]] === 'number') ? r[pair[1]] : '';
         // 入力中に他の場所(集計カードなど)のDOMを書き換えると、スマホでキーボードが
         // 閉じて画面がチラつく原因になるため、入力中(input)はこのフィールド自身の値の
