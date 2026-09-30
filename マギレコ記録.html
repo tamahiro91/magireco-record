@@ -782,6 +782,13 @@
     color: var(--text);
   }
   .suggestion-empty { font-size: 13px; color: var(--sub); padding: 10px 0; text-align: center; }
+  .suggestion-wee-total-row {
+    padding: 10px 0 0;
+    font-size: 9.5px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow-x: auto;
+  }
   .card-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
   .card-count-item {
     width: 104px;
@@ -850,7 +857,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-30j</div>
+    <div class="app-version">v2026-09-30k</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1951,9 +1958,13 @@
     return (count / base * 100).toFixed(1) + '%';
   }
   // うぃチャンス全体の上乗せゲーム数(各カードのコネクト上乗せ/消化ゲーム数の合計＋10Gカウンター＋その他上乗せ)を、保存済みの記録から算出する
+  // ストーリー/SP/マギアボーナスは選択する毎に固定でゲーム数を消化するため、
+  // 入力済みの上乗せ/消化ゲーム数とは別に自動で加算する(カード1件につき1回分)
+  var WEE_STORY_TYPE_FIXED_GAME = { 'ストーリー': 20, 'SP': 30, 'マギアボーナス': 30 };
   function weeBonusTotalOf(e) {
     var cardTotal = (e.weeChances || []).reduce(function (sum, c) {
-      return sum + (typeof c.bonusGame === 'number' ? c.bonusGame : 0) + (typeof c.consumedGame === 'number' ? c.consumedGame : 0);
+      var fixedGame = WEE_STORY_TYPE_FIXED_GAME[c.storyType] || 0;
+      return sum + (typeof c.bonusGame === 'number' ? c.bonusGame : 0) + (typeof c.consumedGame === 'number' ? c.consumedGame : 0) + fixedGame;
     }, 0);
     return cardTotal + (e.weeBonusExtra1 || 0) + (e.weeBonusExtra2 || 0);
   }
@@ -1989,6 +2000,7 @@
     var bigScreen = {}, atScreen = {}, epibo = {}, cards = {}, storyOrder = {}, embryoPattern = {}, univaPlate = {}, mikazuki = {};
     var hikimodoshi = 0, atChokugeki = 0, atContinue40Iroha = 0, atContinue40Koqube = 0;
     var kegareSmall = 0, kegareMid = 0, kegareLarge = 0;
+    var weeChanceTotal = 0, weeStoryCount = 0, weeSpCount = 0, weeKamihamaCount = 0, weeMagiaBonusCount = 0;
     (visit.entries || []).forEach(function (e) {
       if (e.bigScreen) {
         var bsLabel = e.bigScreen + (BIG_SCREEN_SUGGESTION[e.bigScreen] ? '(' + BIG_SCREEN_SUGGESTION[e.bigScreen] + ')' : '');
@@ -2037,7 +2049,12 @@
         embryoPattern[epLabel] = (embryoPattern[epLabel] || 0) + 1;
       }
       if (e.weeChances && e.weeChances.length) {
+        weeChanceTotal += e.weeChances.length;
         e.weeChances.forEach(function (c) {
+          if (c.storyType === 'ストーリー') weeStoryCount++;
+          else if (c.storyType === 'SP') weeSpCount++;
+          else if (c.storyType === '神浜') weeKamihamaCount++;
+          else if (c.storyType === 'マギアボーナス') weeMagiaBonusCount++;
           if (c.settingPattern) {
             var wpLabel = EMBRYO_PATTERN_TEXT[c.settingPattern] || c.settingPattern;
             embryoPattern[wpLabel] = (embryoPattern[wpLabel] || 0) + 1;
@@ -2080,7 +2097,12 @@
       atContinue40Koqube: atContinue40Koqube,
       kegareSmall: kegareSmall,
       kegareMid: kegareMid,
-      kegareLarge: kegareLarge
+      kegareLarge: kegareLarge,
+      weeChanceTotal: weeChanceTotal,
+      weeStoryCount: weeStoryCount,
+      weeSpCount: weeSpCount,
+      weeKamihamaCount: weeKamihamaCount,
+      weeMagiaBonusCount: weeMagiaBonusCount
     };
   }
 
@@ -2590,6 +2612,7 @@
     html += '<div class="suggestion-simple-row"><span>引戻し／at直撃</span><span>引戻し ' + summary.hikimodoshi + ' 回 ／ at直撃 ' + summary.atChokugeki + ' 回</span></div>';
     html += '<div class="suggestion-simple-row"><span>at継続40ゲーム</span><span>いろは ' + summary.atContinue40Iroha + ' 回 ／ 小きゅうべえ ' + summary.atContinue40Koqube + ' 回</span></div>';
     html += '<div class="suggestion-simple-row"><span>穢れ</span><span>小 ' + summary.kegareSmall + ' 回 ／ 中 ' + summary.kegareMid + ' 回 ／ 大 ' + summary.kegareLarge + ' 回</span></div>';
+    html += '<div class="suggestion-wee-total-row">うぃチャンス' + summary.weeChanceTotal + '回/ストーリー' + summary.weeStoryCount + '回/SP' + summary.weeSpCount + '回/神浜' + summary.weeKamihamaCount + '回/マギアボーナス' + summary.weeMagiaBonusCount + '回</div>';
     elSuggestionSummaryBody.innerHTML = html;
   }
 
