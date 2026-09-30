@@ -850,7 +850,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-30h</div>
+    <div class="app-version">v2026-09-30i</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2451,10 +2451,14 @@
     });
     return tesseractLoadPromise;
   }
+  // 日本語OCRは数字やカンマを全角(０-９，)で認識することがあるため、半角に変換してから処理する
+  function toHalfWidth(s) {
+    return s.replace(/[！-～]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
+  }
   // OCRで得た全文から、行ごとにラベル文字列を探し、そのラベルより後ろにある最初の数字の並びを値として取り出す
   function parseRareRoleOcrText(text) {
     var result = {};
-    text.split('\n').forEach(function (line) {
+    toHalfWidth(text).split('\n').forEach(function (line) {
       RARE_ROLE_OCR_MAP.forEach(function (pair) {
         var label = pair[0];
         var key = pair[1];
@@ -2486,7 +2490,9 @@
         return window.Tesseract.recognize(file, 'jpn+eng');
       })
       .then(function (out) {
-        var parsed = parseRareRoleOcrText(out.data.text);
+        var rawText = out.data.text || '';
+        console.log('[レア役OCR] 認識結果:', rawText);
+        var parsed = parseRareRoleOcrText(rawText);
         if (!v.rareRoleCounts) v.rareRoleCounts = [];
         v.rareRoleCounts.push({
           id: uid(),
@@ -2502,7 +2508,9 @@
         renderRareRoleList(v);
         renderRareRoleSummary(v);
         if (!Object.keys(parsed).length) {
-          alert('画像から数値を読み取れませんでした。新しいセットを追加したので、手動で入力してください。');
+          // ラベルに一致しなかった場合、原因を調べられるよう認識結果の先頭部分をそのまま表示する
+          var preview = rawText.trim().slice(0, 300) || '(文字が全く認識されませんでした)';
+          alert('画像から数値を読み取れませんでした。新しいセットを追加したので、手動で入力してください。\n\n【認識結果(確認用)】\n' + preview);
         }
       })
       .catch(function (err) {
