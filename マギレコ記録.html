@@ -850,7 +850,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-30i</div>
+    <div class="app-version">v2026-09-30j</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2459,13 +2459,16 @@
   function parseRareRoleOcrText(text) {
     var result = {};
     toHalfWidth(text).split('\n').forEach(function (line) {
+      // OCRは「総プレイ数」を「総 プレイ 数」のように文字の間に空白を挟んで認識することが
+      // あるため、行内の空白を取り除いてから照合する(空白があると完全一致で見つからない)
+      var compact = line.replace(/\s+/g, '');
       RARE_ROLE_OCR_MAP.forEach(function (pair) {
         var label = pair[0];
         var key = pair[1];
         if (result[key] != null) return;
-        var idx = line.indexOf(label);
+        var idx = compact.indexOf(label);
         if (idx === -1) return;
-        var after = line.slice(idx + label.length);
+        var after = compact.slice(idx + label.length);
         var m = after.match(/\d[\d,]*/);
         if (m) result[key] = Number(m[0].replace(/,/g, ''));
       });
@@ -2509,7 +2512,7 @@
         renderRareRoleSummary(v);
         if (!Object.keys(parsed).length) {
           // ラベルに一致しなかった場合、原因を調べられるよう認識結果の先頭部分をそのまま表示する
-          var preview = rawText.trim().slice(0, 300) || '(文字が全く認識されませんでした)';
+          var preview = rawText.trim().slice(0, 800) || '(文字が全く認識されませんでした)';
           alert('画像から数値を読み取れませんでした。新しいセットを追加したので、手動で入力してください。\n\n【認識結果(確認用)】\n' + preview);
         }
       })
