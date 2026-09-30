@@ -857,7 +857,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-30l</div>
+    <div class="app-version">v2026-09-30m</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2477,14 +2477,19 @@
   function toHalfWidth(s) {
     return s.replace(/[！-～]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
   }
-  // OCRで得た全文から、行ごとにラベル文字列を探し、そのラベルより後ろにある最初の数字の並びを値として取り出す
+  // OCRで得た全文から、行ごとにラベル文字列を探し、そのラベルより後ろにある最初の数字の並びを値として取り出す。
+  // ラベルと数値が横に離れた列になっている場合、OCRはラベルの行と数値の行を別々に
+  // (しかも数値の行が先に来る順で)認識することがあるため、同じ行に数値が見つからなければ
+  // 前後2行以内にある「数値だけの行」も探す
   function parseRareRoleOcrText(text) {
     var result = {};
-    toHalfWidth(text).split('\n').forEach(function (line) {
-      // OCRは「総プレイ数」を「総 プレイ 数」のように文字の間に空白を挟んで認識することが
-      // あるため、行内の空白を取り除いてから照合する(空白があると完全一致で見つからない)。
-      // また長音記号「ー」を漢字の「一」と誤認識することが多いため、「一」も「ー」とみなして照合する
-      var compact = line.replace(/\s+/g, '').replace(/一/g, 'ー');
+    // OCRは「総プレイ数」を「総 プレイ 数」のように文字の間に空白を挟んで認識することが
+    // あるため、行内の空白を取り除いてから照合する(空白があると完全一致で見つからない)。
+    // また長音記号「ー」を漢字の「一」と誤認識することが多いため、「一」も「ー」とみなして照合する
+    var lines = toHalfWidth(text).split('\n').map(function (line) {
+      return line.replace(/\s+/g, '').replace(/一/g, 'ー');
+    });
+    lines.forEach(function (compact, lineIdx) {
       RARE_ROLE_OCR_MAP.forEach(function (pair) {
         var label = pair[0];
         var key = pair[1];
@@ -2493,7 +2498,14 @@
         if (idx === -1) return;
         var after = compact.slice(idx + label.length);
         var m = after.match(/\d[\d,]*/);
-        if (m) result[key] = Number(m[0].replace(/,/g, ''));
+        if (m) { result[key] = Number(m[0].replace(/,/g, '')); return; }
+        [-1, -2, 1, 2].forEach(function (offset) {
+          if (result[key] != null) return;
+          var otherLine = lines[lineIdx + offset];
+          if (!otherLine) return;
+          var m2 = otherLine.match(/^\d[\d,]*/);
+          if (m2) result[key] = Number(m2[0].replace(/,/g, ''));
+        });
       });
     });
     return result;
