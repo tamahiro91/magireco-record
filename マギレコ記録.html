@@ -848,7 +848,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-30f</div>
+    <div class="app-version">v2026-09-30g</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2357,6 +2357,13 @@
         if (pair[1] === 'midCherry') input.classList.add('rare-role-input-narrow');
         if (pair[1] === 'game') input.classList.add('rare-role-input-game');
         input.value = (typeof r[pair[1]] === 'number') ? r[pair[1]] : '';
+        // このアプリは#scroll-areaだけがスクロールする二重スクロール構造のため、次の入力欄へ
+        // フォーカスが移る際にSafariのスクロール位置の自動調整が迷い、一瞬ページ全体が
+        // トップまで跳ねてから戻る現象が起きる。フォーカスした瞬間に正しい位置へ明示的に
+        // (アニメーションなしで)スクロールし直すことでこれを防ぐ
+        input.addEventListener('focus', function () {
+          input.scrollIntoView({ block: 'center', behavior: 'instant' });
+        });
         // 入力中に他の場所(集計カードなど)のDOMを書き換えると、スマホでキーボードが
         // 閉じて画面がチラつく原因になるため、入力中(input)はこのフィールド自身の値の
         // 保持だけにとどめ、集計表示の更新と保存はフィールドを離れたタイミング(change)でまとめて行う
