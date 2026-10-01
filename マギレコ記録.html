@@ -707,6 +707,10 @@
     color: var(--accent);
   }
   .suggestion-summary { margin-top: 12px; }
+  .summary-pair { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .summary-pair .suggestion-summary { flex: 1 1 calc(50% - 4px); min-width: 0; margin-top: 0; }
+  .summary-pair .suggestion-summary:not(.closed) { flex: 1 1 100%; }
+  .summary-pair .suggestion-summary-toggle span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .suggestion-summary-toggle {
     width: 100%;
     display: flex;
@@ -757,8 +761,6 @@
   }
   .rare-role-field input.rare-role-input-game { width: 4.2em; }
   .rare-role-field input.rare-role-input-narrow { width: 1.6em; }
-  .rare-role-actions { display: flex; gap: 8px; }
-  .rare-role-actions .ghost-btn { flex: 1; }
   .suggestion-summary-body {
     margin-top: 8px;
     background: var(--panel2);
@@ -784,10 +786,10 @@
   .suggestion-empty { font-size: 13px; color: var(--sub); padding: 10px 0; text-align: center; }
   .suggestion-wee-total-row {
     padding: 10px 0 0;
-    font-size: 9.5px;
+    font-size: 13px;
     color: var(--text);
-    white-space: nowrap;
-    overflow-x: auto;
+    text-align: left;
+    width: 100%;
   }
   .card-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
   .card-count-item {
@@ -857,7 +859,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-09-30m</div>
+    <div class="app-version">v2026-10-01a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -997,14 +999,13 @@
             <div class="counter-card"><div class="counter-label">チャンス目B</div><div class="counter-value" id="rr-chanceb-value">0</div><div class="prob" id="rr-chanceb-prob"></div></div>
             <div class="counter-card"><div class="counter-label">中チェ</div><div class="counter-value" id="rr-mid-value">0</div><div class="prob" id="rr-mid-prob"></div></div>
           </div>
-          <div id="rare-role-list"></div>
-          <div class="rare-role-actions">
-            <button type="button" class="ghost-btn" id="rare-role-add">＋ レア役カウントを追加</button>
-            <button type="button" class="ghost-btn" id="rare-role-ocr-btn">📷 画像から読み込む</button>
-          </div>
+          <button type="button" class="ghost-btn" id="rare-role-ocr-btn" style="width:100%;margin-bottom:10px;">📷 画像から読み込む</button>
           <input type="file" accept="image/*" id="rare-role-ocr-file" style="display:none;">
+          <div id="rare-role-list"></div>
+          <button type="button" class="ghost-btn" id="rare-role-add" style="width:100%;">＋ カウントを追加</button>
         </div>
       </div>
+      <div class="summary-pair">
       <div class="suggestion-summary" id="highprob-summary">
         <button type="button" class="suggestion-summary-toggle" id="highprob-toggle">
           <span>高確移行カウント</span><span class="chevron" id="highprob-chevron">▾</span>
@@ -1044,6 +1045,7 @@
           <span>示唆一覧</span><span class="chevron" id="suggestion-summary-chevron">▾</span>
         </button>
         <div class="suggestion-summary-body" id="suggestion-summary-body"></div>
+      </div>
       </div>
     </div>
 
@@ -1465,6 +1467,13 @@
   var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], univaPlates: [], univaPlatesClosed: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], weeBonusExtra1: 0, weeBonusExtra2: null, atContinue40: [], atContinue40Closed: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
   // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
   var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
+  // 示唆文言から「!?」「！？」を取り除く(アプリ内の示唆表示全体で統一して非表示にする)
+  function stripBangQuestion(s) {
+    return typeof s === 'string' ? s.replace(/!\?/g, '').replace(/！？/g, '') : s;
+  }
+  function stripBangQuestionFromMap(obj) {
+    Object.keys(obj).forEach(function (k) { obj[k] = stripBangQuestion(obj[k]); });
+  }
   // エンディング中に出現するカードとその設定示唆(画像はユーザー提供のスクリーンショットから切り出し)
   var EMBRYO_CARD_LIST = [
     { name: '絶交階段のウワサ', suggestion: '奇数設定示唆(弱)', img: 'cards/zekko_kaidan.jpg' },
@@ -1692,6 +1701,15 @@
     '成功時': '黒江チャレンジ成功時',
     '以外': '黒江チャレンジ以外で出現すれば設定5・6の期待大!?'
   };
+  EMBRYO_PATTERN_OPTIONS.forEach(function (o) { o.text = stripBangQuestion(o.text); });
+  stripBangQuestionFromMap(BIG_SCREEN_SUGGESTION);
+  stripBangQuestionFromMap(AT_SCREEN_SUGGESTION);
+  stripBangQuestionFromMap(BIG_VOICE_SUGGESTION.atWin);
+  stripBangQuestionFromMap(BIG_VOICE_SUGGESTION.noAtWin);
+  stripBangQuestionFromMap(UNIVA_PLATE_SUGGESTION);
+  stripBangQuestionFromMap(MIKAZUKI_STAGE_SUGGESTION);
+  stripBangQuestionFromMap(EPIBO_SUGGESTION);
+  stripBangQuestionFromMap(EPIBO_KUROE_SUGGESTION);
   function epiboSuggestionText(char, kuroeCase) {
     if (!char) return '';
     if (char === '黒江') return kuroeCase ? EPIBO_KUROE_SUGGESTION[kuroeCase] : '';
@@ -1722,6 +1740,7 @@
     { v: '5-E', order: '5⇒4⇒3⇒①⇒2', suggestion: '設定1否定!?+高設定示唆!?' },
     { v: '5-F', order: '⑤⇒④⇒③⇒②⇒①', suggestion: '設定5以上濃厚!?' }
   ];
+  STORY_ORDER_PATTERNS.forEach(function (p) { p.suggestion = stripBangQuestion(p.suggestion); });
   var STORY_ORDER_SUGGESTION = {};
   STORY_ORDER_PATTERNS.forEach(function (p) { STORY_ORDER_SUGGESTION[p.v] = p.suggestion; });
   var STORY_ORDER_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
@@ -2080,6 +2099,18 @@
     function toList(map) {
       return Object.keys(map).map(function (label) { return { label: label, count: map[label] }; });
     }
+    // ラベルの先頭にある数字(「1-A」などの半角数字、または「①」などの丸数字)を取り出し、
+    // 昇順に並べ替えるためのキーにする(見つからない場合は末尾に回す)
+    function suggestionSortKey(label) {
+      var circled = label.match(/^[①-⑨]/);
+      if (circled) return circled[0].codePointAt(0) - '①'.codePointAt(0) + 1;
+      var numeric = label.match(/^(\d+)/);
+      if (numeric) return Number(numeric[1]);
+      return 999;
+    }
+    function toSortedList(map) {
+      return toList(map).sort(function (a, b) { return suggestionSortKey(a.label) - suggestionSortKey(b.label); });
+    }
     return {
       groups: [
         { title: 'BIG終了画面', items: toList(bigScreen) },
@@ -2088,8 +2119,8 @@
         { title: 'みたまボーナス', items: toList(mikazuki) },
         { title: 'エピソードボーナスの示唆', items: toList(epibo) },
         { title: 'エンディング中のカード示唆', items: toList(cards) },
-        { title: 'ストーリーの話数の示唆', items: toList(storyOrder) },
-        { title: 'キャラ紹介の示唆', items: toList(embryoPattern) }
+        { title: 'ストーリーの話数の示唆', items: toSortedList(storyOrder) },
+        { title: 'キャラ紹介の示唆', items: toSortedList(embryoPattern) }
       ],
       hikimodoshi: hikimodoshi,
       atChokugeki: atChokugeki,
@@ -2321,7 +2352,7 @@
     elRrMidProb.textContent = fmtProb(t.game, t.mid);
     var list = v.rareRoleCounts || [];
     elRrPreview.textContent = list.length
-      ? ('弱チェ' + fmtProb(t.game, t.weak) + ' ／ 合算' + fmtProb(t.game, t.allRoles))
+      ? (t.game + 'G ／ 弱チェ' + fmtProb(t.game, t.weak) + ' ／ 合算' + fmtProb(t.game, t.allRoles))
       : '';
   }
   // 各セットの開閉状態(セットごとにlocalStorageへ保存し、次に開いた時も維持する)
@@ -2342,7 +2373,7 @@
 
       function computeSetPreview() {
         var allRoles = (r.weakCherry || 0) + (r.strongCherry || 0) + (r.suika || 0) + (r.chanceA || 0) + (r.chanceB || 0) + (r.midCherry || 0);
-        return '弱チェ' + fmtProb(r.game || 0, r.weakCherry || 0) + ' ／ 合算' + fmtProb(r.game || 0, allRoles);
+        return (r.game || 0) + 'G ／ 弱チェ' + fmtProb(r.game || 0, r.weakCherry || 0) + ' ／ 合算' + fmtProb(r.game || 0, allRoles);
       }
       var titleBtn = document.createElement('button');
       titleBtn.type = 'button';
@@ -2496,15 +2527,17 @@
         if (result[key] != null) return;
         var idx = compact.indexOf(label);
         if (idx === -1) return;
+        // 桁区切りのカンマを、OCRがピリオドと誤認識することがある(例:「3,000」→「3.000」)。
+        // この項目は常に整数なので、カンマ・ピリオドはどちらも桁区切りとして一律に取り除く
         var after = compact.slice(idx + label.length);
-        var m = after.match(/\d[\d,]*/);
-        if (m) { result[key] = Number(m[0].replace(/,/g, '')); return; }
+        var m = after.match(/\d[\d,.]*/);
+        if (m) { result[key] = Number(m[0].replace(/[,.]/g, '')); return; }
         [-1, -2, 1, 2].forEach(function (offset) {
           if (result[key] != null) return;
           var otherLine = lines[lineIdx + offset];
           if (!otherLine) return;
-          var m2 = otherLine.match(/^\d[\d,]*/);
-          if (m2) result[key] = Number(m2[0].replace(/,/g, ''));
+          var m2 = otherLine.match(/^\d[\d,.]*/);
+          if (m2) result[key] = Number(m2[0].replace(/[,.]/g, ''));
         });
       });
     });
@@ -2631,7 +2664,7 @@
     html += '<div class="suggestion-simple-row"><span>引戻し／at直撃</span><span>引戻し ' + summary.hikimodoshi + ' 回 ／ at直撃 ' + summary.atChokugeki + ' 回</span></div>';
     html += '<div class="suggestion-simple-row"><span>at継続40ゲーム</span><span>いろは ' + summary.atContinue40Iroha + ' 回 ／ 小きゅうべえ ' + summary.atContinue40Koqube + ' 回</span></div>';
     html += '<div class="suggestion-simple-row"><span>穢れ</span><span>小 ' + summary.kegareSmall + ' 回 ／ 中 ' + summary.kegareMid + ' 回 ／ 大 ' + summary.kegareLarge + ' 回</span></div>';
-    html += '<div class="suggestion-wee-total-row">うぃチャンス' + summary.weeChanceTotal + '回/ストーリー' + summary.weeStoryCount + '回/SP' + summary.weeSpCount + '回/神浜' + summary.weeKamihamaCount + '回/マギアボーナス' + summary.weeMagiaBonusCount + '回</div>';
+    html += '<div class="suggestion-wee-total-row">うぃチャンス ' + summary.weeChanceTotal + ' 回 ／ ストーリー ' + summary.weeStoryCount + ' 回 ／ SP ' + summary.weeSpCount + ' 回 ／ 神浜 ' + summary.weeKamihamaCount + ' 回 ／ マギアボーナス ' + summary.weeMagiaBonusCount + ' 回</div>';
     elSuggestionSummaryBody.innerHTML = html;
   }
 
