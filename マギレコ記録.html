@@ -861,7 +861,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-02c</div>
+    <div class="app-version">v2026-10-02d</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -3074,7 +3074,6 @@
       if (typeof e.startGame === 'number') extraLines.push('初期ゲーム数 ' + e.startGame + 'G');
       if (e.doppelChances && e.doppelChances.length) {
         e.doppelChances.forEach(function (c, ci) {
-          var prefix = e.doppelChances.length > 1 ? ('ドッペルチャンス' + (ci + 1) + ' ') : '';
           var doppelLine1 = [];
           if (c.trigger === 'ゲーム数') {
             doppelLine1.push('ゲーム数当選' + (typeof c.triggerGame === 'number' ? '(' + c.triggerGame + 'G)' : ''));
@@ -3095,10 +3094,20 @@
             if (typeof c.senNumber === 'number') doppelLine1.push(c.senNumber + '戦');
           }
           if (c.connectColor) doppelLine1.push('コネクト' + c.connectColor);
-          if (doppelLine1.length) extraLines.push(prefix + doppelLine1.join('｜'));
-          if (c.doppelType) extraLines.push(prefix + 'ドッペル種別: ' + c.doppelType);
-          if (typeof c.bonusGame === 'number') extraLines.push(prefix + 'ドッペル上乗せ' + c.bonusGame + 'G');
-          if (c.pattern) extraLines.push(prefix + 'キャラ紹介の示唆: ' + EMBRYO_ROMAN[c.pattern] + ' ' + EMBRYO_PATTERN_LEVEL[String(c.pattern)]);
+
+          var doppelLine2 = [];
+          if (c.doppelType) doppelLine2.push('ドッペル種別: ' + c.doppelType);
+          if (typeof c.bonusGame === 'number') doppelLine2.push('ドッペル上乗せ' + c.bonusGame + 'G');
+
+          var doppelLine3 = [];
+          if (c.pattern) doppelLine3.push('キャラ紹介の示唆: ' + EMBRYO_ROMAN[c.pattern] + ' ' + EMBRYO_PATTERN_LEVEL[String(c.pattern)]);
+
+          if (doppelLine1.length || doppelLine2.length || doppelLine3.length) {
+            extraLines.push('ドッペルチャンス' + (ci + 1) + ':');
+            if (doppelLine1.length) extraLines.push(doppelLine1.join('｜'));
+            if (doppelLine2.length) extraLines.push(doppelLine2.join('｜'));
+            if (doppelLine3.length) extraLines.push(doppelLine3.join('｜'));
+          }
         });
         var doppelBonusTotalDisplay = (e.doppelChances.reduce(function (sum, c) { return sum + (typeof c.bonusGame === 'number' ? c.bonusGame : 0); }, 0)) + (e.doppelBonusExtra1 || 0) + (e.doppelBonusExtra2 || 0);
         if (doppelBonusTotalDisplay) extraLines.push('ドッペル上乗せゲーム数計' + doppelBonusTotalDisplay + 'G');
