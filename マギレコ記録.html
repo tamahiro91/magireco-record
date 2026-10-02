@@ -876,7 +876,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-02l</div>
+    <div class="app-version">v2026-10-02m</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2085,6 +2085,7 @@
   }
   function visitStats(visit) {
     var point = 0, hits = 0, big = 0, mitama = 0, atWin = 0, game = 0, atGame = 0, bonusGame = 0;
+    var arina = 0, magiaBonus = 0;
     (visit.entries || []).forEach(function (e) {
       if (typeof e.point === 'number') point += e.point;
       if (typeof e.game === 'number') game += e.game;
@@ -2094,9 +2095,12 @@
       if (e.results && e.results.length) hits++;
       if (e.results && (e.results.indexOf('BIG') !== -1 || e.results.indexOf('エピボ') !== -1)) big++;
       if (e.results && e.results.indexOf('みたま') !== -1) mitama++;
+      if (e.results && e.results.indexOf('アリナ') !== -1) arina++;
+      (e.weeChances || []).forEach(function (c) { if (c.storyType === 'マギアボーナス') magiaBonus++; });
+      (e.doppelChances || []).forEach(function (c) { if (c.storyType === 'マギアボーナス') magiaBonus++; });
       if (e.atWin) atWin++;
     });
-    return { point: point, hits: hits, count: (visit.entries || []).length, big: big, mitama: mitama, total: big + mitama, atWin: atWin, game: game, atGame: atGame, bonusGame: bonusGame };
+    return { point: point, hits: hits, count: (visit.entries || []).length, big: big, mitama: mitama, total: big + mitama + arina + magiaBonus, atWin: atWin, game: game, atGame: atGame, bonusGame: bonusGame };
   }
 
   var EMBRYO_PATTERN_TEXT = {};
