@@ -864,7 +864,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-02e</div>
+    <div class="app-version">v2026-10-02f</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -3483,28 +3483,30 @@
     fieldBigVoice.hidden = !(hasBig || hasEpibo);
     fieldBigScreen.hidden = !hasBig;
     fieldMikazukiStage.hidden = !hasMitama;
-    fieldAtScreen.hidden = !(eAtWin.checked || hasEmbryo);
-    fieldUnivaPlates.hidden = !(eAtWin.checked || hasEmbryo);
+    // ドッペル選択時は、うぃチャンスと同等の項目を各ドッペルチャンスカード側で入力するため、
+    // at当選〜うぃチャンス一式(at終了画面/ストーリー順番示唆/キャラ紹介の示唆を含む)を丸ごと隠す
+    fieldAtScreen.hidden = !(eAtWin.checked || hasEmbryo) || hasDoppel;
+    fieldUnivaPlates.hidden = !(eAtWin.checked || hasEmbryo || hasDoppel);
     renderUnivaPlates();
-    fieldStoryOrder.hidden = !eAtWin.checked;
+    fieldStoryOrder.hidden = !eAtWin.checked || hasDoppel;
     // エンブリオ選択時は帯色の上乗せ入力の直後に、そうでなければat当選時の元の位置に表示する
     if (hasEmbryo) {
       fieldBand.insertAdjacentElement('afterend', fieldWeeChances);
     } else {
       fieldStoryOrder.insertAdjacentElement('afterend', fieldWeeChances);
     }
-    fieldWeeChances.hidden = !(hasEmbryo || eAtWin.checked);
+    fieldWeeChances.hidden = !(hasEmbryo || eAtWin.checked) || hasDoppel;
     // エンブリオ未選択時は、at当選時にストーリー順番示唆の下にキャラ紹介の示唆を表示する
     // (エンブリオ選択時はうぃチャンスの各カードに同じ項目があるため重複を避けて隠す)
     fieldStoryOrder.insertAdjacentElement('afterend', fieldEmbryoPattern);
-    fieldEmbryoPattern.hidden = hasEmbryo || !eAtWin.checked;
+    fieldEmbryoPattern.hidden = hasEmbryo || !eAtWin.checked || hasDoppel;
     renderWeeChances();
     fieldWeeChances.insertAdjacentElement('afterend', fieldAtContinue40);
-    fieldAtContinue40.hidden = !(hasEmbryo || eAtWin.checked);
+    fieldAtContinue40.hidden = !(hasEmbryo || eAtWin.checked || hasDoppel);
     renderAtContinue40();
     fieldDoppelChances.hidden = !hasDoppel;
     fieldDoppelBonusCounters.hidden = !hasDoppel;
-    fieldAtWin.hidden = hasEmbryo;
+    fieldAtWin.hidden = hasEmbryo || hasDoppel;
     fieldEpiboChar.hidden = !hasEpibo;
     fieldEpiboKuroeCase.hidden = !isKuroe;
     fieldEpiboSuggestion.hidden = !hasEpibo || !epiboSuggestionText(state.selectedEpiboChar, state.selectedEpiboKuroeCase);
@@ -4191,18 +4193,26 @@
     if (closed) { localStorage.setItem(UNIVA_PLATE_CLOSED_PREFIX + id, '1'); }
     else { localStorage.removeItem(UNIVA_PLATE_CLOSED_PREFIX + id); }
   }
+  // 閉じたユニバプレートカードのタイトル横に表示する簡易サマリー(色(種類)と表示時刻)
+  function univaPlateShortSummary(item) {
+    var parts = [];
+    if (item.plate) parts.push(item.plate);
+    if (item.time) parts.push(item.time);
+    return parts.join('・');
+  }
   var univaPlatesList = document.getElementById('univa-plates-list');
   function renderUnivaPlates() {
     univaPlatesList.innerHTML = '';
     state.univaPlates.forEach(function (item, idx) {
       var closed = isUnivaPlateClosed(item.id);
+      var summary = univaPlateShortSummary(item);
       var card = document.createElement('div');
       card.className = 'wee-chance-card' + (closed ? ' closed' : '');
 
       var titleBtn = document.createElement('button');
       titleBtn.type = 'button';
       titleBtn.className = 'wee-title-toggle';
-      titleBtn.innerHTML = '<span>ユニバプレート' + (idx + 1) + '</span><span class="chevron">▾</span>';
+      titleBtn.innerHTML = '<span>ユニバプレート' + (idx + 1) + (closed && summary ? '（' + summary + '）' : '') + '</span><span class="chevron">▾</span>';
       titleBtn.addEventListener('click', function () {
         setUnivaPlateClosed(item.id, !closed);
         renderUnivaPlates();
@@ -4263,7 +4273,7 @@
       var titleBtn = document.createElement('button');
       titleBtn.type = 'button';
       titleBtn.className = 'wee-title-toggle';
-      titleBtn.innerHTML = '<span>at継続40ゲーム' + (idx + 1) + '</span><span class="chevron">▾</span>';
+      titleBtn.innerHTML = '<span>at継続40ゲーム' + (idx + 1) + (closed && val ? '（' + val + '）' : '') + '</span><span class="chevron">▾</span>';
       titleBtn.addEventListener('click', function () {
         state.atContinue40Closed[idx] = !closed;
         renderAtContinue40();
