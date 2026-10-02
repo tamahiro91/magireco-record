@@ -121,7 +121,10 @@
     cursor: pointer;
   }
   .detail-toggle-btn {
-    width: 100%;
+    display: inline-block;
+    width: auto;
+    padding: 5px 10px;
+    font-size: 12px;
     margin-bottom: 12px;
   }
 
@@ -317,10 +320,10 @@
   .visit-header .summary .card:nth-child(4) .value { color: var(--at); }
 
   .visit-top { display: flex; flex-direction: column; gap: 8px; }
-  .visit-game { display: flex; justify-content: flex-end; gap: 20px; }
+  .visit-game { display: flex; justify-content: flex-end; gap: 14px; flex-wrap: wrap; }
   .visit-game-col { text-align: right; white-space: nowrap; }
   .visit-game-label { font-size: 11px; color: var(--sub); }
-  .visit-game-value { font-size: 24px; font-weight: 800; color: var(--text); margin-top: 2px; }
+  .visit-game-value { font-size: 20px; font-weight: 800; color: var(--text); margin-top: 2px; }
 
   .invest-box {
     margin-top: 10px;
@@ -864,7 +867,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-02f</div>
+    <div class="app-version">v2026-10-02g</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -910,6 +913,10 @@
           <div class="visit-game-col">
             <div class="visit-game-label">通常総ゲーム数</div>
             <div class="visit-game-value" id="d-header-game">0G</div>
+          </div>
+          <div class="visit-game-col">
+            <div class="visit-game-label">ボーナスゲーム数</div>
+            <div class="visit-game-value" id="d-header-bonusgame">0G</div>
           </div>
           <div class="visit-game-col">
             <div class="visit-game-label">atゲーム数</div>
@@ -1176,6 +1183,27 @@
       <div class="field">
         <label>atゲーム数</label>
         <input type="number" inputmode="numeric" id="e-at-start-game" placeholder="例: 0">
+      </div>
+    </div>
+    <div class="field">
+      <label>BIG中の高確ゲーム数</label>
+      <div class="counters">
+        <div class="counter-card">
+          <div class="counter-label">+5G</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="bighp-extra1-minus">−</button>
+            <div class="counter-value" id="bighp-extra1-value">0</div>
+            <button type="button" class="counter-btn" id="bighp-extra1-plus">＋</button>
+          </div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">手入力</div>
+          <input type="number" inputmode="numeric" id="e-bighp-extra2" placeholder="例: 15">
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">合計</div>
+          <div class="counter-value" id="bighp-total">0</div>
+        </div>
       </div>
     </div>
     <button type="button" class="ghost-btn detail-toggle-btn" id="detail-toggle-btn">詳細をたたむ ▲</button>
@@ -2022,6 +2050,14 @@
   function atGameTotalOf(e) {
     return (e.atStartGame || 0) + weeBonusTotalOf(e) + (e.atContinue40 || []).length * 40;
   }
+  // ボーナスゲーム数(結果にBIGがあれば+30、エピボがあれば+50、BIG中の高確ゲーム数の入力分を加算)
+  function bonusGameTotalOf(e) {
+    var total = 0;
+    if (e.results && e.results.indexOf('BIG') !== -1) total += 30;
+    if (e.results && e.results.indexOf('エピボ') !== -1) total += 50;
+    total += (e.bigHighProbExtra1 || 0) + (e.bigHighProbExtra2 || 0);
+    return total;
+  }
   // 回収枚数が入力されている来店の差枚(収支)を返す。未入力ならnull
   // 回収枚数が未入力の場合は0として差枚(収支)を計算する
   function investBalanceOf(v) {
@@ -2029,17 +2065,18 @@
     return (invest.recovered || 0) - invest.rate * (invest.count || 0);
   }
   function visitStats(visit) {
-    var point = 0, hits = 0, big = 0, mitama = 0, atWin = 0, game = 0, atGame = 0;
+    var point = 0, hits = 0, big = 0, mitama = 0, atWin = 0, game = 0, atGame = 0, bonusGame = 0;
     (visit.entries || []).forEach(function (e) {
       if (typeof e.point === 'number') point += e.point;
       if (typeof e.game === 'number') game += e.game;
       atGame += atGameTotalOf(e);
+      bonusGame += bonusGameTotalOf(e);
       if (e.results && e.results.length) hits++;
       if (e.results && (e.results.indexOf('BIG') !== -1 || e.results.indexOf('エピボ') !== -1)) big++;
       if (e.results && e.results.indexOf('みたま') !== -1) mitama++;
       if (e.atWin) atWin++;
     });
-    return { point: point, hits: hits, count: (visit.entries || []).length, big: big, mitama: mitama, total: big + mitama, atWin: atWin, game: game, atGame: atGame };
+    return { point: point, hits: hits, count: (visit.entries || []).length, big: big, mitama: mitama, total: big + mitama, atWin: atWin, game: game, atGame: atGame, bonusGame: bonusGame };
   }
 
   var EMBRYO_PATTERN_TEXT = {};
@@ -2309,6 +2346,7 @@
   var elDTotalProb = document.getElementById('d-total-prob');
   var elDAtWinProb = document.getElementById('d-atwin-prob');
   var elDHeaderGame = document.getElementById('d-header-game');
+  var elDHeaderBonusGame = document.getElementById('d-header-bonusgame');
   var elDHeaderAtGame = document.getElementById('d-header-atgame');
   var elDSuikaValue = document.getElementById('d-suika-value');
   var elDCzValue = document.getElementById('d-cz-value');
@@ -2999,6 +3037,7 @@
     elDTotal.textContent = s.total;
     elDAtWin.textContent = s.atWin;
     elDHeaderGame.textContent = s.game + 'G';
+    elDHeaderBonusGame.textContent = s.bonusGame + 'G';
     elDHeaderAtGame.textContent = s.atGame + 'G';
     elDBigProb.textContent = fmtProb(s.game, s.big);
     elDMitamaProb.textContent = fmtProb(s.game, s.mitama);
@@ -3410,6 +3449,26 @@
   var eGame = document.getElementById('e-game');
   var ePoint = document.getElementById('e-point');
   var eAtStartGame = document.getElementById('e-at-start-game');
+  // BIG中の高確ゲーム数(結果の選択に関わらず常に入力できる、来店詳細のボーナスゲーム数に合算する)
+  var eBigHighProbExtra2 = document.getElementById('e-bighp-extra2');
+  var bighpExtra1Value = document.getElementById('bighp-extra1-value');
+  var bighpTotalEl = document.getElementById('bighp-total');
+  function renderBigHighProbTotal() {
+    bighpExtra1Value.textContent = state.bigHighProbExtra1;
+    bighpTotalEl.textContent = state.bigHighProbExtra1 + (state.bigHighProbExtra2 || 0);
+  }
+  document.getElementById('bighp-extra1-plus').addEventListener('click', function () {
+    state.bigHighProbExtra1 += 5;
+    renderBigHighProbTotal();
+  });
+  document.getElementById('bighp-extra1-minus').addEventListener('click', function () {
+    state.bigHighProbExtra1 = Math.max(0, state.bigHighProbExtra1 - 5);
+    renderBigHighProbTotal();
+  });
+  eBigHighProbExtra2.addEventListener('input', function () {
+    state.bigHighProbExtra2 = eBigHighProbExtra2.value === '' ? null : Number(eBigHighProbExtra2.value);
+    renderBigHighProbTotal();
+  });
   var eStartGame = document.getElementById('e-start-game');
   var eBandBonus = document.getElementById('e-band-bonus');
   var eEmbryoGameCount = document.getElementById('e-embryo-game-count');
@@ -4440,6 +4499,9 @@
       eGame.value = (typeof e.game === 'number') ? e.game : '';
       ePoint.value = (typeof e.point === 'number') ? e.point : '';
       eAtStartGame.value = (typeof e.atStartGame === 'number') ? e.atStartGame : '';
+      state.bigHighProbExtra1 = (typeof e.bigHighProbExtra1 === 'number') ? e.bigHighProbExtra1 : 0;
+      state.bigHighProbExtra2 = (typeof e.bigHighProbExtra2 === 'number') ? e.bigHighProbExtra2 : null;
+      eBigHighProbExtra2.value = (typeof state.bigHighProbExtra2 === 'number') ? state.bigHighProbExtra2 : '';
       eStartGame.value = (typeof e.startGame === 'number') ? e.startGame : '';
       eBandBonus.value = (typeof e.bandBonus === 'number') ? e.bandBonus : '';
       eEmbryoGameCount.value = (typeof e.embryoGameCount === 'number') ? e.embryoGameCount : '';
@@ -4482,6 +4544,9 @@
       eGame.value = '';
       ePoint.value = '';
       eAtStartGame.value = '';
+      state.bigHighProbExtra1 = 0;
+      state.bigHighProbExtra2 = null;
+      eBigHighProbExtra2.value = '';
       eStartGame.value = '';
       eBandBonus.value = '';
       eEmbryoGameCount.value = '';
@@ -4522,6 +4587,7 @@
     renderDoppelChances();
     renderAtScreens();
     renderKegareCounters();
+    renderBigHighProbTotal();
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
     autoResizeTextarea(eAtMemo);
@@ -4545,6 +4611,8 @@
     var game = eGame.value === '' ? null : Number(eGame.value);
     var point = ePoint.value === '' ? null : Number(ePoint.value);
     var atStartGame = eAtStartGame.value === '' ? null : Number(eAtStartGame.value);
+    var bigHighProbExtra1 = state.bigHighProbExtra1;
+    var bigHighProbExtra2 = state.bigHighProbExtra2;
     var results = state.selectedResults.slice();
     var mode = state.selectedMode;
     var atWin = eAtWin.checked;
@@ -4594,7 +4662,7 @@
     var kegareLarge = state.kegareLarge;
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
-      e.game = game; e.point = point; e.atStartGame = atStartGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
+      e.game = game; e.point = point; e.atStartGame = atStartGame; e.bigHighProbExtra1 = bigHighProbExtra1; e.bigHighProbExtra2 = bigHighProbExtra2; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
       e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.mikazukiStage = mikazukiStage; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
@@ -4605,7 +4673,7 @@
       e.kegareSmall = kegareSmall; e.kegareMid = kegareMid; e.kegareLarge = kegareLarge;
     } else {
       v.entries.push({
-        id: uid(), game: game, point: point, atStartGame: atStartGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
+        id: uid(), game: game, point: point, atStartGame: atStartGame, bigHighProbExtra1: bigHighProbExtra1, bigHighProbExtra2: bigHighProbExtra2, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
         bigVoice: bigVoice, bigScreen: bigScreen, mikazukiStage: mikazukiStage, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
