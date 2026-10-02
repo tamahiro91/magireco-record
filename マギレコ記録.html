@@ -861,7 +861,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-02a</div>
+    <div class="app-version">v2026-10-02b</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1249,6 +1249,26 @@
     <div class="field" id="field-epibo-suggestion" hidden>
       <label>示唆/特徴</label>
       <div class="suggestion-box" id="e-epibo-suggestion"></div>
+    </div>
+    <div class="field" id="field-doppel-bonus-counters" hidden>
+      <div class="counters">
+        <div class="counter-card">
+          <div class="counter-label">+10G</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="doppel-bonus-extra1-minus">−</button>
+            <div class="counter-value" id="doppel-bonus-extra1-value">0</div>
+            <button type="button" class="counter-btn" id="doppel-bonus-extra1-plus">＋</button>
+          </div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">その他上乗せ</div>
+          <input type="number" inputmode="numeric" id="e-doppel-bonus-extra2" placeholder="例: 15">
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">上乗せゲーム数</div>
+          <div class="counter-value" id="doppel-bonus-total">0</div>
+        </div>
+      </div>
     </div>
     <div class="field" id="field-doppel-chances" hidden>
       <label>ドッペルチャンス</label>
@@ -1690,7 +1710,6 @@
 
   // ドッペルチャンス(ドッペル当選ごとの内訳)の選択肢
   var DOPPEL_TYPES = ['環いろは', '七海やちよ', '黒江', 'シークレット'];
-  var DOPPEL_TRIGGER_OPTIONS = ['ストーリー当選', '神浜当選', '小役当選'];
 
   // エピボで出現したキャラクターごとの示唆/特徴(黒江のみチャレンジ成功時/以外で文言が異なる)
   var EPIBO_SUGGESTION = {
@@ -1720,7 +1739,12 @@
     return EPIBO_SUGGESTION[char] || '';
   }
   function createEmptyDoppelChance() {
-    return { id: uid(), doppelType: null, triggers: [], bonusGame: null, pattern: null };
+    return {
+      id: uid(), doppelType: null, bonusGame: null, pattern: null,
+      trigger: null, triggerGame: null, storyType: null,
+      normalNumber: null, spColor: null, spStoryNumbers: [], magiaStock: null, connectColor: null,
+      bellLevel: null, senNumber: null
+    };
   }
 
   // ストーリー順番示唆(1-A〜5-F)の選択肢
@@ -3051,11 +3075,33 @@
       if (e.doppelChances && e.doppelChances.length) {
         e.doppelChances.forEach(function (c, ci) {
           var prefix = e.doppelChances.length > 1 ? ('ドッペルチャンス' + (ci + 1) + ' ') : '';
+          var doppelLine1 = [];
+          if (c.trigger === 'ゲーム数') {
+            doppelLine1.push('ゲーム数当選' + (typeof c.triggerGame === 'number' ? '(' + c.triggerGame + 'G)' : ''));
+          } else if (c.trigger) {
+            doppelLine1.push(c.trigger);
+          }
+          if (c.storyType === 'ストーリー') {
+            if (c.normalNumber) doppelLine1.push('ストーリー' + c.normalNumber);
+          } else if (c.storyType === 'SP') {
+            if (c.spColor) doppelLine1.push('SP: ' + spStoryShortLabel(c.spColor));
+            if (c.spStoryNumbers && c.spStoryNumbers.length) {
+              doppelLine1.push('ストーリー' + c.spStoryNumbers.slice().sort(function (a, b) { return a - b; }).join('・'));
+            }
+          } else if (c.storyType === 'マギアボーナス' && typeof c.magiaStock === 'number') {
+            doppelLine1.push('ストック' + c.magiaStock);
+          } else if (c.storyType === '神浜') {
+            if (c.bellLevel) doppelLine1.push('ベル' + c.bellLevel);
+            if (typeof c.senNumber === 'number') doppelLine1.push(c.senNumber + '戦');
+          }
+          if (c.connectColor) doppelLine1.push('コネクト' + c.connectColor);
+          if (doppelLine1.length) extraLines.push(prefix + doppelLine1.join('｜'));
           if (c.doppelType) extraLines.push(prefix + 'ドッペル種別: ' + c.doppelType);
-          if (c.triggers && c.triggers.length) extraLines.push(prefix + '当選契機: ' + c.triggers.join('・'));
           if (typeof c.bonusGame === 'number') extraLines.push(prefix + 'ドッペル上乗せ' + c.bonusGame + 'G');
-          if (c.pattern) extraLines.push(prefix + 'ストーリー設定示唆: ' + EMBRYO_ROMAN[c.pattern] + ' ' + EMBRYO_PATTERN_LEVEL[String(c.pattern)]);
+          if (c.pattern) extraLines.push(prefix + 'キャラ紹介の示唆: ' + EMBRYO_ROMAN[c.pattern] + ' ' + EMBRYO_PATTERN_LEVEL[String(c.pattern)]);
         });
+        var doppelBonusTotalDisplay = (e.doppelChances.reduce(function (sum, c) { return sum + (typeof c.bonusGame === 'number' ? c.bonusGame : 0); }, 0)) + (e.doppelBonusExtra1 || 0) + (e.doppelBonusExtra2 || 0);
+        if (doppelBonusTotalDisplay) extraLines.push('ドッペル上乗せゲーム数計' + doppelBonusTotalDisplay + 'G');
       }
       if (e.cardCounts) {
         var usedCardNames = Object.keys(e.cardCounts).filter(function (name) { return e.cardCounts[name] > 0; });
@@ -3364,6 +3410,7 @@
   var fieldAtContinue40 = document.getElementById('field-atcontinue40');
   var fieldBand = document.getElementById('field-band');
   var fieldDoppelChances = document.getElementById('field-doppel-chances');
+  var fieldDoppelBonusCounters = document.getElementById('field-doppel-bonus-counters');
   var fieldAtWin = document.getElementById('field-atwin');
   var fieldEpiboChar = document.getElementById('field-epibo-char');
   var fieldEpiboKuroeCase = document.getElementById('field-epibo-kuroe-case');
@@ -3427,6 +3474,7 @@
     fieldAtContinue40.hidden = !(hasEmbryo || eAtWin.checked);
     renderAtContinue40();
     fieldDoppelChances.hidden = !hasDoppel;
+    fieldDoppelBonusCounters.hidden = !hasDoppel;
     fieldAtWin.hidden = hasEmbryo;
     fieldEpiboChar.hidden = !hasEpibo;
     fieldEpiboKuroeCase.hidden = !isKuroe;
@@ -3889,9 +3937,23 @@
     if (closed) { localStorage.setItem(DOPPEL_CHANCE_CLOSED_PREFIX + id, '1'); }
     else { localStorage.removeItem(DOPPEL_CHANCE_CLOSED_PREFIX + id); }
   }
+  // 閉じたドッペルチャンスカードのタイトル横に表示する簡易サマリー(うぃチャンスと同様、ストーリー番号/神浜などの種別＋加算ゲーム数)
   function doppelChanceShortSummary(chance) {
     var parts = [];
     if (chance.doppelType) parts.push(chance.doppelType);
+    if (chance.storyType === 'ストーリー') {
+      if (chance.normalNumber) parts.push('ストーリー' + chance.normalNumber);
+    } else if (chance.storyType === 'SP') {
+      if (chance.spStoryNumbers && chance.spStoryNumbers.length) {
+        parts.push('ストーリー' + chance.spStoryNumbers.slice().sort(function (a, b) { return a - b; }).join('・'));
+      } else {
+        parts.push('SP');
+      }
+    } else if (chance.storyType === 'マギアボーナス') {
+      parts.push('マギアボーナス');
+    } else if (chance.storyType === '神浜') {
+      parts.push('神浜');
+    }
     if (typeof chance.bonusGame === 'number') parts.push(chance.bonusGame + 'G');
     return parts.join('・');
   }
@@ -3916,20 +3978,64 @@
       var body = document.createElement('div');
       body.className = 'wee-chance-body';
 
+      // ここから先はうぃチャンスと同じ当選契機〜コネクト色までの項目
+      var triggerRow = document.createElement('div');
+      triggerRow.className = 'field-row';
+      triggerRow.appendChild(buildToggleField('当選契機', WEE_TRIGGER_OPTIONS, chance.trigger, function (v) {
+        chance.trigger = (chance.trigger === v) ? null : v;
+        renderDoppelChances();
+      }));
+      if (chance.trigger === 'ゲーム数') {
+        triggerRow.appendChild(buildNumberField('ゲーム数', chance, 'triggerGame', '例: 480'));
+      }
+      body.appendChild(triggerRow);
+
+      body.appendChild(buildToggleField('種別', WEE_STORY_TYPES, chance.storyType, function (v) {
+        chance.storyType = (chance.storyType === v) ? null : v;
+        renderDoppelChances();
+      }));
+      if (chance.storyType === 'ストーリー') {
+        body.appendChild(buildToggleField('ストーリー番号', WEE_NORMAL_NUMBERS, chance.normalNumber ? String(chance.normalNumber) : null, function (v) {
+          chance.normalNumber = (String(chance.normalNumber) === v) ? null : Number(v);
+          renderDoppelChances();
+        }));
+      } else if (chance.storyType === 'SP') {
+        body.appendChild(buildOptionsPickerField('SPストーリー', WEE_SP_STORY_OPTIONS, spStoryShortLabel, chance, 'spColor', renderDoppelChances));
+        if (!chance.spStoryNumbers) chance.spStoryNumbers = [];
+        body.appendChild(buildMultiToggleField('ストーリー番号(2つ選択)', WEE_NORMAL_NUMBERS, chance.spStoryNumbers.map(String), function (v) {
+          var n = Number(v);
+          var i = chance.spStoryNumbers.indexOf(n);
+          if (i === -1) { chance.spStoryNumbers.push(n); } else { chance.spStoryNumbers.splice(i, 1); }
+          renderDoppelChances();
+        }));
+      } else if (chance.storyType === 'マギアボーナス') {
+        body.appendChild(buildNumberField('うぃチャンスストック数', chance, 'magiaStock', '例: 3'));
+      } else if (chance.storyType === '神浜') {
+        var kamihamaRow = document.createElement('div');
+        kamihamaRow.className = 'field-row';
+        kamihamaRow.appendChild(buildToggleField('ベルレベル', ['1', '2', '3'], chance.bellLevel, function (v) {
+          chance.bellLevel = (chance.bellLevel === v) ? null : v;
+          renderDoppelChances();
+        }));
+        kamihamaRow.appendChild(buildNumberField('◯戦', chance, 'senNumber', '例: 3'));
+        body.appendChild(kamihamaRow);
+      }
+
+      if (chance.storyType !== '神浜') {
+        body.appendChild(buildConnectColorField(chance));
+      }
+
+      // ここから下はドッペル固有の既存項目
       body.appendChild(buildToggleField('ドッペル種別', DOPPEL_TYPES, chance.doppelType, function (v) {
         chance.doppelType = (chance.doppelType === v) ? null : v;
         renderDoppelChances();
       }));
 
-      body.appendChild(buildMultiToggleField('当選契機(複数選択可)', DOPPEL_TRIGGER_OPTIONS, chance.triggers, function (v) {
-        var i = chance.triggers.indexOf(v);
-        if (i === -1) { chance.triggers.push(v); } else { chance.triggers.splice(i, 1); }
-        renderDoppelChances();
-      }));
+      var doppelBonusField = buildNumberField('ドッペル上乗せゲーム数', chance, 'bonusGame', '例: 30');
+      doppelBonusField.querySelector('input').addEventListener('input', renderDoppelBonusTotal);
+      body.appendChild(doppelBonusField);
 
-      body.appendChild(buildNumberField('ドッペル上乗せゲーム数', chance, 'bonusGame', '例: 30'));
-
-      body.appendChild(buildPatternPickerField('ストーリー設定示唆', chance, 'pattern', renderDoppelChances));
+      body.appendChild(buildPatternPickerField('キャラ紹介の示唆', chance, 'pattern', renderDoppelChances));
 
       var delBtn = document.createElement('button');
       delBtn.type = 'button';
@@ -3937,6 +4043,7 @@
       delBtn.textContent = 'このドッペルチャンスを削除';
       delBtn.addEventListener('click', function () {
         if (!confirm('このドッペルチャンスを削除しますか？')) return;
+        setDoppelChanceClosed(chance.id, false);
         state.doppelChances.splice(idx, 1);
         renderDoppelChances();
       });
@@ -3945,7 +4052,30 @@
       card.appendChild(body);
       doppelChancesList.appendChild(card);
     });
+    renderDoppelBonusTotal();
   }
+  var eDoppelBonusExtra2 = document.getElementById('e-doppel-bonus-extra2');
+  var doppelBonusExtra1Value = document.getElementById('doppel-bonus-extra1-value');
+  var doppelBonusTotalEl = document.getElementById('doppel-bonus-total');
+  function renderDoppelBonusTotal() {
+    var cardTotal = state.doppelChances.reduce(function (sum, c) {
+      return sum + (typeof c.bonusGame === 'number' ? c.bonusGame : 0);
+    }, 0);
+    doppelBonusExtra1Value.textContent = state.doppelBonusExtra1;
+    doppelBonusTotalEl.textContent = cardTotal + state.doppelBonusExtra1 + (state.doppelBonusExtra2 || 0);
+  }
+  document.getElementById('doppel-bonus-extra1-plus').addEventListener('click', function () {
+    state.doppelBonusExtra1 += 10;
+    renderDoppelBonusTotal();
+  });
+  document.getElementById('doppel-bonus-extra1-minus').addEventListener('click', function () {
+    state.doppelBonusExtra1 = Math.max(0, state.doppelBonusExtra1 - 10);
+    renderDoppelBonusTotal();
+  });
+  eDoppelBonusExtra2.addEventListener('input', function () {
+    state.doppelBonusExtra2 = eDoppelBonusExtra2.value === '' ? null : Number(eDoppelBonusExtra2.value);
+    renderDoppelBonusTotal();
+  });
   document.getElementById('doppel-chance-add').addEventListener('click', function () {
     state.doppelChances.push(createEmptyDoppelChance());
     renderDoppelChances();
@@ -4254,7 +4384,7 @@
       state.univaPlates = (e.univaPlates || []).map(function (p) { return Object.assign({}, p); });
       state.univaPlatesClosed = state.univaPlates.map(function () { return false; });
       state.selectedBand = e.bandColor || null;
-      state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); });
+      state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { spStoryNumbers: (c.spStoryNumbers || []).slice() }); });
       state.cardCounts = Object.assign({}, e.cardCounts || {});
       state.selectedEpiboChar = e.epiboChar || null;
       state.selectedEpiboKuroeCase = e.epiboKuroeCase || null;
@@ -4274,6 +4404,9 @@
       state.weeBonusExtra1 = (typeof e.weeBonusExtra1 === 'number') ? e.weeBonusExtra1 : 0;
       state.weeBonusExtra2 = (typeof e.weeBonusExtra2 === 'number') ? e.weeBonusExtra2 : null;
       eWeeBonusExtra2.value = (typeof state.weeBonusExtra2 === 'number') ? state.weeBonusExtra2 : '';
+      state.doppelBonusExtra1 = (typeof e.doppelBonusExtra1 === 'number') ? e.doppelBonusExtra1 : 0;
+      state.doppelBonusExtra2 = (typeof e.doppelBonusExtra2 === 'number') ? e.doppelBonusExtra2 : null;
+      eDoppelBonusExtra2.value = (typeof state.doppelBonusExtra2 === 'number') ? state.doppelBonusExtra2 : '';
       state.kegareSmall = e.kegareSmall || 0;
       state.kegareMid = e.kegareMid || 0;
       state.kegareLarge = e.kegareLarge || 0;
@@ -4314,6 +4447,9 @@
       state.weeBonusExtra1 = 0;
       state.weeBonusExtra2 = null;
       eWeeBonusExtra2.value = '';
+      state.doppelBonusExtra1 = 0;
+      state.doppelBonusExtra2 = null;
+      eDoppelBonusExtra2.value = '';
       state.kegareSmall = 0;
       state.kegareMid = 0;
       state.kegareLarge = 0;
@@ -4399,7 +4535,9 @@
     var storyOrderPattern = atWin ? state.selectedStoryOrder : null;
     // ドッペルが選ばれていない時はドッペル関連の項目を保存しない
     var hasDoppel = results.indexOf('ドッペル') !== -1;
-    var doppelChances = hasDoppel ? state.doppelChances.map(function (c) { return Object.assign({}, c, { triggers: (c.triggers || []).slice() }); }) : [];
+    var doppelChances = hasDoppel ? state.doppelChances.map(function (c) { return Object.assign({}, c, { spStoryNumbers: (c.spStoryNumbers || []).slice() }); }) : [];
+    var doppelBonusExtra1 = hasDoppel ? state.doppelBonusExtra1 : 0;
+    var doppelBonusExtra2 = hasDoppel ? state.doppelBonusExtra2 : null;
     // エンブリオが選ばれていない時はエンディング中のカードの記録も保存しない
     var cardCounts = hasEmbryo ? Object.assign({}, state.cardCounts) : {};
     // エピボが選ばれていない時はキャラクター関連の項目を保存しない
@@ -4417,7 +4555,7 @@
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
       e.weeBonusExtra1 = weeBonusExtra1; e.weeBonusExtra2 = weeBonusExtra2;
       e.atContinue40 = atContinue40;
-      e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances; e.cardCounts = cardCounts;
+      e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances; e.doppelBonusExtra1 = doppelBonusExtra1; e.doppelBonusExtra2 = doppelBonusExtra2; e.cardCounts = cardCounts;
       e.epiboChar = epiboChar; e.epiboKuroeCase = epiboKuroeCase;
       e.kegareSmall = kegareSmall; e.kegareMid = kegareMid; e.kegareLarge = kegareLarge;
     } else {
@@ -4428,7 +4566,7 @@
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
         weeBonusExtra1: weeBonusExtra1, weeBonusExtra2: weeBonusExtra2,
         atContinue40: atContinue40,
-        storyOrderPattern: storyOrderPattern, doppelChances: doppelChances, cardCounts: cardCounts,
+        storyOrderPattern: storyOrderPattern, doppelChances: doppelChances, doppelBonusExtra1: doppelBonusExtra1, doppelBonusExtra2: doppelBonusExtra2, cardCounts: cardCounts,
         epiboChar: epiboChar, epiboKuroeCase: epiboKuroeCase,
         kegareSmall: kegareSmall, kegareMid: kegareMid, kegareLarge: kegareLarge
       });
