@@ -861,7 +861,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-01b</div>
+    <div class="app-version">v2026-10-02a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -3402,8 +3402,8 @@
     var hasEpibo = state.selectedResults.indexOf('エピボ') !== -1;
     var hasMitama = state.selectedResults.indexOf('みたま') !== -1;
     var isKuroe = hasEpibo && state.selectedEpiboChar === '黒江';
-    // ドッペル・エンブリオ選択時はat当選のチェックボックスを隠すため、チェックも外しておく
-    if ((hasDoppel || hasEmbryo) && eAtWin.checked) { eAtWin.checked = false; }
+    // エンブリオ選択時はat当選のチェックボックスを隠すため、チェックも外しておく
+    if (hasEmbryo && eAtWin.checked) { eAtWin.checked = false; }
     fieldBigVoice.hidden = !(hasBig || hasEpibo);
     fieldBigScreen.hidden = !hasBig;
     fieldMikazukiStage.hidden = !hasMitama;
@@ -3427,7 +3427,7 @@
     fieldAtContinue40.hidden = !(hasEmbryo || eAtWin.checked);
     renderAtContinue40();
     fieldDoppelChances.hidden = !hasDoppel;
-    fieldAtWin.hidden = hasDoppel || hasEmbryo;
+    fieldAtWin.hidden = hasEmbryo;
     fieldEpiboChar.hidden = !hasEpibo;
     fieldEpiboKuroeCase.hidden = !isKuroe;
     fieldEpiboSuggestion.hidden = !hasEpibo || !epiboSuggestionText(state.selectedEpiboChar, state.selectedEpiboKuroeCase);
@@ -3880,30 +3880,56 @@
     return field;
   }
   var doppelChancesList = document.getElementById('doppel-chances-list');
+  // ドッペルチャンスの開閉状態(カードのidごとにlocalStorageへ保存し、次に開いた時も維持する)
+  var DOPPEL_CHANCE_CLOSED_PREFIX = 'magireko.doppelChanceClosed.';
+  function isDoppelChanceClosed(id) {
+    return localStorage.getItem(DOPPEL_CHANCE_CLOSED_PREFIX + id) === '1';
+  }
+  function setDoppelChanceClosed(id, closed) {
+    if (closed) { localStorage.setItem(DOPPEL_CHANCE_CLOSED_PREFIX + id, '1'); }
+    else { localStorage.removeItem(DOPPEL_CHANCE_CLOSED_PREFIX + id); }
+  }
+  function doppelChanceShortSummary(chance) {
+    var parts = [];
+    if (chance.doppelType) parts.push(chance.doppelType);
+    if (typeof chance.bonusGame === 'number') parts.push(chance.bonusGame + 'G');
+    return parts.join('・');
+  }
   function renderDoppelChances() {
     doppelChancesList.innerHTML = '';
     state.doppelChances.forEach(function (chance, idx) {
+      var closed = isDoppelChanceClosed(chance.id);
+      var summary = doppelChanceShortSummary(chance);
       var card = document.createElement('div');
-      card.className = 'wee-chance-card';
-      var title = document.createElement('div');
-      title.className = 'wee-title';
-      title.textContent = 'ドッペルチャンス' + (idx + 1);
-      card.appendChild(title);
+      card.className = 'wee-chance-card' + (closed ? ' closed' : '');
 
-      card.appendChild(buildToggleField('ドッペル種別', DOPPEL_TYPES, chance.doppelType, function (v) {
+      var titleBtn = document.createElement('button');
+      titleBtn.type = 'button';
+      titleBtn.className = 'wee-title-toggle';
+      titleBtn.innerHTML = '<span class="wee-title-text">ドッペルチャンス' + (idx + 1) + (closed && summary ? '（' + summary + '）' : '') + '</span><span class="chevron">▾</span>';
+      titleBtn.addEventListener('click', function () {
+        setDoppelChanceClosed(chance.id, !closed);
+        renderDoppelChances();
+      });
+      card.appendChild(titleBtn);
+
+      var body = document.createElement('div');
+      body.className = 'wee-chance-body';
+
+      body.appendChild(buildToggleField('ドッペル種別', DOPPEL_TYPES, chance.doppelType, function (v) {
         chance.doppelType = (chance.doppelType === v) ? null : v;
         renderDoppelChances();
       }));
 
-      card.appendChild(buildMultiToggleField('当選契機(複数選択可)', DOPPEL_TRIGGER_OPTIONS, chance.triggers, function (v) {
+      body.appendChild(buildMultiToggleField('当選契機(複数選択可)', DOPPEL_TRIGGER_OPTIONS, chance.triggers, function (v) {
         var i = chance.triggers.indexOf(v);
         if (i === -1) { chance.triggers.push(v); } else { chance.triggers.splice(i, 1); }
         renderDoppelChances();
       }));
 
-      card.appendChild(buildNumberField('ドッペル上乗せゲーム数', chance, 'bonusGame', '例: 30'));
+      body.appendChild(buildNumberField('ドッペル上乗せゲーム数', chance, 'bonusGame', '例: 30'));
 
-      card.appendChild(buildPatternPickerField('ストーリー設定示唆', chance, 'pattern', renderDoppelChances));
+      body.appendChild(buildPatternPickerField('ストーリー設定示唆', chance, 'pattern', renderDoppelChances));
 
       var delBtn = document.createElement('button');
       delBtn.type = 'button';
@@ -3914,8 +3940,9 @@
         state.doppelChances.splice(idx, 1);
         renderDoppelChances();
       });
-      card.appendChild(delBtn);
+      body.appendChild(delBtn);
 
+      card.appendChild(body);
       doppelChancesList.appendChild(card);
     });
   }
