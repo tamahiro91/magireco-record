@@ -279,9 +279,11 @@
   }
   .counter-controls .counter-btn:active { opacity: 0.6; }
   .counter-value { font-size: 18px; font-weight: 700; min-width: 20px; text-align: center; }
-  /* BIG中の高確ゲーム数は4枚あるため、1行に詰め込まず2×2で折り返す(＋－ボタンが窮屈にならないようにする) */
-  #bighp-counters { flex-wrap: wrap; }
-  #bighp-counters .counter-card { flex: 1 1 45%; }
+  /* BIG中の高確ゲーム数は4枚を1行に収めるため、カードの余白・＋－ボタン・数値を一回り小さくする */
+  #bighp-counters .counter-card { padding: 8px 2px; }
+  #bighp-counters .counter-controls { gap: 3px; }
+  #bighp-counters .counter-controls .counter-btn { width: 26px; height: 26px; font-size: 14px; }
+  #bighp-counters .counter-value { min-width: 14px; font-size: 15px; }
 
   .empty {
     text-align: center;
@@ -870,7 +872,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-02j</div>
+    <div class="app-version">v2026-10-02k</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
