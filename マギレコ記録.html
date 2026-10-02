@@ -241,6 +241,7 @@
   .visit-card .balance.negative { color: var(--danger); }
   .visit-card .meta { font-size: 13px; color: var(--sub); margin-top: 4px; }
   .visit-card .game-line { font-size: 15px; font-weight: 700; color: var(--text); margin-top: 8px; }
+  .visit-card .univa-line { font-size: 12px; color: var(--sub); margin-top: 4px; }
   .visit-card .prob-grid { display: flex; margin-top: 8px; }
   .visit-card .prob-col { flex: 1; text-align: center; min-width: 0; }
   .visit-card .prob-col .p-label { font-size: 10px; color: var(--sub); white-space: nowrap; }
@@ -589,6 +590,8 @@
     font-family: inherit;
   }
   .field textarea { resize: vertical; min-height: 44px; overflow-y: hidden; }
+  /* iOS Safariでinput[type="time"]のネイティブUIが枠からはみ出して見えるのを防ぐ */
+  .field input[type="time"] { -webkit-appearance: none; appearance: none; }
   .row2 { display: flex; gap: 10px; }
   .row2 .field { flex: 1; }
   .cat-select { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -861,7 +864,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-02d</div>
+    <div class="app-version">v2026-10-02e</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2187,6 +2190,18 @@
   var elSumCzWinProb = document.getElementById('sum-czwin-prob');
   var elSumBalance = document.getElementById('sum-balance');
 
+  // 来店カード一覧用に、その来店で出たユニバプレートを色(種類)と表示時刻のセットで並べる
+  function visitUnivaPlatesLine(v) {
+    var parts = [];
+    (v.entries || []).forEach(function (e) {
+      (e.univaPlates || []).forEach(function (item) {
+        if (!item.plate) return;
+        parts.push(item.plate + (item.time ? '(' + item.time + ')' : ''));
+      });
+    });
+    return parts.join('・');
+  }
+
   function renderList() {
     var q = (elSearch.value || '').trim();
     var visits = state.visits.slice().sort(function (a, b) {
@@ -2239,6 +2254,7 @@
         '<div class="top-row"><div class="store"></div><div class="date-col"><div class="date"></div><div class="balance"></div></div></div>' +
         '<div class="meta"></div>' +
         '<div class="game-line"></div>' +
+        '<div class="univa-line"></div>' +
         '<div class="prob-grid">' +
           '<div class="prob-col"><div class="p-label">ボーナス回数</div><div class="p-count c-bonus"></div><div class="p-percent c-bonus-prob"></div></div>' +
           '<div class="prob-col"><div class="p-label">at初当たり回数</div><div class="p-count c-atwin"></div><div class="p-percent c-atwin-prob"></div></div>' +
@@ -2253,6 +2269,10 @@
       balanceEl.className = 'balance ' + (cardBalance >= 0 ? 'positive' : 'negative');
       card.querySelector('.meta').textContent = v.machine ? (v.machine + ' 番台') : '';
       card.querySelector('.game-line').textContent = '通常ゲーム数 ' + s.game + 'G';
+      var univaLineEl = card.querySelector('.univa-line');
+      var univaLineText = visitUnivaPlatesLine(v);
+      univaLineEl.textContent = univaLineText;
+      univaLineEl.style.display = univaLineText ? '' : 'none';
       card.querySelector('.c-bonus').textContent = s.total;
       card.querySelector('.c-bonus-prob').textContent = fmtProb(s.game, s.total);
       card.querySelector('.c-atwin').textContent = s.atWin;
@@ -4160,13 +4180,22 @@
 
   // ユニバプレート(at終了時に出現する可能性があるプレート、継続時に複数回見られるためat終了画面と同様に複数追加できる。表示時刻も記録できる)
   function createEmptyUnivaPlate() {
-    return { plate: null, time: null };
+    return { id: uid(), plate: null, time: null };
+  }
+  // ユニバプレートの開閉状態はカードのidごとにlocalStorageへ保存し、次に開いた時も維持する
+  var UNIVA_PLATE_CLOSED_PREFIX = 'magireko.univaPlateClosed.';
+  function isUnivaPlateClosed(id) {
+    return localStorage.getItem(UNIVA_PLATE_CLOSED_PREFIX + id) === '1';
+  }
+  function setUnivaPlateClosed(id, closed) {
+    if (closed) { localStorage.setItem(UNIVA_PLATE_CLOSED_PREFIX + id, '1'); }
+    else { localStorage.removeItem(UNIVA_PLATE_CLOSED_PREFIX + id); }
   }
   var univaPlatesList = document.getElementById('univa-plates-list');
   function renderUnivaPlates() {
     univaPlatesList.innerHTML = '';
     state.univaPlates.forEach(function (item, idx) {
-      var closed = !!state.univaPlatesClosed[idx];
+      var closed = isUnivaPlateClosed(item.id);
       var card = document.createElement('div');
       card.className = 'wee-chance-card' + (closed ? ' closed' : '');
 
@@ -4175,7 +4204,7 @@
       titleBtn.className = 'wee-title-toggle';
       titleBtn.innerHTML = '<span>ユニバプレート' + (idx + 1) + '</span><span class="chevron">▾</span>';
       titleBtn.addEventListener('click', function () {
-        state.univaPlatesClosed[idx] = !closed;
+        setUnivaPlateClosed(item.id, !closed);
         renderUnivaPlates();
       });
       card.appendChild(titleBtn);
@@ -4206,8 +4235,8 @@
       delBtn.textContent = 'このユニバプレートを削除';
       delBtn.addEventListener('click', function () {
         if (!confirm('このユニバプレートを削除しますか？')) return;
+        setUnivaPlateClosed(item.id, false);
         state.univaPlates.splice(idx, 1);
-        state.univaPlatesClosed.splice(idx, 1);
         renderUnivaPlates();
       });
       body.appendChild(delBtn);
@@ -4218,7 +4247,6 @@
   }
   document.getElementById('univa-plate-add').addEventListener('click', function () {
     state.univaPlates.push(createEmptyUnivaPlate());
-    state.univaPlatesClosed.push(false);
     renderUnivaPlates();
   });
 
@@ -4390,8 +4418,7 @@
       state.selectedBigScreen = e.bigScreen || null;
       state.selectedMikazukiStage = e.mikazukiStage || null;
       state.atScreens = (e.atScreens || []).map(function (item) { return Object.assign({}, item); });
-      state.univaPlates = (e.univaPlates || []).map(function (p) { return Object.assign({}, p); });
-      state.univaPlatesClosed = state.univaPlates.map(function () { return false; });
+      state.univaPlates = (e.univaPlates || []).map(function (p) { return Object.assign({ id: uid() }, p); });
       state.selectedBand = e.bandColor || null;
       state.doppelChances = (e.doppelChances || []).map(function (c) { return Object.assign({}, c, { spStoryNumbers: (c.spStoryNumbers || []).slice() }); });
       state.cardCounts = Object.assign({}, e.cardCounts || {});
@@ -4434,7 +4461,6 @@
       state.selectedMikazukiStage = null;
       state.atScreens = [];
       state.univaPlates = [];
-      state.univaPlatesClosed = [];
       state.selectedBand = null;
       state.doppelChances = [];
       state.cardCounts = {};
