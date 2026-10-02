@@ -263,7 +263,7 @@
     border-radius: 12px;
     padding: 8px 4px;
   }
-  .counter-card .counter-label { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; white-space: nowrap; }
+  .counter-card .counter-label { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; text-align: center; }
   .counter-controls { display: flex; align-items: center; gap: 6px; }
   .counter-controls .counter-btn {
     width: 34px;
@@ -867,7 +867,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-02h</div>
+    <div class="app-version">v2026-10-02i</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1203,6 +1203,10 @@
         <div class="counter-card">
           <div class="counter-label">合計</div>
           <div class="counter-value" id="bighp-total">0</div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">マギアCZゲーム数</div>
+          <input type="number" inputmode="numeric" id="e-magiacz-game" placeholder="例: 15">
         </div>
       </div>
     </div>
@@ -2075,6 +2079,7 @@
     (visit.entries || []).forEach(function (e) {
       if (typeof e.point === 'number') point += e.point;
       if (typeof e.game === 'number') game += e.game;
+      game += e.magiaCzGame || 0;
       atGame += atGameTotalOf(e);
       bonusGame += bonusGameTotalOf(e);
       if (e.results && e.results.length) hits++;
@@ -3475,6 +3480,11 @@
     state.bigHighProbExtra2 = eBigHighProbExtra2.value === '' ? null : Number(eBigHighProbExtra2.value);
     renderBigHighProbTotal();
   });
+  // マギアCZゲーム数(結果の選択に関わらず常に入力できる、通常総ゲーム数に合算する)
+  var eMagiaCzGame = document.getElementById('e-magiacz-game');
+  eMagiaCzGame.addEventListener('input', function () {
+    state.magiaCzGame = eMagiaCzGame.value === '' ? null : Number(eMagiaCzGame.value);
+  });
   var eStartGame = document.getElementById('e-start-game');
   var eBandBonus = document.getElementById('e-band-bonus');
   var eEmbryoGameCount = document.getElementById('e-embryo-game-count');
@@ -4508,6 +4518,8 @@
       state.bigHighProbExtra1 = (typeof e.bigHighProbExtra1 === 'number') ? e.bigHighProbExtra1 : 0;
       state.bigHighProbExtra2 = (typeof e.bigHighProbExtra2 === 'number') ? e.bigHighProbExtra2 : null;
       eBigHighProbExtra2.value = (typeof state.bigHighProbExtra2 === 'number') ? state.bigHighProbExtra2 : '';
+      state.magiaCzGame = (typeof e.magiaCzGame === 'number') ? e.magiaCzGame : null;
+      eMagiaCzGame.value = (typeof state.magiaCzGame === 'number') ? state.magiaCzGame : '';
       eStartGame.value = (typeof e.startGame === 'number') ? e.startGame : '';
       eBandBonus.value = (typeof e.bandBonus === 'number') ? e.bandBonus : '';
       eEmbryoGameCount.value = (typeof e.embryoGameCount === 'number') ? e.embryoGameCount : '';
@@ -4553,6 +4565,8 @@
       state.bigHighProbExtra1 = 0;
       state.bigHighProbExtra2 = null;
       eBigHighProbExtra2.value = '';
+      state.magiaCzGame = null;
+      eMagiaCzGame.value = '';
       eStartGame.value = '';
       eBandBonus.value = '';
       eEmbryoGameCount.value = '';
@@ -4619,6 +4633,7 @@
     var atStartGame = eAtStartGame.value === '' ? null : Number(eAtStartGame.value);
     var bigHighProbExtra1 = state.bigHighProbExtra1;
     var bigHighProbExtra2 = state.bigHighProbExtra2;
+    var magiaCzGame = state.magiaCzGame;
     var results = state.selectedResults.slice();
     var mode = state.selectedMode;
     var atWin = eAtWin.checked;
@@ -4668,7 +4683,7 @@
     var kegareLarge = state.kegareLarge;
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
-      e.game = game; e.point = point; e.atStartGame = atStartGame; e.bigHighProbExtra1 = bigHighProbExtra1; e.bigHighProbExtra2 = bigHighProbExtra2; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
+      e.game = game; e.point = point; e.atStartGame = atStartGame; e.bigHighProbExtra1 = bigHighProbExtra1; e.bigHighProbExtra2 = bigHighProbExtra2; e.magiaCzGame = magiaCzGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
       e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.mikazukiStage = mikazukiStage; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
@@ -4679,7 +4694,7 @@
       e.kegareSmall = kegareSmall; e.kegareMid = kegareMid; e.kegareLarge = kegareLarge;
     } else {
       v.entries.push({
-        id: uid(), game: game, point: point, atStartGame: atStartGame, bigHighProbExtra1: bigHighProbExtra1, bigHighProbExtra2: bigHighProbExtra2, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
+        id: uid(), game: game, point: point, atStartGame: atStartGame, bigHighProbExtra1: bigHighProbExtra1, bigHighProbExtra2: bigHighProbExtra2, magiaCzGame: magiaCzGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
         bigVoice: bigVoice, bigScreen: bigScreen, mikazukiStage: mikazukiStage, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
