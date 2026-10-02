@@ -867,7 +867,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-02g</div>
+    <div class="app-version">v2026-10-02h</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2050,11 +2050,17 @@
   function atGameTotalOf(e) {
     return (e.atStartGame || 0) + weeBonusTotalOf(e) + (e.atContinue40 || []).length * 40;
   }
-  // ボーナスゲーム数(結果にBIGがあれば+30、エピボがあれば+50、BIG中の高確ゲーム数の入力分を加算)
+  // ボーナスゲーム数(結果にBIGがあれば+30、エピボがあれば+50、アリナがあれば+30、
+  // うぃチャンス/ドッペルチャンスでマギアボーナスを選んだカード1件につき+30、BIG中の高確ゲーム数の入力分を加算)
   function bonusGameTotalOf(e) {
     var total = 0;
     if (e.results && e.results.indexOf('BIG') !== -1) total += 30;
     if (e.results && e.results.indexOf('エピボ') !== -1) total += 50;
+    if (e.results && e.results.indexOf('アリナ') !== -1) total += 30;
+    var magiaBonusCount = 0;
+    (e.weeChances || []).forEach(function (c) { if (c.storyType === 'マギアボーナス') magiaBonusCount++; });
+    (e.doppelChances || []).forEach(function (c) { if (c.storyType === 'マギアボーナス') magiaBonusCount++; });
+    total += magiaBonusCount * 30;
     total += (e.bigHighProbExtra1 || 0) + (e.bigHighProbExtra2 || 0);
     return total;
   }
