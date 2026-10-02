@@ -861,7 +861,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-02b</div>
+    <div class="app-version">v2026-10-02c</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -3667,8 +3667,8 @@
     field.appendChild(input);
     return field;
   }
-  // コネクト色は帯色(band-select)と同じ配色ボタンで表示する
-  function buildConnectColorField(chance) {
+  // コネクト色は帯色(band-select)と同じ配色ボタンで表示する(うぃチャンス/ドッペルチャンス共通なので再描画関数を呼び出し元から受け取る)
+  function buildConnectColorField(chance, rerenderFn) {
     var field = document.createElement('div');
     field.className = 'field';
     var label = document.createElement('label');
@@ -3684,7 +3684,7 @@
       if (opt === chance.connectColor) btn.classList.add('active');
       btn.addEventListener('click', function () {
         chance.connectColor = (chance.connectColor === opt) ? null : opt;
-        renderWeeChances();
+        rerenderFn();
       });
       group.appendChild(btn);
     });
@@ -3797,7 +3797,7 @@
       }
 
       if (chance.storyType !== '神浜') {
-        body.appendChild(buildConnectColorField(chance));
+        body.appendChild(buildConnectColorField(chance, renderWeeChances));
       }
 
       if (chance.storyType && chance.storyType !== 'マギアボーナス' && chance.storyType !== '神浜') {
@@ -4022,7 +4022,7 @@
       }
 
       if (chance.storyType !== '神浜') {
-        body.appendChild(buildConnectColorField(chance));
+        body.appendChild(buildConnectColorField(chance, renderDoppelChances));
       }
 
       // ここから下はドッペル固有の既存項目
