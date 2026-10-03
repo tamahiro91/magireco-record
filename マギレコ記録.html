@@ -876,7 +876,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-03a</div>
+    <div class="app-version">v2026-10-03b</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2623,6 +2623,20 @@
   function toHalfWidth(s) {
     return s.replace(/[！-～]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); });
   }
+  // 総プレイ数は末尾に単位の「G」が付くが、OCRがこの「G」を数字(よく6や9と誤認識される)として
+  // 拾ってしまい、末尾に余分な1桁がくっつくことがある(例:「3,332G」→「3,3326」→33326)。
+  // 桁区切りのカンマが正しく読めていれば、最後のカンマの後ろは必ず3桁になるはずなので、
+  // 4桁以上あれば末尾の余分な1桁を誤読として切り捨てる
+  function cleanRareRoleGameMatch(raw) {
+    var parts = raw.split(/[,.]/);
+    if (parts.length > 1) {
+      var last = parts[parts.length - 1];
+      if (last.length > 3) {
+        parts[parts.length - 1] = last.slice(0, 3);
+      }
+    }
+    return Number(parts.join(''));
+  }
   // OCRで得た全文から、行ごとにラベル文字列を探し、そのラベルより後ろにある最初の数字の並びを値として取り出す。
   // ラベルと数値が横に離れた列になっている場合、OCRはラベルの行と数値の行を別々に
   // (しかも数値の行が先に来る順で)認識することがあるため、同じ行に数値が見つからなければ
@@ -2646,13 +2660,13 @@
         // この項目は常に整数なので、カンマ・ピリオドはどちらも桁区切りとして一律に取り除く
         var after = compact.slice(idx + label.length);
         var m = after.match(/\d[\d,.]*/);
-        if (m) { result[key] = Number(m[0].replace(/[,.]/g, '')); return; }
+        if (m) { result[key] = key === 'game' ? cleanRareRoleGameMatch(m[0]) : Number(m[0].replace(/[,.]/g, '')); return; }
         [-1, -2, 1, 2].forEach(function (offset) {
           if (result[key] != null) return;
           var otherLine = lines[lineIdx + offset];
           if (!otherLine) return;
           var m2 = otherLine.match(/^\d[\d,.]*/);
-          if (m2) result[key] = Number(m2[0].replace(/[,.]/g, ''));
+          if (m2) result[key] = key === 'game' ? cleanRareRoleGameMatch(m2[0]) : Number(m2[0].replace(/[,.]/g, ''));
         });
       });
     });
