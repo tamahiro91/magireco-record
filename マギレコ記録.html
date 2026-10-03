@@ -876,7 +876,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-02m</div>
+    <div class="app-version">v2026-10-03a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1881,6 +1881,10 @@
       if (Array.isArray(e.univaPlates) && e.univaPlates.length && typeof e.univaPlates[0] === 'string') {
         e.univaPlates = e.univaPlates.map(function (p) { return { plate: p, time: null }; });
       }
+      // at継続40ゲームが文字列/null配列だった旧形式を{id, value}のオブジェクト配列に変換する(開閉状態をidで保持するため)
+      if (Array.isArray(e.atContinue40) && e.atContinue40.length && typeof e.atContinue40[0] !== 'object') {
+        e.atContinue40 = e.atContinue40.map(function (v) { return { id: uid(), value: v }; });
+      }
       return e;
     }
 
@@ -2182,7 +2186,8 @@
       kegareMid += e.kegareMid || 0;
       kegareLarge += e.kegareLarge || 0;
       if (e.atContinue40 && e.atContinue40.length) {
-        e.atContinue40.forEach(function (v) {
+        e.atContinue40.forEach(function (item) {
+          var v = atContinue40ValueOf(item);
           if (v === 'いろは') atContinue40Iroha++;
           else if (v === '小きゅうべえ') atContinue40Koqube++;
         });
@@ -3250,9 +3255,9 @@
       }
       if (e.storyOrderPattern) extraLines.push('順番示唆: ' + storyOrderShortLabel(e.storyOrderPattern));
       if (e.atContinue40 && e.atContinue40.length) {
-        e.atContinue40.forEach(function (v, ai) {
+        e.atContinue40.forEach(function (item, ai) {
           var prefix = e.atContinue40.length > 1 ? ('at継続40ゲーム' + (ai + 1)) : 'at継続40ゲーム';
-          extraLines.push(prefix + ': ' + v);
+          extraLines.push(prefix + ': ' + atContinue40ValueOf(item));
         });
       }
       if (e.weeChances && e.weeChances.length) {
@@ -4350,20 +4355,33 @@
 
   // at継続40ゲーム(いろは/小きゅうべえのどちらが出たかを複数回記録できる。示唆は本文には出さず、来店ごとの回数だけ集計する)
   var ATCONTINUE40_OPTIONS = ['いろは', '小きゅうべえ'];
+  // at継続40ゲームの開閉状態はカードのidごとにlocalStorageへ保存し、次に開いた時も維持する
+  var ATCONTINUE40_CLOSED_PREFIX = 'magireko.atContinue40Closed.';
+  function isAtContinue40Closed(id) {
+    return localStorage.getItem(ATCONTINUE40_CLOSED_PREFIX + id) === '1';
+  }
+  function setAtContinue40Closed(id, closed) {
+    if (closed) { localStorage.setItem(ATCONTINUE40_CLOSED_PREFIX + id, '1'); }
+    else { localStorage.removeItem(ATCONTINUE40_CLOSED_PREFIX + id); }
+  }
+  // 保存形式の新旧どちらでも値を取り出せるようにする(旧形式は文字列/null、新形式は{id,value})
+  function atContinue40ValueOf(item) {
+    return (item && typeof item === 'object') ? item.value : item;
+  }
   var atContinue40List = document.getElementById('atcontinue40-list');
   function renderAtContinue40() {
     atContinue40List.innerHTML = '';
-    state.atContinue40.forEach(function (val, idx) {
-      var closed = !!state.atContinue40Closed[idx];
+    state.atContinue40.forEach(function (item, idx) {
+      var closed = isAtContinue40Closed(item.id);
       var card = document.createElement('div');
       card.className = 'wee-chance-card' + (closed ? ' closed' : '');
 
       var titleBtn = document.createElement('button');
       titleBtn.type = 'button';
       titleBtn.className = 'wee-title-toggle';
-      titleBtn.innerHTML = '<span>at継続40ゲーム' + (idx + 1) + (closed && val ? '（' + val + '）' : '') + '</span><span class="chevron">▾</span>';
+      titleBtn.innerHTML = '<span>at継続40ゲーム' + (idx + 1) + (closed && item.value ? '（' + item.value + '）' : '') + '</span><span class="chevron">▾</span>';
       titleBtn.addEventListener('click', function () {
-        state.atContinue40Closed[idx] = !closed;
+        setAtContinue40Closed(item.id, !closed);
         renderAtContinue40();
       });
       card.appendChild(titleBtn);
@@ -4371,8 +4389,8 @@
       var body = document.createElement('div');
       body.className = 'wee-chance-body';
 
-      body.appendChild(buildToggleField('選択', ATCONTINUE40_OPTIONS, val, function (v) {
-        state.atContinue40[idx] = (val === v) ? null : v;
+      body.appendChild(buildToggleField('選択', ATCONTINUE40_OPTIONS, item.value, function (v) {
+        item.value = (item.value === v) ? null : v;
         renderAtContinue40();
       }));
 
@@ -4382,8 +4400,8 @@
       delBtn.textContent = 'このat継続40ゲームを削除';
       delBtn.addEventListener('click', function () {
         if (!confirm('このat継続40ゲームを削除しますか？')) return;
+        setAtContinue40Closed(item.id, false);
         state.atContinue40.splice(idx, 1);
-        state.atContinue40Closed.splice(idx, 1);
         renderAtContinue40();
       });
       body.appendChild(delBtn);
@@ -4393,8 +4411,7 @@
     });
   }
   document.getElementById('atcontinue40-add').addEventListener('click', function () {
-    state.atContinue40.push(null);
-    state.atContinue40Closed.push(false);
+    state.atContinue40.push({ id: uid(), value: null });
     renderAtContinue40();
   });
 
@@ -4549,8 +4566,9 @@
       state.kegareSmall = e.kegareSmall || 0;
       state.kegareMid = e.kegareMid || 0;
       state.kegareLarge = e.kegareLarge || 0;
-      state.atContinue40 = (e.atContinue40 || []).slice();
-      state.atContinue40Closed = state.atContinue40.map(function () { return false; });
+      state.atContinue40 = (e.atContinue40 || []).map(function (item) {
+        return (item && typeof item === 'object') ? Object.assign({ id: uid() }, item) : { id: uid(), value: item };
+      });
       state.selectedStoryOrder = e.storyOrderPattern || null;
       eAtWin.checked = !!e.atWin;
       eAtMemo.value = e.atMemo || '';
@@ -4597,7 +4615,6 @@
       state.kegareMid = 0;
       state.kegareLarge = 0;
       state.atContinue40 = [];
-      state.atContinue40Closed = [];
       state.selectedStoryOrder = null;
       eAtWin.checked = false;
       eAtMemo.value = '';
@@ -4678,7 +4695,7 @@
     var weeChances = (atWin || hasEmbryo) ? state.weeChances.map(function (c) { return Object.assign({}, c, { spStoryNumbers: (c.spStoryNumbers || []).slice() }); }) : [];
     var weeBonusExtra1 = (atWin || hasEmbryo) ? state.weeBonusExtra1 : 0;
     var weeBonusExtra2 = (atWin || hasEmbryo) ? state.weeBonusExtra2 : null;
-    var atContinue40 = (atWin || hasEmbryo) ? state.atContinue40.filter(Boolean) : [];
+    var atContinue40 = (atWin || hasEmbryo) ? state.atContinue40.filter(function (item) { return item.value; }) : [];
     var storyOrderPattern = atWin ? state.selectedStoryOrder : null;
     // ドッペルが選ばれていない時はドッペル関連の項目を保存しない
     var hasDoppel = results.indexOf('ドッペル') !== -1;
