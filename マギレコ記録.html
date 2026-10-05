@@ -279,6 +279,21 @@
   }
   .counter-controls .counter-btn:active { opacity: 0.6; }
   .counter-value { font-size: 18px; font-weight: 700; min-width: 20px; text-align: center; }
+  /* みたまボーナスの選択ボタンの右に+αカウンターを並べる(ボタンを狭めてスペースを確保する) */
+  .mikazuki-bonus-row { display: flex; align-items: center; gap: 8px; }
+  .mikazuki-bonus-row .picker-trigger { flex: 1; min-width: 0; }
+  .mikazuki-bonus-extra {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--panel2);
+    border-radius: 12px;
+    padding: 8px 10px;
+  }
+  .mikazuki-bonus-extra .counter-label { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; white-space: nowrap; }
+  .mikazuki-bonus-extra .counter-controls .counter-btn { width: 28px; height: 28px; font-size: 15px; }
+  .mikazuki-bonus-extra .counter-value { min-width: 16px; font-size: 16px; }
   /* BIG中の高確ゲーム数は4枚を1行に収めるため、カードの余白・＋－ボタン・数値を一回り小さくする */
   #bighp-counters .counter-card { padding: 8px 2px; }
   #bighp-counters .counter-controls { gap: 3px; }
@@ -876,7 +891,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-03b</div>
+    <div class="app-version">v2026-10-05a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1398,7 +1413,17 @@
     </div>
     <div class="field" id="field-mikazuki-stage" hidden>
       <label>みたまボーナス</label>
-      <button type="button" class="picker-trigger" id="e-mikazuki-stage-trigger">未選択 ▾</button>
+      <div class="mikazuki-bonus-row">
+        <button type="button" class="picker-trigger" id="e-mikazuki-stage-trigger">未選択 ▾</button>
+        <div class="mikazuki-bonus-extra">
+          <div class="counter-label">+α</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="mikazuki-bonus-extra-minus">−</button>
+            <div class="counter-value" id="mikazuki-bonus-extra-value">0</div>
+            <button type="button" class="counter-btn" id="mikazuki-bonus-extra-plus">＋</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="field" id="field-atwin">
       <div class="check-row">
@@ -2063,17 +2088,19 @@
     }, 0);
     return cardTotal + (e.weeBonusExtra1 || 0) + (e.weeBonusExtra2 || 0);
   }
-  // atゲーム数の合計(at初期＋うぃチャンス上乗せ＋at継続40ゲーム1件につき40G)
+  // atゲーム数の合計(at初期＋うぃチャンス上乗せ＋at継続40ゲーム1件につき40G＋at当選時+10G)
   function atGameTotalOf(e) {
-    return (e.atStartGame || 0) + weeBonusTotalOf(e) + (e.atContinue40 || []).length * 40;
+    return (e.atStartGame || 0) + weeBonusTotalOf(e) + (e.atContinue40 || []).length * 40 + (e.atWin ? 10 : 0);
   }
-  // ボーナスゲーム数(結果にBIGがあれば+30、エピボがあれば+50、アリナがあれば+30、
-  // うぃチャンス/ドッペルチャンスでマギアボーナスを選んだカード1件につき+30、BIG中の高確ゲーム数の入力分を加算)
+  // ボーナスゲーム数(結果にBIGがあれば+30、エピボがあれば+50、アリナがあれば+30、みたまがあれば基本+8、
+  // うぃチャンス/ドッペルチャンスでマギアボーナスを選んだカード1件につき+30、
+  // BIG中の高確ゲーム数・みたまボーナスの+αカウンターの入力分を加算)
   function bonusGameTotalOf(e) {
     var total = 0;
     if (e.results && e.results.indexOf('BIG') !== -1) total += 30;
     if (e.results && e.results.indexOf('エピボ') !== -1) total += 50;
     if (e.results && e.results.indexOf('アリナ') !== -1) total += 30;
+    if (e.results && e.results.indexOf('みたま') !== -1) total += 8 + (e.mikazukiBonusExtra || 0);
     var magiaBonusCount = 0;
     (e.weeChances || []).forEach(function (c) { if (c.storyType === 'マギアボーナス') magiaBonusCount++; });
     (e.doppelChances || []).forEach(function (c) { if (c.storyType === 'マギアボーナス') magiaBonusCount++; });
@@ -3752,6 +3779,19 @@
       eMikazukiStageTrigger.textContent = mikazukiStageFullLabel(v) + ' ▾';
     });
   });
+  // みたまボーナスの+αカウンター(基本8Gに上乗せする分を独立して記録する)
+  var mikazukiBonusExtraValue = document.getElementById('mikazuki-bonus-extra-value');
+  function renderMikazukiBonusExtra() {
+    mikazukiBonusExtraValue.textContent = state.mikazukiBonusExtra;
+  }
+  document.getElementById('mikazuki-bonus-extra-plus').addEventListener('click', function () {
+    state.mikazukiBonusExtra += 1;
+    renderMikazukiBonusExtra();
+  });
+  document.getElementById('mikazuki-bonus-extra-minus').addEventListener('click', function () {
+    state.mikazukiBonusExtra = Math.max(0, state.mikazukiBonusExtra - 1);
+    renderMikazukiBonusExtra();
+  });
 
   // うぃチャンス(at中のストーリー示唆)の入力欄を組み立てる小さなヘルパー群
   function buildToggleField(labelText, options, currentValue, onSelect) {
@@ -4546,6 +4586,7 @@
       state.selectedBigVoice = e.bigVoice || null;
       state.selectedBigScreen = e.bigScreen || null;
       state.selectedMikazukiStage = e.mikazukiStage || null;
+      state.mikazukiBonusExtra = (typeof e.mikazukiBonusExtra === 'number') ? e.mikazukiBonusExtra : 0;
       state.atScreens = (e.atScreens || []).map(function (item) { return Object.assign({}, item); });
       state.univaPlates = (e.univaPlates || []).map(function (p) { return Object.assign({ id: uid() }, p); });
       state.selectedBand = e.bandColor || null;
@@ -4594,6 +4635,7 @@
       state.selectedBigVoice = null;
       state.selectedBigScreen = null;
       state.selectedMikazukiStage = null;
+      state.mikazukiBonusExtra = 0;
       state.atScreens = [];
       state.univaPlates = [];
       state.selectedBand = null;
@@ -4652,6 +4694,7 @@
     renderAtScreens();
     renderKegareCounters();
     renderBigHighProbTotal();
+    renderMikazukiBonusExtra();
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
     autoResizeTextarea(eAtMemo);
@@ -4688,6 +4731,7 @@
     var bigScreen = hasBig ? state.selectedBigScreen : null;
     var hasMitama = results.indexOf('みたま') !== -1;
     var mikazukiStage = hasMitama ? state.selectedMikazukiStage : null;
+    var mikazukiBonusExtra = hasMitama ? state.mikazukiBonusExtra : 0;
     var atScreens = (atWin || results.indexOf('エンブリオ') !== -1) ? state.atScreens.filter(function (item) { return item && item.screen; }) : [];
     var univaPlates = (atWin || results.indexOf('エンブリオ') !== -1) ? state.univaPlates.filter(function (p) { return p && p.plate; }) : [];
     // 帯色・初期ゲーム数・エンブリオが選ばれていない時は関連する選択を保存しない(表示と矛盾しないように)
@@ -4728,7 +4772,7 @@
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.bigHighProbExtra1 = bigHighProbExtra1; e.bigHighProbExtra2 = bigHighProbExtra2; e.magiaCzGame = magiaCzGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
-      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.mikazukiStage = mikazukiStage; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
+      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.mikazukiStage = mikazukiStage; e.mikazukiBonusExtra = mikazukiBonusExtra; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
       e.weeBonusExtra1 = weeBonusExtra1; e.weeBonusExtra2 = weeBonusExtra2;
@@ -4739,7 +4783,7 @@
     } else {
       v.entries.push({
         id: uid(), game: game, point: point, atStartGame: atStartGame, bigHighProbExtra1: bigHighProbExtra1, bigHighProbExtra2: bigHighProbExtra2, magiaCzGame: magiaCzGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
-        bigVoice: bigVoice, bigScreen: bigScreen, mikazukiStage: mikazukiStage, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
+        bigVoice: bigVoice, bigScreen: bigScreen, mikazukiStage: mikazukiStage, mikazukiBonusExtra: mikazukiBonusExtra, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
         weeBonusExtra1: weeBonusExtra1, weeBonusExtra2: weeBonusExtra2,
