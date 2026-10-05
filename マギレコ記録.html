@@ -454,7 +454,6 @@
   }
   .invest-balance.positive { color: var(--at); }
   .invest-balance.negative { color: var(--danger); }
-  .invest-note { font-size: 10px; color: var(--sub); text-align: right; margin-top: 6px; }
   .invest-exchange { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
   .invest-exchange-toggle {
     display: flex;
@@ -474,7 +473,7 @@
   .invest-exchange-body { margin-top: 8px; }
   .invest-exchange.closed .invest-exchange-body { display: none; }
   .invest-exchange-row { display: flex; align-items: center; gap: 8px; }
-  .invest-exchange-result { margin-top: 8px; font-size: 14px; font-weight: 700; color: var(--text); }
+  .invest-exchange-result { font-size: 14px; font-weight: 700; color: var(--text); margin-left: auto; white-space: nowrap; }
 
   .entry {
     background: var(--panel);
@@ -915,7 +914,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-05e</div>
+    <div class="app-version">v2026-10-05f</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1025,11 +1024,10 @@
                 <option value="59">59枚</option>
                 <option value="60">60枚</option>
               </select>
+              <div class="invest-exchange-result" id="d-exchange-result"></div>
             </div>
-            <div class="invest-exchange-result" id="d-exchange-result"></div>
           </div>
         </div>
-        <div class="invest-note">※換金ギャップは考慮してません</div>
       </div>
       <div class="summary" style="margin-top:10px;">
         <div class="card"><div class="label">BIG</div><div class="value" id="d-big">0</div><div class="prob" id="d-big-prob"></div></div>
@@ -2963,7 +2961,7 @@
     var rate = v.exchangeRate || 46;
     var quotient = Math.floor(recovered / rate);
     var remainder = recovered % rate;
-    elDExchangeResult.textContent = recovered + '枚 ÷ ' + rate + '枚 = ' + quotient + '本 余り' + remainder + '玉';
+    elDExchangeResult.textContent = quotient + '本 余り' + remainder + '玉';
   }
   elDExchangeRate.addEventListener('change', function (ev) {
     var v = currentVisit();
