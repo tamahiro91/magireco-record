@@ -895,7 +895,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-05c</div>
+    <div class="app-version">v2026-10-05d</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -3628,11 +3628,11 @@
     fieldUnivaPlates.hidden = !(eAtWin.checked || hasEmbryo || hasDoppel);
     renderUnivaPlates();
     fieldStoryOrder.hidden = !eAtWin.checked || hasDoppel;
-    // エンブリオ選択時は帯色の上乗せ入力の直後に、そうでなければat当選時の元の位置に表示する
+    // エンブリオ選択時は帯色の上乗せ入力の直後に、そうでなければat当選のすぐ下(ストーリー順番示唆より上)に表示する
     if (hasEmbryo) {
       fieldBand.insertAdjacentElement('afterend', fieldWeeChances);
     } else {
-      fieldStoryOrder.insertAdjacentElement('afterend', fieldWeeChances);
+      fieldAtWin.insertAdjacentElement('afterend', fieldWeeChances);
     }
     fieldWeeChances.hidden = !(hasEmbryo || eAtWin.checked) || hasDoppel;
     // エンブリオ未選択時は、at当選時にストーリー順番示唆の下にキャラ紹介の示唆を表示する
@@ -3640,7 +3640,12 @@
     fieldStoryOrder.insertAdjacentElement('afterend', fieldEmbryoPattern);
     fieldEmbryoPattern.hidden = hasEmbryo || !eAtWin.checked || hasDoppel;
     renderWeeChances();
-    fieldWeeChances.insertAdjacentElement('afterend', fieldAtContinue40);
+    // エンブリオ選択時はうぃチャンスの直後に、そうでなければキャラ紹介の示唆の直後に表示する
+    if (hasEmbryo) {
+      fieldWeeChances.insertAdjacentElement('afterend', fieldAtContinue40);
+    } else {
+      fieldEmbryoPattern.insertAdjacentElement('afterend', fieldAtContinue40);
+    }
     fieldAtContinue40.hidden = !(hasEmbryo || eAtWin.checked || hasDoppel);
     renderAtContinue40();
     fieldDoppelChances.hidden = !hasDoppel;
