@@ -455,6 +455,26 @@
   .invest-balance.positive { color: var(--at); }
   .invest-balance.negative { color: var(--danger); }
   .invest-note { font-size: 10px; color: var(--sub); text-align: right; margin-top: 6px; }
+  .invest-exchange { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .invest-exchange-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 0;
+    cursor: pointer;
+  }
+  .invest-exchange-toggle .chevron { color: var(--sub); font-size: 13px; transition: transform 0.15s; }
+  .invest-exchange.closed .invest-exchange-toggle .chevron { transform: rotate(-90deg); }
+  .invest-exchange-body { margin-top: 8px; }
+  .invest-exchange.closed .invest-exchange-body { display: none; }
+  .invest-exchange-row { display: flex; align-items: center; gap: 8px; }
+  .invest-exchange-result { margin-top: 8px; font-size: 14px; font-weight: 700; color: var(--text); }
 
   .entry {
     background: var(--panel);
@@ -895,7 +915,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-05d</div>
+    <div class="app-version">v2026-10-05e</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -980,6 +1000,34 @@
             <input type="number" inputmode="numeric" class="invest-recovered-input" id="d-invest-recovered">
           </div>
           <div class="invest-balance" id="d-invest-balance"></div>
+        </div>
+        <div class="invest-exchange closed" id="d-exchange-box">
+          <button type="button" class="invest-exchange-toggle" id="d-exchange-toggle">
+            <span>交換枚数計算</span><span class="chevron">▾</span>
+          </button>
+          <div class="invest-exchange-body">
+            <div class="invest-exchange-row">
+              <span class="invest-recovered-label">交換枚数</span>
+              <select class="invest-rate" id="d-exchange-rate">
+                <option value="46">46枚</option>
+                <option value="47">47枚</option>
+                <option value="48">48枚</option>
+                <option value="49">49枚</option>
+                <option value="50">50枚</option>
+                <option value="51">51枚</option>
+                <option value="52">52枚</option>
+                <option value="53">53枚</option>
+                <option value="54">54枚</option>
+                <option value="55">55枚</option>
+                <option value="56">56枚</option>
+                <option value="57">57枚</option>
+                <option value="58">58枚</option>
+                <option value="59">59枚</option>
+                <option value="60">60枚</option>
+              </select>
+            </div>
+            <div class="invest-exchange-result" id="d-exchange-result"></div>
+          </div>
         </div>
         <div class="invest-note">※換金ギャップは考慮してません</div>
       </div>
@@ -2424,6 +2472,10 @@
   var elDInvestTotal = document.getElementById('d-invest-total');
   var elDInvestRecovered = document.getElementById('d-invest-recovered');
   var elDInvestBalance = document.getElementById('d-invest-balance');
+  var elDExchangeBox = document.getElementById('d-exchange-box');
+  var elDExchangeToggle = document.getElementById('d-exchange-toggle');
+  var elDExchangeRate = document.getElementById('d-exchange-rate');
+  var elDExchangeResult = document.getElementById('d-exchange-result');
   var elEntryList = document.getElementById('entry-list');
   // レア役合算カウント(来店ごとに、任意のタイミングで区間ごとの内訳を追加して合算する独立カウンター)
   var elRareRoleSummary = document.getElementById('rare-role-summary');
@@ -2892,6 +2944,33 @@
     v.invest.recovered = (ev.target.value === '') ? null : Number(ev.target.value);
     save();
     updateInvestBalance(v);
+    updateExchangeResult(v);
+  });
+
+  // 交換枚数計算(回収枚数を交換枚数で割って交換本数と余り玉を出す。開閉状態は全体で共通)
+  var EXCHANGE_OPEN_KEY = 'magireko.exchangeOpen';
+  function isExchangeOpen() {
+    return localStorage.getItem(EXCHANGE_OPEN_KEY) === '1';
+  }
+  elDExchangeBox.classList.toggle('closed', !isExchangeOpen());
+  elDExchangeToggle.addEventListener('click', function () {
+    var open = !isExchangeOpen();
+    localStorage.setItem(EXCHANGE_OPEN_KEY, open ? '1' : '0');
+    elDExchangeBox.classList.toggle('closed', !open);
+  });
+  function updateExchangeResult(v) {
+    var recovered = (v.invest && typeof v.invest.recovered === 'number') ? v.invest.recovered : 0;
+    var rate = v.exchangeRate || 46;
+    var quotient = Math.floor(recovered / rate);
+    var remainder = recovered % rate;
+    elDExchangeResult.textContent = recovered + '枚 ÷ ' + rate + '枚 = ' + quotient + '本 余り' + remainder + '玉';
+  }
+  elDExchangeRate.addEventListener('change', function (ev) {
+    var v = currentVisit();
+    if (!v) return;
+    v.exchangeRate = Number(ev.target.value);
+    save();
+    updateExchangeResult(v);
   });
 
   function currentVisit() {
@@ -3138,6 +3217,8 @@
     elDInvestTotal.innerHTML = '＝ ' + (invest.rate * (invest.count || 0)) + '枚 <span class="invest-total-label">(使用枚数)</span>';
     elDInvestRecovered.value = invest.recovered || 0;
     updateInvestBalance(v);
+    elDExchangeRate.value = String(v.exchangeRate || 46);
+    updateExchangeResult(v);
 
     renderSuggestionSummary(v);
     renderRareRoleSummary(v);
