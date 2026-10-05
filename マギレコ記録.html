@@ -864,6 +864,10 @@
     padding: 10px 12px;
   }
   .check-row input[type="checkbox"] { width: 20px; height: 20px; }
+  /* at当選チェックの右側にatゲーム数の入力欄を並べる */
+  .atwin-game-inline { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .atwin-game-inline label { font-size: 12px; color: var(--sub); white-space: nowrap; margin: 0; }
+  .atwin-game-inline input { width: 90px; padding: 6px 8px; font-size: 15px; }
   .check-row label { margin: 0; font-size: 15px; color: var(--text); }
   .sheet-actions {
     display: flex;
@@ -891,7 +895,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-05a</div>
+    <div class="app-version">v2026-10-05b</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1204,10 +1208,6 @@
         <label>ポイント</label>
         <input type="number" inputmode="numeric" id="e-point" placeholder="例: 350">
       </div>
-      <div class="field">
-        <label>atゲーム数</label>
-        <input type="number" inputmode="numeric" id="e-at-start-game" placeholder="例: 0">
-      </div>
     </div>
     <div class="field">
       <label>BIG中の高確ゲーム数</label>
@@ -1429,6 +1429,10 @@
       <div class="check-row">
         <input type="checkbox" id="e-atwin">
         <label for="e-atwin">at当選</label>
+        <div class="atwin-game-inline" id="field-at-start-game" hidden>
+          <label for="e-at-start-game">atゲーム数</label>
+          <input type="number" inputmode="numeric" id="e-at-start-game" placeholder="例: 0">
+        </div>
       </div>
     </div>
     <div class="field" id="field-at-screen" hidden>
@@ -3575,6 +3579,7 @@
   var fieldDoppelChances = document.getElementById('field-doppel-chances');
   var fieldDoppelBonusCounters = document.getElementById('field-doppel-bonus-counters');
   var fieldAtWin = document.getElementById('field-atwin');
+  var fieldAtStartGameInline = document.getElementById('field-at-start-game');
   var fieldEpiboChar = document.getElementById('field-epibo-char');
   var fieldEpiboKuroeCase = document.getElementById('field-epibo-kuroe-case');
   var fieldEpiboSuggestion = document.getElementById('field-epibo-suggestion');
@@ -3641,6 +3646,7 @@
     fieldDoppelChances.hidden = !hasDoppel;
     fieldDoppelBonusCounters.hidden = !hasDoppel;
     fieldAtWin.hidden = hasEmbryo || hasDoppel;
+    fieldAtStartGameInline.hidden = !eAtWin.checked;
     fieldEpiboChar.hidden = !hasEpibo;
     fieldEpiboKuroeCase.hidden = !isKuroe;
     fieldEpiboSuggestion.hidden = !hasEpibo || !epiboSuggestionText(state.selectedEpiboChar, state.selectedEpiboKuroeCase);
