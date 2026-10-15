@@ -183,8 +183,11 @@
   .calendar-day-balance.positive { color: var(--at); }
   .calendar-day-balance.negative { color: var(--danger); }
   .calendar-store-summary { margin-top: 20px; }
-  .calendar-toggle-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .calendar-toggle-row { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
   .calendar-toggle-row .cat-select button { padding: 6px 12px; font-size: 12px; }
+  .calendar-scope-total { text-align: center; font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+  .calendar-scope-total.positive { color: var(--at); }
+  .calendar-scope-total.negative { color: var(--danger); }
   .calendar-store-title { font-size: 13px; color: var(--sub); font-weight: 700; margin-bottom: 8px; }
   .calendar-store-row { background: var(--panel); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
   .calendar-store-row .store-name { font-size: 15px; font-weight: 700; }
@@ -926,7 +929,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-15b</div>
+    <div class="app-version">v2026-10-15c</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1182,6 +1185,7 @@
           <button type="button" data-v="count">回数順</button>
         </div>
       </div>
+      <div class="calendar-scope-total" id="cal-scope-total"></div>
       <div class="calendar-store-title">店舗別収支</div>
       <div id="calendar-store-list"></div>
     </div>
@@ -3113,6 +3117,11 @@
     stores.sort(function (a, b) {
       return calStoreSort === 'count' ? (b.count - a.count) : (b.balance - a.balance);
     });
+    var totalBalance = stores.reduce(function (sum, s) { return sum + s.balance; }, 0);
+    var totalEl = document.getElementById('cal-scope-total');
+    totalEl.textContent = '差枚合計 ' + (totalBalance >= 0 ? '＋' : '') + totalBalance + '枚';
+    totalEl.classList.toggle('positive', totalBalance >= 0);
+    totalEl.classList.toggle('negative', totalBalance < 0);
     var listEl = document.getElementById('calendar-store-list');
     listEl.innerHTML = '';
     if (!stores.length) {
