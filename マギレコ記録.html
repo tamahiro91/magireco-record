@@ -1000,9 +1000,10 @@
   <div id="view-list">
     <header>
       <h1>MagirecoRecord</h1>
+      <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-16d</div>
+    <div class="app-version">v2026-10-16e</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -5085,6 +5086,10 @@
   });
   document.getElementById('bg-panel-close').addEventListener('click', function () {
     bgPanel.classList.add('hidden');
+  });
+  // ヘッダーの「背景」ボタンから直接、バックアップ画面を経由せず調整パネルを開く
+  document.getElementById('btn-bg-open-direct').addEventListener('click', function () {
+    bgPanel.classList.remove('hidden');
   });
 
   // --- 背景カスタマイズ(画像はIndexedDB、オーバーレイ/カード透明度/ぼかしの設定値はlocalStorageに保存) ---
