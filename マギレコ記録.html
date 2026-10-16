@@ -637,6 +637,10 @@
     overscroll-behavior: contain;
     touch-action: pan-y;
   }
+  /* 記録編集画面だけは一覧・来店詳細と同じく背景を透かす(他のシートは読みやすさのため不透明のまま) */
+  #overlay-entry .sheet { background: var(--panel); }
+  /* 記録編集シートが半透明になる間、裏の一覧/来店詳細の文字が透けて読みにくくならないよう隠す(背景画像・ぼかし自体は表示されたまま) */
+  body.entry-sheet-open #scroll-area { visibility: hidden; }
   .sheet h2 { margin: 0 0 14px; font-size: 17px; }
   .field { margin-bottom: 12px; }
   .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
@@ -963,6 +967,28 @@
   .bg-settings-row-head b { color: var(--text); font-variant-numeric: tabular-nums; }
   .bg-settings-row input[type="range"] { width: 100%; accent-color: var(--accent); }
   #bg-image-input { display: none; }
+  /* 背景調整パネル: ダークな幕(オーバーレイ)を使わず下部のみ覆うので、調整中も上側に実際の画面が見えたまま */
+  #bg-panel {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 150;
+    display: flex;
+    justify-content: center;
+  }
+  #bg-panel.hidden { display: none; }
+  .bg-panel-sheet {
+    width: 100%;
+    max-width: 640px;
+    background: var(--sheet-bg);
+    border-radius: 18px 18px 0 0;
+    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+    max-height: 70vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+  }
+  .bg-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .bg-panel-head .ghost-btn { padding: 6px 14px; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -976,7 +1002,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-16a</div>
+    <div class="app-version">v2026-10-16b</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1650,28 +1676,39 @@
 
     <div class="field" style="margin-top:20px;">
       <label>背景(端末に保存した画像をアプリの背景に表示します)</label>
-      <div class="backup-row">
-        <button class="ghost-btn" id="btn-bg-select">画像を選択</button>
-        <button class="ghost-btn" id="btn-bg-remove" style="color:var(--danger);border-color:var(--danger);display:none;">背景を削除</button>
-      </div>
-      <input type="file" id="bg-image-input" accept="image/*">
-      <div class="bg-settings-preview" id="bg-settings-preview" style="display:none;"></div>
-      <div class="bg-settings-row">
-        <div class="bg-settings-row-head"><span>オーバーレイの濃さ(画像の暗さ)</span><b id="bg-overlay-val">35%</b></div>
-        <input type="range" id="bg-overlay-slider" min="0" max="90" value="35">
-      </div>
-      <div class="bg-settings-row">
-        <div class="bg-settings-row-head"><span>カードの透明度(数値が高いほど不透明)</span><b id="bg-card-val">72%</b></div>
-        <input type="range" id="bg-card-slider" min="20" max="100" value="72">
-      </div>
-      <div class="bg-settings-row">
-        <div class="bg-settings-row-head"><span>背景のぼかし</span><b id="bg-blur-val">6px</b></div>
-        <input type="range" id="bg-blur-slider" min="0" max="14" value="6">
-      </div>
+      <button class="ghost-btn" id="btn-bg-open" style="width:100%;">背景を調整…</button>
     </div>
 
     <div class="sheet-actions">
       <button class="primary-btn" id="backup-close" style="flex:1;">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 背景調整パネル: 下部のみを覆い、上側に実際の画面(一覧・来店詳細など)を表示したまま調整できるようにする -->
+<div class="hidden" id="bg-panel">
+  <div class="bg-panel-sheet">
+    <div class="bg-panel-head">
+      <h2 style="margin:0;font-size:17px;">背景を調整</h2>
+      <button type="button" class="ghost-btn" id="bg-panel-close">閉じる</button>
+    </div>
+    <div class="backup-row">
+      <button class="ghost-btn" id="btn-bg-select">画像を選択</button>
+      <button class="ghost-btn" id="btn-bg-remove" style="color:var(--danger);border-color:var(--danger);display:none;">背景を削除</button>
+    </div>
+    <input type="file" id="bg-image-input" accept="image/*">
+    <div class="bg-settings-preview" id="bg-settings-preview" style="display:none;"></div>
+    <div class="bg-settings-row">
+      <div class="bg-settings-row-head"><span>オーバーレイの濃さ(画像の暗さ)</span><b id="bg-overlay-val">35%</b></div>
+      <input type="range" id="bg-overlay-slider" min="0" max="90" value="35">
+    </div>
+    <div class="bg-settings-row">
+      <div class="bg-settings-row-head"><span>カードの透明度(数値が高いほど不透明)</span><b id="bg-card-val">72%</b></div>
+      <input type="range" id="bg-card-slider" min="20" max="100" value="72">
+    </div>
+    <div class="bg-settings-row">
+      <div class="bg-settings-row-head"><span>背景のぼかし</span><b id="bg-blur-val">6px</b></div>
+      <input type="range" id="bg-blur-slider" min="0" max="14" value="6">
     </div>
   </div>
 </div>
@@ -4895,6 +4932,7 @@
     renderMikazukiBonusExtra();
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
+    document.body.classList.add('entry-sheet-open');
     autoResizeTextarea(eAtMemo);
   }
   // キャンセル時、何か入力済みなら破棄せず保存する(未入力の空フォームだけ何もせず閉じる)
@@ -4906,6 +4944,7 @@
   document.getElementById('e-cancel').addEventListener('click', function () {
     if (isEntryFormEmpty()) {
       overlayEntry.classList.add('hidden');
+    document.body.classList.remove('entry-sheet-open');
     } else {
       saveEntryForm();
     }
@@ -4995,6 +5034,7 @@
     }
     save();
     overlayEntry.classList.add('hidden');
+    document.body.classList.remove('entry-sheet-open');
     renderDetail();
   }
   document.getElementById('e-save').addEventListener('click', saveEntryForm);
@@ -5005,6 +5045,7 @@
     setEntryClosed(state.editingEntryId, false);
     save();
     overlayEntry.classList.add('hidden');
+    document.body.classList.remove('entry-sheet-open');
     renderDetail();
   });
 
@@ -5034,6 +5075,16 @@
   });
   document.getElementById('backup-close').addEventListener('click', function () {
     overlayBackup.classList.add('hidden');
+  });
+
+  // 背景調整パネル: バックアップシートを閉じてから開くことで、裏の一覧/来店詳細画面が見えたまま調整できる
+  var bgPanel = document.getElementById('bg-panel');
+  document.getElementById('btn-bg-open').addEventListener('click', function () {
+    overlayBackup.classList.add('hidden');
+    bgPanel.classList.remove('hidden');
+  });
+  document.getElementById('bg-panel-close').addEventListener('click', function () {
+    bgPanel.classList.add('hidden');
   });
 
   // --- 背景カスタマイズ(画像はIndexedDB、オーバーレイ/カード透明度/ぼかしの設定値はlocalStorageに保存) ---
