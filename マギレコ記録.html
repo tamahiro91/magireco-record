@@ -940,9 +940,8 @@
     position: fixed;
     inset: -20px;
     z-index: -2;
-    background-size: cover;
+    background-size: var(--bg-size, cover);
     background-position: var(--bg-pos-x, center) var(--bg-pos-y, top);
-    transform: scale(var(--bg-zoom, 1));
     filter: blur(var(--bg-blur, 0px));
     display: none;
   }
@@ -1017,7 +1016,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-16l</div>
+    <div class="app-version">v2026-10-16m</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -5310,18 +5309,44 @@
       root.setProperty('--bg-blur', settings.blur + 'px');
       root.setProperty('--bg-pos-x', (typeof settings.position === 'number' ? settings.position : 50) + '%');
       root.setProperty('--bg-pos-y', (typeof settings.positionY === 'number' ? settings.positionY : 0) + '%');
-      root.setProperty('--bg-zoom', String((typeof settings.zoom === 'number' ? settings.zoom : 100) / 100));
       root.setProperty('--panel', 'rgba(' + BG_PANEL_RGB.join(',') + ',' + (settings.card / 100).toFixed(3) + ')');
       root.setProperty('--panel2', 'rgba(' + BG_PANEL2_RGB.join(',') + ',' + (settings.card / 100).toFixed(3) + ')');
+      updateBgSizeVar(settings.zoom);
     } else {
       root.removeProperty('--bg-overlay');
       root.removeProperty('--bg-blur');
       root.removeProperty('--bg-pos-x');
       root.removeProperty('--bg-pos-y');
-      root.removeProperty('--bg-zoom');
+      root.removeProperty('--bg-size');
       root.removeProperty('--panel');
       root.removeProperty('--panel2');
     }
+  }
+  // transform:scaleでの疑似ズームは、要素のレイアウトサイズ(background-size/positionの計算基準)自体は変えないため、
+  // 元画像が「cover」で既に片方の軸をぴったり埋めている場合(横長画像の縦方向など)、その軸の位置調整が効かなかった。
+  // 実際の画像の自然サイズから明示的なbackground-sizeのpx値を計算して適用することで、ズーム時に両軸とも位置調整できるようにする。
+  var bgImageNatural = null;
+  function measureBgImageNatural(url) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      img.onload = function () { resolve({ w: img.naturalWidth, h: img.naturalHeight }); };
+      img.onerror = function () { resolve(null); };
+      img.src = url;
+    });
+  }
+  function updateBgSizeVar(zoomPercent) {
+    var root = document.documentElement.style;
+    if (!bgImageNatural || !bgImageNatural.w || !bgImageNatural.h) {
+      root.removeProperty('--bg-size');
+      return;
+    }
+    var boxW = window.innerWidth + 40;
+    var boxH = window.innerHeight + 40;
+    var coverScale = Math.max(boxW / bgImageNatural.w, boxH / bgImageNatural.h);
+    var zoomFactor = (typeof zoomPercent === 'number' ? zoomPercent : 100) / 100;
+    var w = Math.round(bgImageNatural.w * coverScale * zoomFactor);
+    var h = Math.round(bgImageNatural.h * coverScale * zoomFactor);
+    root.setProperty('--bg-size', w + 'px ' + h + 'px');
   }
   function setBgActive(active, imageUrl) {
     document.body.classList.toggle('bg-custom-active', active);
@@ -5372,6 +5397,10 @@
   [bgPosSlider, bgPosYSlider, bgZoomSlider, bgOverlaySlider, bgCardSlider, bgBlurSlider].forEach(function (el) {
     el.addEventListener('input', onBgSliderChange);
   });
+  // 画面回転などでビューポートが変わった時も、ズームの基準(cover相当のサイズ)を再計算する
+  window.addEventListener('resize', function () {
+    if (bgImageUrl && bgImageNatural) { updateBgSizeVar(Number(bgZoomSlider.value)); }
+  });
 
   document.getElementById('btn-bg-select').addEventListener('click', function () {
     document.getElementById('bg-image-input').click();
@@ -5383,15 +5412,19 @@
       if (bgImageUrl) URL.revokeObjectURL(bgImageUrl);
       bgImageUrl = URL.createObjectURL(file);
       var settings = loadBgSettings();
-      setBgActive(true, bgImageUrl);
-      applyBgSettings(settings, true);
-      refreshBgPreview(bgImageUrl);
+      return measureBgImageNatural(bgImageUrl).then(function (size) {
+        bgImageNatural = size;
+        setBgActive(true, bgImageUrl);
+        applyBgSettings(settings, true);
+        refreshBgPreview(bgImageUrl);
+      });
     });
   });
   document.getElementById('btn-bg-remove').addEventListener('click', function () {
     removeBgImage().then(function () {
       if (bgImageUrl) URL.revokeObjectURL(bgImageUrl);
       bgImageUrl = null;
+      bgImageNatural = null;
       setBgActive(false, null);
       applyBgSettings(loadBgSettings(), false);
       refreshBgPreview(null);
@@ -5411,9 +5444,12 @@
     loadBgImage().then(function (blob) {
       if (blob) {
         bgImageUrl = URL.createObjectURL(blob);
-        setBgActive(true, bgImageUrl);
-        applyBgSettings(settings, true);
-        refreshBgPreview(bgImageUrl);
+        return measureBgImageNatural(bgImageUrl).then(function (size) {
+          bgImageNatural = size;
+          setBgActive(true, bgImageUrl);
+          applyBgSettings(settings, true);
+          refreshBgPreview(bgImageUrl);
+        });
       } else {
         setBgActive(false, null);
         applyBgSettings(settings, false);
