@@ -989,6 +989,28 @@
   }
   .bg-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .bg-panel-head .ghost-btn { padding: 6px 14px; font-size: 13px; }
+
+  /* 詳細カスタムパネル(表示項目のオンオフ)も背景調整パネルと同じく下部のみ覆い、裏の画面が見えたまま操作できる */
+  #custom-panel {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 150;
+    display: flex;
+    justify-content: center;
+  }
+  #custom-panel.hidden { display: none; }
+  .custom-panel-hint { font-size: 12px; color: var(--sub); line-height: 1.6; margin-bottom: 14px; }
+  .custom-panel-group-title { font-size: 13px; font-weight: 700; color: var(--sub); margin: 14px 0 4px; }
+  .custom-panel-group-title:first-of-type { margin-top: 0; }
+  .custom-panel-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 2px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .custom-panel-row input[type="checkbox"] { width: 20px; height: 20px; flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -1003,7 +1025,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-16e</div>
+    <div class="app-version">v2026-10-16f</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1340,7 +1362,7 @@
         <label>ポイント</label>
         <input type="number" inputmode="numeric" id="e-point" placeholder="例: 350">
       </div>
-      <div class="field">
+      <div class="field" id="field-win-trigger">
         <label>当選契機</label>
         <div class="cat-select" id="e-win-trigger">
           <button type="button" data-v="PT">PT</button>
@@ -1625,7 +1647,7 @@
       <div id="univa-plates-list"></div>
       <button type="button" class="ghost-btn" id="univa-plate-add">＋ ユニバプレートを追加</button>
     </div>
-    <div class="field">
+    <div class="field" id="field-atmemo">
       <label>自由メモ</label>
       <textarea id="e-atmemo" placeholder="例：穢れ/きゅうべえ会話など"></textarea>
     </div>
@@ -1676,8 +1698,8 @@
     <div id="sync-status" style="font-size:12px;color:var(--sub);margin-top:6px;"></div>
 
     <div class="field" style="margin-top:20px;">
-      <label>背景(端末に保存した画像をアプリの背景に表示します)</label>
-      <button class="ghost-btn" id="btn-bg-open" style="width:100%;">背景を調整…</button>
+      <label>表示項目のカスタマイズ</label>
+      <button class="ghost-btn" id="btn-custom-open" style="width:100%;">詳細カスタム</button>
     </div>
 
     <div class="sheet-actions">
@@ -1711,6 +1733,31 @@
       <div class="bg-settings-row-head"><span>背景のぼかし</span><b id="bg-blur-val">6px</b></div>
       <input type="range" id="bg-blur-slider" min="0" max="14" value="6">
     </div>
+  </div>
+</div>
+
+<!-- 詳細カスタム: 来店詳細・記録編集の各セクションを表示/非表示できる(データ自体は非表示中も保持される) -->
+<div class="hidden" id="custom-panel">
+  <div class="bg-panel-sheet">
+    <div class="bg-panel-head">
+      <h2 style="margin:0;font-size:17px;">詳細カスタム</h2>
+      <button type="button" class="ghost-btn" id="custom-panel-close">閉じる</button>
+    </div>
+    <div class="custom-panel-hint">オフにした項目は非表示になりますが、入力済みのデータは保持され、再度オンにすると表示されます。</div>
+    <div class="custom-panel-group-title">来店詳細画面</div>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-rareRole" checked><span>レア役合算カウント</span></label>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-highProb" checked><span>高確移行カウント</span></label>
+    <div class="custom-panel-group-title">記録編集画面</div>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-mode" checked><span>魔法少女モード</span></label>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-kegare" checked><span>穢れカウント</span></label>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-bighp" checked><span>BIG中の高確ゲーム数</span></label>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-winTrigger" checked><span>当選契機(PT/小役)</span></label>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-mikazuki" checked><span>みたまボーナス</span></label>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-atwin" checked><span>at当選/at初期ゲーム数</span></label>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-wee" checked><span>うぃチャンス</span></label>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-atContinueGroup" checked><span>at継続40ゲーム/at終了画面/ユニバプレート</span></label>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-doppelEmbryoGroup" checked><span>ドッペルチャンス/エンブリオ関連</span></label>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-memo" checked><span>自由メモ</span></label>
   </div>
 </div>
 
@@ -3906,6 +3953,7 @@
     if (detailsCollapsed) {
       detailToggleFields(hasBig, hasEmbryo).forEach(function (f) { f.hidden = true; });
     }
+    applyEntryFieldCustomization();
   }
 
   resultButtons.forEach(function (btn) {
@@ -5078,12 +5126,8 @@
     overlayBackup.classList.add('hidden');
   });
 
-  // 背景調整パネル: バックアップシートを閉じてから開くことで、裏の一覧/来店詳細画面が見えたまま調整できる
+  // 背景調整パネル(ヘッダーの「背景」ボタンから開く。バックアップシート内には入口を置かない)
   var bgPanel = document.getElementById('bg-panel');
-  document.getElementById('btn-bg-open').addEventListener('click', function () {
-    overlayBackup.classList.add('hidden');
-    bgPanel.classList.remove('hidden');
-  });
   document.getElementById('bg-panel-close').addEventListener('click', function () {
     bgPanel.classList.add('hidden');
   });
@@ -5091,6 +5135,89 @@
   document.getElementById('btn-bg-open-direct').addEventListener('click', function () {
     bgPanel.classList.remove('hidden');
   });
+
+  // --- 詳細カスタム(来店詳細・記録編集の各セクションの表示/非表示。データは非表示中も保持される) ---
+  var CUSTOM_DISPLAY_KEY = 'magireko.displaySettings';
+  var CUSTOM_DISPLAY_DEFAULTS = {
+    rareRole: true, highProb: true,
+    mode: true, kegare: true, bighp: true, winTrigger: true, mikazuki: true, atwin: true,
+    wee: true, atContinueGroup: true, doppelEmbryoGroup: true, memo: true
+  };
+  function loadCustomDisplaySettings() {
+    try {
+      var raw = localStorage.getItem(CUSTOM_DISPLAY_KEY);
+      var saved = raw ? JSON.parse(raw) : {};
+      var merged = {};
+      Object.keys(CUSTOM_DISPLAY_DEFAULTS).forEach(function (k) {
+        merged[k] = (typeof saved[k] === 'boolean') ? saved[k] : CUSTOM_DISPLAY_DEFAULTS[k];
+      });
+      return merged;
+    } catch (err) {
+      return Object.assign({}, CUSTOM_DISPLAY_DEFAULTS);
+    }
+  }
+  function saveCustomDisplaySettings(s) {
+    try { localStorage.setItem(CUSTOM_DISPLAY_KEY, JSON.stringify(s)); } catch (err) {}
+  }
+  var customDisplaySettings = loadCustomDisplaySettings();
+
+  // 来店詳細画面側(レア役合算カウント/高確移行カウント)に適用する
+  function applyDetailViewCustomization() {
+    elRareRoleSummary.hidden = !customDisplaySettings.rareRole;
+    elHighProbSummary.hidden = !customDisplaySettings.highProb;
+  }
+  // 記録編集シート側に適用する(updateConditionalFieldsが通常の条件分岐で表示/非表示を決めた"後"に、
+  // ユーザーがオフにした項目だけをさらに隠す。オンにした項目を無理に表示状態へ戻すことはしない)
+  function applyEntryFieldCustomization() {
+    var s = customDisplaySettings;
+    var fieldWinTrigger = document.getElementById('field-win-trigger');
+    var fieldAtMemo = document.getElementById('field-atmemo');
+    // 当選契機/自由メモは他の条件分岐で表示状態が管理されていないため、ここで一旦表示に戻してから判定する
+    fieldWinTrigger.hidden = false;
+    fieldAtMemo.hidden = false;
+    if (!s.mode) { fieldMode.hidden = true; }
+    if (!s.kegare) { elKegareSummary.hidden = true; }
+    if (!s.bighp) { fieldBighp.hidden = true; }
+    if (!s.winTrigger) { fieldWinTrigger.hidden = true; }
+    if (!s.mikazuki) { fieldMikazukiStage.hidden = true; }
+    if (!s.atwin) { fieldAtWin.hidden = true; }
+    if (!s.wee) { fieldWeeChances.hidden = true; }
+    if (!s.atContinueGroup) { fieldAtContinue40.hidden = true; fieldAtScreen.hidden = true; fieldUnivaPlates.hidden = true; }
+    if (!s.doppelEmbryoGroup) {
+      fieldDoppelChances.hidden = true; fieldDoppelBonusCounters.hidden = true; fieldBand.hidden = true;
+      fieldEmbryo.hidden = true; fieldEmbryoGameCount.hidden = true; fieldEmbryoBell.hidden = true;
+      fieldEmbryoBonus.hidden = true; fieldEmbryoConnect.hidden = true; fieldEmbryoPattern.hidden = true;
+      fieldCardChances.hidden = true;
+    }
+    if (!s.memo) { fieldAtMemo.hidden = true; }
+  }
+
+  var customPanel = document.getElementById('custom-panel');
+  var CUSTOM_CHECKBOX_MAP = {
+    rareRole: 'custom-show-rareRole', highProb: 'custom-show-highProb',
+    mode: 'custom-show-mode', kegare: 'custom-show-kegare', bighp: 'custom-show-bighp',
+    winTrigger: 'custom-show-winTrigger', mikazuki: 'custom-show-mikazuki', atwin: 'custom-show-atwin',
+    wee: 'custom-show-wee', atContinueGroup: 'custom-show-atContinueGroup',
+    doppelEmbryoGroup: 'custom-show-doppelEmbryoGroup', memo: 'custom-show-memo'
+  };
+  Object.keys(CUSTOM_CHECKBOX_MAP).forEach(function (key) {
+    var checkbox = document.getElementById(CUSTOM_CHECKBOX_MAP[key]);
+    checkbox.checked = customDisplaySettings[key];
+    checkbox.addEventListener('change', function () {
+      customDisplaySettings[key] = checkbox.checked;
+      saveCustomDisplaySettings(customDisplaySettings);
+      applyDetailViewCustomization();
+      if (!overlayEntry.classList.contains('hidden')) { updateConditionalFields(); }
+    });
+  });
+  document.getElementById('btn-custom-open').addEventListener('click', function () {
+    overlayBackup.classList.add('hidden');
+    customPanel.classList.remove('hidden');
+  });
+  document.getElementById('custom-panel-close').addEventListener('click', function () {
+    customPanel.classList.add('hidden');
+  });
+  applyDetailViewCustomization();
 
   // --- 背景カスタマイズ(画像はIndexedDB、オーバーレイ/カード透明度/ぼかしの設定値はlocalStorageに保存) ---
   var BG_SETTINGS_KEY = 'magireko.bgSettings';
