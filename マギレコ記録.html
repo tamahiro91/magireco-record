@@ -941,7 +941,7 @@
     inset: -20px;
     z-index: -2;
     background-size: cover;
-    background-position: center var(--bg-pos-y, top);
+    background-position: var(--bg-pos-x, center) top;
     filter: blur(var(--bg-blur, 0px));
     display: none;
   }
@@ -952,16 +952,7 @@
     background: rgba(0, 0, 0, var(--bg-overlay, 0));
     display: none;
   }
-  .bg-settings-preview {
-    width: 100%;
-    height: 120px;
-    border-radius: 10px;
-    background-size: cover;
-    background-position: center var(--bg-pos-y, top);
-    background-color: var(--panel2);
-    border: 1px solid var(--border);
-    margin-top: 8px;
-  }
+  .bg-pos-hint { font-size: 12px; color: var(--sub); line-height: 1.6; margin-top: 10px; }
   .bg-pos-row { display: flex; gap: 8px; margin-top: 10px; }
   .bg-pos-row button {
     flex: 1;
@@ -1037,7 +1028,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-16h</div>
+    <div class="app-version">v2026-10-16j</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1732,11 +1723,11 @@
       <button class="ghost-btn" id="btn-bg-remove" style="color:var(--danger);border-color:var(--danger);display:none;">背景を削除</button>
     </div>
     <input type="file" id="bg-image-input" accept="image/*">
-    <div class="bg-settings-preview" id="bg-settings-preview" style="display:none;"></div>
+    <div class="bg-pos-hint" id="bg-pos-hint" style="display:none;">このパネルの上に見えている部分が実際の表示です。横長の画像などで左右が見切れる場合は、表示位置を選ぶとそのまま反映されます。</div>
     <div class="bg-pos-row" id="bg-pos-row">
-      <button type="button" data-v="top" class="active">上</button>
-      <button type="button" data-v="center">中央</button>
-      <button type="button" data-v="bottom">下</button>
+      <button type="button" data-v="left">左</button>
+      <button type="button" data-v="center" class="active">中央</button>
+      <button type="button" data-v="right">右</button>
     </div>
     <div class="bg-settings-row">
       <div class="bg-settings-row-head"><span>オーバーレイの濃さ(画像の暗さ)</span><b id="bg-overlay-val">35%</b></div>
@@ -5241,7 +5232,7 @@
 
   // --- 背景カスタマイズ(画像はIndexedDB、オーバーレイ/カード透明度/ぼかしの設定値はlocalStorageに保存) ---
   var BG_SETTINGS_KEY = 'magireko.bgSettings';
-  var BG_POSITIONS = ['top', 'center', 'bottom'];
+  var BG_POSITIONS = ['left', 'center', 'right'];
   function loadBgSettings() {
     try {
       var raw = localStorage.getItem(BG_SETTINGS_KEY);
@@ -5250,10 +5241,10 @@
         overlay: (typeof s.overlay === 'number') ? s.overlay : 35,
         card: (typeof s.card === 'number') ? s.card : 72,
         blur: (typeof s.blur === 'number') ? s.blur : 6,
-        position: (BG_POSITIONS.indexOf(s.position) !== -1) ? s.position : 'top'
+        position: (BG_POSITIONS.indexOf(s.position) !== -1) ? s.position : 'center'
       };
     } catch (err) {
-      return { overlay: 35, card: 72, blur: 6, position: 'top' };
+      return { overlay: 35, card: 72, blur: 6, position: 'center' };
     }
   }
   function saveBgSettings(s) {
@@ -5312,13 +5303,13 @@
     if (hasImage) {
       root.setProperty('--bg-overlay', String(settings.overlay / 100));
       root.setProperty('--bg-blur', settings.blur + 'px');
-      root.setProperty('--bg-pos-y', settings.position || 'top');
+      root.setProperty('--bg-pos-x', settings.position || 'center');
       root.setProperty('--panel', 'rgba(' + BG_PANEL_RGB.join(',') + ',' + (settings.card / 100).toFixed(3) + ')');
       root.setProperty('--panel2', 'rgba(' + BG_PANEL2_RGB.join(',') + ',' + (settings.card / 100).toFixed(3) + ')');
     } else {
       root.removeProperty('--bg-overlay');
       root.removeProperty('--bg-blur');
-      root.removeProperty('--bg-pos-y');
+      root.removeProperty('--bg-pos-x');
       root.removeProperty('--panel');
       root.removeProperty('--panel2');
     }
@@ -5332,16 +5323,12 @@
     if (active && imageUrl) { imgLayer.style.backgroundImage = 'url(' + imageUrl + ')'; }
   }
   function refreshBgPreview(imageUrl) {
-    var preview = document.getElementById('bg-settings-preview');
+    // サムネイルは実際の画面比率と異なり位置確認用には不正確なため、
+    // パネルの上に見えている実際の背景(#bg-image-layer)をそのまま位置確認に使う
+    var hint = document.getElementById('bg-pos-hint');
     var removeBtn = document.getElementById('btn-bg-remove');
-    if (imageUrl) {
-      preview.style.display = '';
-      preview.style.backgroundImage = 'url(' + imageUrl + ')';
-      removeBtn.style.display = '';
-    } else {
-      preview.style.display = 'none';
-      removeBtn.style.display = 'none';
-    }
+    hint.style.display = imageUrl ? '' : 'none';
+    removeBtn.style.display = imageUrl ? '' : 'none';
   }
 
   var bgOverlaySlider = document.getElementById('bg-overlay-slider');
@@ -5355,7 +5342,7 @@
     bgCardVal.textContent = bgCardSlider.value + '%';
     bgBlurVal.textContent = bgBlurSlider.value + 'px';
   }
-  var currentBgPosition = 'top';
+  var currentBgPosition = 'center';
   function onBgSliderChange() {
     var settings = { overlay: Number(bgOverlaySlider.value), card: Number(bgCardSlider.value), blur: Number(bgBlurSlider.value), position: currentBgPosition };
     updateBgSlidersUi();
