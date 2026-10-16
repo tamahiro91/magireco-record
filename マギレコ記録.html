@@ -941,7 +941,8 @@
     inset: -20px;
     z-index: -2;
     background-size: cover;
-    background-position: var(--bg-pos-x, center) top;
+    background-position: var(--bg-pos-x, center) var(--bg-pos-y, top);
+    transform: scale(var(--bg-zoom, 1));
     filter: blur(var(--bg-blur, 0px));
     display: none;
   }
@@ -1016,7 +1017,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-16k</div>
+    <div class="app-version">v2026-10-16l</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1711,10 +1712,18 @@
       <button class="ghost-btn" id="btn-bg-remove" style="color:var(--danger);border-color:var(--danger);display:none;">背景を削除</button>
     </div>
     <input type="file" id="bg-image-input" accept="image/*">
-    <div class="bg-pos-hint" id="bg-pos-hint" style="display:none;">このパネルの上に見えている部分が実際の表示です。横長の画像などで左右が見切れる場合は、下の「横位置」スライダーで微調整するとそのまま反映されます。</div>
+    <div class="bg-pos-hint" id="bg-pos-hint" style="display:none;">このパネルの上に見えている部分が実際の表示です。画像が見切れる場合は、下のスライダーで位置やズームを微調整するとそのまま反映されます。</div>
     <div class="bg-settings-row">
       <div class="bg-settings-row-head"><span>横位置(左右の微調整)</span><b id="bg-pos-val">50%</b></div>
       <input type="range" id="bg-pos-slider" min="0" max="100" value="50">
+    </div>
+    <div class="bg-settings-row">
+      <div class="bg-settings-row-head"><span>縦位置(上下の微調整)</span><b id="bg-posy-val">0%</b></div>
+      <input type="range" id="bg-posy-slider" min="0" max="100" value="0">
+    </div>
+    <div class="bg-settings-row">
+      <div class="bg-settings-row-head"><span>ズーム(引き⇔アップ)</span><b id="bg-zoom-val">100%</b></div>
+      <input type="range" id="bg-zoom-slider" min="100" max="200" value="100">
     </div>
     <div class="bg-settings-row">
       <div class="bg-settings-row-head"><span>オーバーレイの濃さ(画像の暗さ)</span><b id="bg-overlay-val">35%</b></div>
@@ -5235,10 +5244,12 @@
         overlay: (typeof s.overlay === 'number') ? s.overlay : 35,
         card: (typeof s.card === 'number') ? s.card : 72,
         blur: (typeof s.blur === 'number') ? s.blur : 6,
-        position: position
+        position: position,
+        positionY: (typeof s.positionY === 'number') ? s.positionY : 0,
+        zoom: (typeof s.zoom === 'number') ? s.zoom : 100
       };
     } catch (err) {
-      return { overlay: 35, card: 72, blur: 6, position: 50 };
+      return { overlay: 35, card: 72, blur: 6, position: 50, positionY: 0, zoom: 100 };
     }
   }
   function saveBgSettings(s) {
@@ -5298,12 +5309,16 @@
       root.setProperty('--bg-overlay', String(settings.overlay / 100));
       root.setProperty('--bg-blur', settings.blur + 'px');
       root.setProperty('--bg-pos-x', (typeof settings.position === 'number' ? settings.position : 50) + '%');
+      root.setProperty('--bg-pos-y', (typeof settings.positionY === 'number' ? settings.positionY : 0) + '%');
+      root.setProperty('--bg-zoom', String((typeof settings.zoom === 'number' ? settings.zoom : 100) / 100));
       root.setProperty('--panel', 'rgba(' + BG_PANEL_RGB.join(',') + ',' + (settings.card / 100).toFixed(3) + ')');
       root.setProperty('--panel2', 'rgba(' + BG_PANEL2_RGB.join(',') + ',' + (settings.card / 100).toFixed(3) + ')');
     } else {
       root.removeProperty('--bg-overlay');
       root.removeProperty('--bg-blur');
       root.removeProperty('--bg-pos-x');
+      root.removeProperty('--bg-pos-y');
+      root.removeProperty('--bg-zoom');
       root.removeProperty('--panel');
       root.removeProperty('--panel2');
     }
@@ -5326,26 +5341,35 @@
   }
 
   var bgPosSlider = document.getElementById('bg-pos-slider');
+  var bgPosYSlider = document.getElementById('bg-posy-slider');
+  var bgZoomSlider = document.getElementById('bg-zoom-slider');
   var bgOverlaySlider = document.getElementById('bg-overlay-slider');
   var bgCardSlider = document.getElementById('bg-card-slider');
   var bgBlurSlider = document.getElementById('bg-blur-slider');
   var bgPosVal = document.getElementById('bg-pos-val');
+  var bgPosYVal = document.getElementById('bg-posy-val');
+  var bgZoomVal = document.getElementById('bg-zoom-val');
   var bgOverlayVal = document.getElementById('bg-overlay-val');
   var bgCardVal = document.getElementById('bg-card-val');
   var bgBlurVal = document.getElementById('bg-blur-val');
   function updateBgSlidersUi() {
     bgPosVal.textContent = bgPosSlider.value + '%';
+    bgPosYVal.textContent = bgPosYSlider.value + '%';
+    bgZoomVal.textContent = bgZoomSlider.value + '%';
     bgOverlayVal.textContent = bgOverlaySlider.value + '%';
     bgCardVal.textContent = bgCardSlider.value + '%';
     bgBlurVal.textContent = bgBlurSlider.value + 'px';
   }
   function onBgSliderChange() {
-    var settings = { overlay: Number(bgOverlaySlider.value), card: Number(bgCardSlider.value), blur: Number(bgBlurSlider.value), position: Number(bgPosSlider.value) };
+    var settings = {
+      overlay: Number(bgOverlaySlider.value), card: Number(bgCardSlider.value), blur: Number(bgBlurSlider.value),
+      position: Number(bgPosSlider.value), positionY: Number(bgPosYSlider.value), zoom: Number(bgZoomSlider.value)
+    };
     updateBgSlidersUi();
     saveBgSettings(settings);
     applyBgSettings(settings, !!bgImageUrl);
   }
-  [bgPosSlider, bgOverlaySlider, bgCardSlider, bgBlurSlider].forEach(function (el) {
+  [bgPosSlider, bgPosYSlider, bgZoomSlider, bgOverlaySlider, bgCardSlider, bgBlurSlider].forEach(function (el) {
     el.addEventListener('input', onBgSliderChange);
   });
 
@@ -5378,6 +5402,8 @@
   (function initBg() {
     var settings = loadBgSettings();
     bgPosSlider.value = settings.position;
+    bgPosYSlider.value = settings.positionY;
+    bgZoomSlider.value = settings.zoom;
     bgOverlaySlider.value = settings.overlay;
     bgCardSlider.value = settings.card;
     bgBlurSlider.value = settings.blur;
