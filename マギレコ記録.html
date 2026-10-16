@@ -1025,7 +1025,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-16f</div>
+    <div class="app-version">v2026-10-16g</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1754,6 +1754,7 @@
     <label class="custom-panel-row"><input type="checkbox" id="custom-show-winTrigger" checked><span>当選契機(PT/小役)</span></label>
     <label class="custom-panel-row"><input type="checkbox" id="custom-show-mikazuki" checked><span>みたまボーナス</span></label>
     <label class="custom-panel-row"><input type="checkbox" id="custom-show-atwin" checked><span>at当選/at初期ゲーム数</span></label>
+    <label class="custom-panel-row"><input type="checkbox" id="custom-show-storyOrder" checked><span>ストーリー順番示唆</span></label>
     <label class="custom-panel-row"><input type="checkbox" id="custom-show-wee" checked><span>うぃチャンス</span></label>
     <label class="custom-panel-row"><input type="checkbox" id="custom-show-atContinueGroup" checked><span>at継続40ゲーム/at終了画面/ユニバプレート</span></label>
     <label class="custom-panel-row"><input type="checkbox" id="custom-show-doppelEmbryoGroup" checked><span>ドッペルチャンス/エンブリオ関連</span></label>
@@ -5141,7 +5142,7 @@
   var CUSTOM_DISPLAY_DEFAULTS = {
     rareRole: true, highProb: true,
     mode: true, kegare: true, bighp: true, winTrigger: true, mikazuki: true, atwin: true,
-    wee: true, atContinueGroup: true, doppelEmbryoGroup: true, memo: true
+    storyOrder: true, wee: true, atContinueGroup: true, doppelEmbryoGroup: true, memo: true
   };
   function loadCustomDisplaySettings() {
     try {
@@ -5181,6 +5182,7 @@
     if (!s.winTrigger) { fieldWinTrigger.hidden = true; }
     if (!s.mikazuki) { fieldMikazukiStage.hidden = true; }
     if (!s.atwin) { fieldAtWin.hidden = true; }
+    if (!s.storyOrder) { fieldStoryOrder.hidden = true; }
     if (!s.wee) { fieldWeeChances.hidden = true; }
     if (!s.atContinueGroup) { fieldAtContinue40.hidden = true; fieldAtScreen.hidden = true; fieldUnivaPlates.hidden = true; }
     if (!s.doppelEmbryoGroup) {
@@ -5197,6 +5199,7 @@
     rareRole: 'custom-show-rareRole', highProb: 'custom-show-highProb',
     mode: 'custom-show-mode', kegare: 'custom-show-kegare', bighp: 'custom-show-bighp',
     winTrigger: 'custom-show-winTrigger', mikazuki: 'custom-show-mikazuki', atwin: 'custom-show-atwin',
+    storyOrder: 'custom-show-storyOrder',
     wee: 'custom-show-wee', atContinueGroup: 'custom-show-atContinueGroup',
     doppelEmbryoGroup: 'custom-show-doppelEmbryoGroup', memo: 'custom-show-memo'
   };
