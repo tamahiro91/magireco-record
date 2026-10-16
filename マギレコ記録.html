@@ -31,7 +31,8 @@
     --panel2: #2c2c2e;
     --border: #3a3a3c;
     --text: #f2f2f7;
-    --sub: #9a9aa0;
+    --sub: #f2f2f7;
+    --sheet-bg: #1c1c1e;
     --accent: #ffd60a;
     --big: #ff6b6b;
     --reg: #6bb8ff;
@@ -61,6 +62,8 @@
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
   }
+  /* 背景画像が設定されている間だけ、body自身の背景を透明にして#bg-image-layerを透かす */
+  body.bg-custom-active { background: transparent; }
   /* #appは画面ぴったりの高さで固定し、中の#scroll-areaだけがスクロールする(下部の＋ボタン列が記録一覧と重ならないようにするため) */
   #app {
     max-width: 640px;
@@ -395,6 +398,7 @@
   }
   .invest-stepper { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
   .mini-btn {
+    position: relative;
     flex-shrink: 0;
     width: 30px;
     height: 30px;
@@ -406,16 +410,23 @@
     cursor: pointer;
     padding: 0;
   }
+  /* 見た目のサイズは変えず、タップ判定だけ一回り広げる */
+  .mini-btn::before {
+    content: "";
+    position: absolute;
+    inset: -8px;
+  }
   .mini-btn:active { opacity: 0.6; }
   .invest-count {
     font-size: 15px;
     font-weight: 700;
     width: 34px;
     text-align: center;
-    background: none;
-    border: none;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
     color: var(--text);
-    padding: 0;
+    padding: 4px 2px;
     -moz-appearance: textfield;
   }
   .invest-count::-webkit-outer-spin-button,
@@ -513,7 +524,8 @@
   .tag.TrueEnding { background: var(--true-ending); font-size: 8px; }
   .tag.AT { background: var(--at); }
   .tag.メモ { background: var(--memo); color: #000; }
-  .entry .entry-num { flex-shrink: 0; width: 16px; text-align: center; font-size: 13px; font-weight: 700; color: var(--sub); margin-top: 4px; }
+  .entry .entry-num { flex-shrink: 0; width: 28px; text-align: center; font-size: 13px; font-weight: 700; color: var(--sub); margin-top: 4px; }
+  .entry .entry-num-sub { font-size: 10px; font-weight: 700; color: var(--accent); margin-top: 3px; }
   .entry .entry-side { flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; }
   .entry .entry-toggle {
     width: 34px;
@@ -614,7 +626,7 @@
   }
   .overlay.hidden { display: none; }
   .sheet {
-    background: var(--panel);
+    background: var(--sheet-bg);
     width: 100%;
     max-width: 640px;
     margin: 0 auto;
@@ -918,9 +930,44 @@
   .backup-row { display: flex; gap: 8px; margin-top: 4px; }
   .backup-row button { flex: 1; }
   #import-file { display: none; }
+
+  /* 背景カスタマイズ(設定された時のみ#bg-image-layerに画像が入り表示される。未設定時は従来通りの見た目) */
+  #bg-image-layer {
+    position: fixed;
+    inset: -20px;
+    z-index: -2;
+    background-size: cover;
+    background-position: center top;
+    filter: blur(var(--bg-blur, 0px));
+    display: none;
+  }
+  #bg-overlay-layer {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: rgba(0, 0, 0, var(--bg-overlay, 0));
+    display: none;
+  }
+  .bg-settings-preview {
+    width: 100%;
+    height: 120px;
+    border-radius: 10px;
+    background-size: cover;
+    background-position: center top;
+    background-color: var(--panel2);
+    border: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .bg-settings-row { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+  .bg-settings-row-head { display: flex; justify-content: space-between; font-size: 13px; color: var(--sub); }
+  .bg-settings-row-head b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .bg-settings-row input[type="range"] { width: 100%; accent-color: var(--accent); }
+  #bg-image-input { display: none; }
 </style>
 </head>
 <body>
+<div id="bg-image-layer"></div>
+<div id="bg-overlay-layer"></div>
 <div id="app">
 <div id="scroll-area">
 
@@ -929,7 +976,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-15c</div>
+    <div class="app-version">v2026-10-16a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1266,6 +1313,13 @@
         <label>ポイント</label>
         <input type="number" inputmode="numeric" id="e-point" placeholder="例: 350">
       </div>
+      <div class="field">
+        <label>当選契機</label>
+        <div class="cat-select" id="e-win-trigger">
+          <button type="button" data-v="PT">PT</button>
+          <button type="button" data-v="小役">小役</button>
+        </div>
+      </div>
     </div>
     <button type="button" class="ghost-btn detail-toggle-btn" id="detail-toggle-btn">詳細をたたむ ▲</button>
     <div class="summary-pair">
@@ -1594,6 +1648,28 @@
     </div>
     <div id="sync-status" style="font-size:12px;color:var(--sub);margin-top:6px;"></div>
 
+    <div class="field" style="margin-top:20px;">
+      <label>背景(端末に保存した画像をアプリの背景に表示します)</label>
+      <div class="backup-row">
+        <button class="ghost-btn" id="btn-bg-select">画像を選択</button>
+        <button class="ghost-btn" id="btn-bg-remove" style="color:var(--danger);border-color:var(--danger);display:none;">背景を削除</button>
+      </div>
+      <input type="file" id="bg-image-input" accept="image/*">
+      <div class="bg-settings-preview" id="bg-settings-preview" style="display:none;"></div>
+      <div class="bg-settings-row">
+        <div class="bg-settings-row-head"><span>オーバーレイの濃さ(画像の暗さ)</span><b id="bg-overlay-val">35%</b></div>
+        <input type="range" id="bg-overlay-slider" min="0" max="90" value="35">
+      </div>
+      <div class="bg-settings-row">
+        <div class="bg-settings-row-head"><span>カードの透明度(数値が高いほど不透明)</span><b id="bg-card-val">72%</b></div>
+        <input type="range" id="bg-card-slider" min="20" max="100" value="72">
+      </div>
+      <div class="bg-settings-row">
+        <div class="bg-settings-row-head"><span>背景のぼかし</span><b id="bg-blur-val">6px</b></div>
+        <input type="range" id="bg-blur-slider" min="0" max="14" value="6">
+      </div>
+    </div>
+
     <div class="sheet-actions">
       <button class="primary-btn" id="backup-close" style="flex:1;">閉じる</button>
     </div>
@@ -1622,7 +1698,7 @@
 <script>
 (function () {
   var STORAGE_KEY = 'magireco.visits.v1';
-  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], univaPlates: [], univaPlatesClosed: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], weeBonusExtra1: 0, weeBonusExtra2: null, atContinue40: [], atContinue40Closed: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, calYear: null, calMonth: null, cardCounts: {} };
+  var state = { visits: [], currentVisitId: null, editingEntryId: null, editingVisitMode: null, selectedResults: [], selectedMode: null, selectedBigVoice: null, selectedBigScreen: null, atScreens: [], univaPlates: [], univaPlatesClosed: [], selectedMikazukiStage: null, selectedBand: null, selectedEmbryoTriggers: [], selectedEmbryoBell: null, selectedEmbryoConnect: null, selectedEmbryoPattern: null, weeChances: [], weeBonusExtra1: 0, weeBonusExtra2: null, atContinue40: [], atContinue40Closed: [], selectedStoryOrder: null, doppelChances: [], selectedEpiboChar: null, selectedEpiboKuroeCase: null, selectedWinTrigger: null, calYear: null, calMonth: null, cardCounts: {} };
   // 結果タグの内部値(データ/CSSクラス用)と一覧での表示文言が異なるものの対応表
   var TAG_LABELS = { 'エンブリオ': 'エンブリオイブ', 'TrueEnding': 'True Ending' };
   // 示唆文言から「!?」「！？」を取り除く(アプリ内の示唆表示全体で統一して非表示にする)
@@ -3277,7 +3353,7 @@
       row.dataset.entryId = e.id;
       if (isEntryClosed(e.id)) row.classList.add('closed');
       row.innerHTML =
-        '<div class="entry-num">' + (isMemo ? '' : entryNum) + '</div>' +
+        '<div class="entry-num">' + (isMemo ? '' : entryNum) + (!isMemo && e.winTrigger ? '<div class="entry-num-sub">' + e.winTrigger + '</div>' : '') + '</div>' +
         '<div class="tags">' + tags.join('') + '</div>' +
         '<div class="body">' +
           '<div class="nums"></div>' +
@@ -4670,6 +4746,7 @@
   var embryoConnectButtons = setupSingleSelect('#e-embryo-connect button', 'selectedEmbryoConnect');
   var epiboCharButtons = setupSingleSelect('#e-epibo-char button', 'selectedEpiboChar', function () { updateConditionalFields(); });
   var epiboKuroeCaseButtons = setupSingleSelect('#e-epibo-kuroe-case button', 'selectedEpiboKuroeCase', function () { updateConditionalFields(); });
+  var winTriggerButtons = setupSingleSelect('#e-win-trigger button', 'selectedWinTrigger');
 
   // 複数選択(ON/OFFをそれぞれ独立して切り替え)のボタングループを作る共通ヘルパー
   function setupMultiSelect(selector, stateKey, onChange) {
@@ -4712,6 +4789,7 @@
       state.cardCounts = Object.assign({}, e.cardCounts || {});
       state.selectedEpiboChar = e.epiboChar || null;
       state.selectedEpiboKuroeCase = e.epiboKuroeCase || null;
+      state.selectedWinTrigger = e.winTrigger || null;
       state.selectedEmbryoTriggers = (e.embryoTriggers || []).slice();
       state.selectedEmbryoBell = (e.embryoBellLevel != null) ? String(e.embryoBellLevel) : null;
       state.selectedEmbryoConnect = e.embryoConnect || null;
@@ -4761,6 +4839,7 @@
       state.cardCounts = {};
       state.selectedEpiboChar = null;
       state.selectedEpiboKuroeCase = null;
+      state.selectedWinTrigger = null;
       state.selectedEmbryoTriggers = [];
       state.selectedEmbryoBell = null;
       state.selectedEmbryoConnect = null;
@@ -4801,6 +4880,7 @@
     embryoConnectButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoConnect); });
     epiboCharButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEpiboChar); });
     epiboKuroeCaseButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEpiboKuroeCase); });
+    winTriggerButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedWinTrigger); });
     eModeTrigger.textContent = modeShortText(state.selectedMode) + ' ▾';
     eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(state.selectedEmbryoPattern) + ' ▾';
     eBigVoiceTrigger.textContent = bigVoiceFullLabel(state.selectedBigVoice, eAtWin.checked) + ' ▾';
@@ -4897,6 +4977,7 @@
       e.atContinue40 = atContinue40;
       e.storyOrderPattern = storyOrderPattern; e.doppelChances = doppelChances; e.doppelBonusExtra1 = doppelBonusExtra1; e.doppelBonusExtra2 = doppelBonusExtra2; e.cardCounts = cardCounts;
       e.epiboChar = epiboChar; e.epiboKuroeCase = epiboKuroeCase;
+      e.winTrigger = state.selectedWinTrigger;
       e.kegareSmall = kegareSmall; e.kegareMid = kegareMid; e.kegareLarge = kegareLarge;
     } else {
       v.entries.push({
@@ -4908,7 +4989,8 @@
         atContinue40: atContinue40,
         storyOrderPattern: storyOrderPattern, doppelChances: doppelChances, doppelBonusExtra1: doppelBonusExtra1, doppelBonusExtra2: doppelBonusExtra2, cardCounts: cardCounts,
         epiboChar: epiboChar, epiboKuroeCase: epiboKuroeCase,
-        kegareSmall: kegareSmall, kegareMid: kegareMid, kegareLarge: kegareLarge
+        kegareSmall: kegareSmall, kegareMid: kegareMid, kegareLarge: kegareLarge,
+        winTrigger: state.selectedWinTrigger
       });
     }
     save();
@@ -4953,6 +5035,175 @@
   document.getElementById('backup-close').addEventListener('click', function () {
     overlayBackup.classList.add('hidden');
   });
+
+  // --- 背景カスタマイズ(画像はIndexedDB、オーバーレイ/カード透明度/ぼかしの設定値はlocalStorageに保存) ---
+  var BG_SETTINGS_KEY = 'magireko.bgSettings';
+  function loadBgSettings() {
+    try {
+      var raw = localStorage.getItem(BG_SETTINGS_KEY);
+      var s = raw ? JSON.parse(raw) : {};
+      return {
+        overlay: (typeof s.overlay === 'number') ? s.overlay : 35,
+        card: (typeof s.card === 'number') ? s.card : 72,
+        blur: (typeof s.blur === 'number') ? s.blur : 6
+      };
+    } catch (err) {
+      return { overlay: 35, card: 72, blur: 6 };
+    }
+  }
+  function saveBgSettings(s) {
+    try { localStorage.setItem(BG_SETTINGS_KEY, JSON.stringify(s)); } catch (err) {}
+  }
+  function openBgImageDB() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open('magireko-bg', 1);
+      req.onupgradeneeded = function () { req.result.createObjectStore('images'); };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+  function saveBgImage(blob) {
+    return openBgImageDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').put(blob, 'current');
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+  function loadBgImage() {
+    return openBgImageDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('images', 'readonly');
+        var req = tx.objectStore('images').get('current');
+        req.onsuccess = function () { resolve(req.result || null); };
+        req.onerror = function () { reject(req.error); };
+      });
+    });
+  }
+  function removeBgImage() {
+    return openBgImageDB().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').delete('current');
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+
+  var bgImageUrl = null;
+  function hexToRgbBg(hex) {
+    var n = parseInt(hex.slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  var BG_PANEL_RGB = hexToRgbBg('#1c1c1e');
+  var BG_PANEL2_RGB = hexToRgbBg('#2c2c2e');
+
+  // 画像が設定されている間だけ、--panel/--panel2を半透明rgbaに上書きしてアプリ全体のカードを透かす
+  function applyBgSettings(settings, hasImage) {
+    var root = document.documentElement.style;
+    if (hasImage) {
+      root.setProperty('--bg-overlay', String(settings.overlay / 100));
+      root.setProperty('--bg-blur', settings.blur + 'px');
+      root.setProperty('--panel', 'rgba(' + BG_PANEL_RGB.join(',') + ',' + (settings.card / 100).toFixed(3) + ')');
+      root.setProperty('--panel2', 'rgba(' + BG_PANEL2_RGB.join(',') + ',' + (settings.card / 100).toFixed(3) + ')');
+    } else {
+      root.removeProperty('--bg-overlay');
+      root.removeProperty('--bg-blur');
+      root.removeProperty('--panel');
+      root.removeProperty('--panel2');
+    }
+  }
+  function setBgActive(active, imageUrl) {
+    document.body.classList.toggle('bg-custom-active', active);
+    var imgLayer = document.getElementById('bg-image-layer');
+    var overlayLayer = document.getElementById('bg-overlay-layer');
+    imgLayer.style.display = active ? 'block' : 'none';
+    overlayLayer.style.display = active ? 'block' : 'none';
+    if (active && imageUrl) { imgLayer.style.backgroundImage = 'url(' + imageUrl + ')'; }
+  }
+  function refreshBgPreview(imageUrl) {
+    var preview = document.getElementById('bg-settings-preview');
+    var removeBtn = document.getElementById('btn-bg-remove');
+    if (imageUrl) {
+      preview.style.display = '';
+      preview.style.backgroundImage = 'url(' + imageUrl + ')';
+      removeBtn.style.display = '';
+    } else {
+      preview.style.display = 'none';
+      removeBtn.style.display = 'none';
+    }
+  }
+
+  var bgOverlaySlider = document.getElementById('bg-overlay-slider');
+  var bgCardSlider = document.getElementById('bg-card-slider');
+  var bgBlurSlider = document.getElementById('bg-blur-slider');
+  var bgOverlayVal = document.getElementById('bg-overlay-val');
+  var bgCardVal = document.getElementById('bg-card-val');
+  var bgBlurVal = document.getElementById('bg-blur-val');
+  function updateBgSlidersUi() {
+    bgOverlayVal.textContent = bgOverlaySlider.value + '%';
+    bgCardVal.textContent = bgCardSlider.value + '%';
+    bgBlurVal.textContent = bgBlurSlider.value + 'px';
+  }
+  function onBgSliderChange() {
+    var settings = { overlay: Number(bgOverlaySlider.value), card: Number(bgCardSlider.value), blur: Number(bgBlurSlider.value) };
+    updateBgSlidersUi();
+    saveBgSettings(settings);
+    applyBgSettings(settings, !!bgImageUrl);
+  }
+  [bgOverlaySlider, bgCardSlider, bgBlurSlider].forEach(function (el) {
+    el.addEventListener('input', onBgSliderChange);
+  });
+
+  document.getElementById('btn-bg-select').addEventListener('click', function () {
+    document.getElementById('bg-image-input').click();
+  });
+  document.getElementById('bg-image-input').addEventListener('change', function (ev) {
+    var file = ev.target.files[0];
+    if (!file) return;
+    saveBgImage(file).then(function () {
+      if (bgImageUrl) URL.revokeObjectURL(bgImageUrl);
+      bgImageUrl = URL.createObjectURL(file);
+      var settings = loadBgSettings();
+      setBgActive(true, bgImageUrl);
+      applyBgSettings(settings, true);
+      refreshBgPreview(bgImageUrl);
+    });
+  });
+  document.getElementById('btn-bg-remove').addEventListener('click', function () {
+    removeBgImage().then(function () {
+      if (bgImageUrl) URL.revokeObjectURL(bgImageUrl);
+      bgImageUrl = null;
+      setBgActive(false, null);
+      applyBgSettings(loadBgSettings(), false);
+      refreshBgPreview(null);
+    });
+  });
+
+  // 起動時に保存済みの背景画像・設定値を復元する(未設定なら何もせず従来通りの見た目のまま)
+  (function initBg() {
+    var settings = loadBgSettings();
+    bgOverlaySlider.value = settings.overlay;
+    bgCardSlider.value = settings.card;
+    bgBlurSlider.value = settings.blur;
+    updateBgSlidersUi();
+    loadBgImage().then(function (blob) {
+      if (blob) {
+        bgImageUrl = URL.createObjectURL(blob);
+        setBgActive(true, bgImageUrl);
+        applyBgSettings(settings, true);
+        refreshBgPreview(bgImageUrl);
+      } else {
+        setBgActive(false, null);
+        applyBgSettings(settings, false);
+      }
+    }).catch(function () {
+      setBgActive(false, null);
+    });
+  })();
   // 同期コードは他人と偶然重複してデータが混ざらないよう、英数字8桁のランダム文字列を自動発行する(0/O/1/Iなど見分けにくい文字は除外)
   var SYNC_CODE_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
   function generateSyncCode() {
