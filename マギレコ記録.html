@@ -655,8 +655,8 @@
     font-family: inherit;
   }
   .field textarea { resize: vertical; min-height: 44px; overflow-y: hidden; }
-  /* iOS Safariでinput[type="time"]のネイティブUIが枠からはみ出して見えるのを防ぐ */
-  .field input[type="time"] { -webkit-appearance: none; appearance: none; }
+  /* iOS Safariでinput[type="time"]/[type="date"]のネイティブUIが枠からはみ出して見えるのを防ぐ */
+  .field input[type="time"], .field input[type="date"] { -webkit-appearance: none; appearance: none; }
   .row2 { display: flex; gap: 10px; }
   .row2 .field { flex: 1; }
   .cat-select { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -1002,7 +1002,7 @@
       <h1>MagirecoRecord</h1>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-16c</div>
+    <div class="app-version">v2026-10-16d</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
