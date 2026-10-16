@@ -941,7 +941,7 @@
     inset: -20px;
     z-index: -2;
     background-size: cover;
-    background-position: center top;
+    background-position: center var(--bg-pos-y, top);
     filter: blur(var(--bg-blur, 0px));
     display: none;
   }
@@ -957,11 +957,23 @@
     height: 120px;
     border-radius: 10px;
     background-size: cover;
-    background-position: center top;
+    background-position: center var(--bg-pos-y, top);
     background-color: var(--panel2);
     border: 1px solid var(--border);
     margin-top: 8px;
   }
+  .bg-pos-row { display: flex; gap: 8px; margin-top: 10px; }
+  .bg-pos-row button {
+    flex: 1;
+    padding: 9px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .bg-pos-row button.active { border-color: var(--accent); color: var(--accent); }
   .bg-settings-row { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
   .bg-settings-row-head { display: flex; justify-content: space-between; font-size: 13px; color: var(--sub); }
   .bg-settings-row-head b { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -1025,7 +1037,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-16g</div>
+    <div class="app-version">v2026-10-16h</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1721,6 +1733,11 @@
     </div>
     <input type="file" id="bg-image-input" accept="image/*">
     <div class="bg-settings-preview" id="bg-settings-preview" style="display:none;"></div>
+    <div class="bg-pos-row" id="bg-pos-row">
+      <button type="button" data-v="top" class="active">上</button>
+      <button type="button" data-v="center">中央</button>
+      <button type="button" data-v="bottom">下</button>
+    </div>
     <div class="bg-settings-row">
       <div class="bg-settings-row-head"><span>オーバーレイの濃さ(画像の暗さ)</span><b id="bg-overlay-val">35%</b></div>
       <input type="range" id="bg-overlay-slider" min="0" max="90" value="35">
@@ -5224,6 +5241,7 @@
 
   // --- 背景カスタマイズ(画像はIndexedDB、オーバーレイ/カード透明度/ぼかしの設定値はlocalStorageに保存) ---
   var BG_SETTINGS_KEY = 'magireko.bgSettings';
+  var BG_POSITIONS = ['top', 'center', 'bottom'];
   function loadBgSettings() {
     try {
       var raw = localStorage.getItem(BG_SETTINGS_KEY);
@@ -5231,10 +5249,11 @@
       return {
         overlay: (typeof s.overlay === 'number') ? s.overlay : 35,
         card: (typeof s.card === 'number') ? s.card : 72,
-        blur: (typeof s.blur === 'number') ? s.blur : 6
+        blur: (typeof s.blur === 'number') ? s.blur : 6,
+        position: (BG_POSITIONS.indexOf(s.position) !== -1) ? s.position : 'top'
       };
     } catch (err) {
-      return { overlay: 35, card: 72, blur: 6 };
+      return { overlay: 35, card: 72, blur: 6, position: 'top' };
     }
   }
   function saveBgSettings(s) {
@@ -5293,11 +5312,13 @@
     if (hasImage) {
       root.setProperty('--bg-overlay', String(settings.overlay / 100));
       root.setProperty('--bg-blur', settings.blur + 'px');
+      root.setProperty('--bg-pos-y', settings.position || 'top');
       root.setProperty('--panel', 'rgba(' + BG_PANEL_RGB.join(',') + ',' + (settings.card / 100).toFixed(3) + ')');
       root.setProperty('--panel2', 'rgba(' + BG_PANEL2_RGB.join(',') + ',' + (settings.card / 100).toFixed(3) + ')');
     } else {
       root.removeProperty('--bg-overlay');
       root.removeProperty('--bg-blur');
+      root.removeProperty('--bg-pos-y');
       root.removeProperty('--panel');
       root.removeProperty('--panel2');
     }
@@ -5334,14 +5355,22 @@
     bgCardVal.textContent = bgCardSlider.value + '%';
     bgBlurVal.textContent = bgBlurSlider.value + 'px';
   }
+  var currentBgPosition = 'top';
   function onBgSliderChange() {
-    var settings = { overlay: Number(bgOverlaySlider.value), card: Number(bgCardSlider.value), blur: Number(bgBlurSlider.value) };
+    var settings = { overlay: Number(bgOverlaySlider.value), card: Number(bgCardSlider.value), blur: Number(bgBlurSlider.value), position: currentBgPosition };
     updateBgSlidersUi();
     saveBgSettings(settings);
     applyBgSettings(settings, !!bgImageUrl);
   }
   [bgOverlaySlider, bgCardSlider, bgBlurSlider].forEach(function (el) {
     el.addEventListener('input', onBgSliderChange);
+  });
+  document.querySelectorAll('#bg-pos-row button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      currentBgPosition = btn.dataset.v;
+      document.querySelectorAll('#bg-pos-row button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+      onBgSliderChange();
+    });
   });
 
   document.getElementById('btn-bg-select').addEventListener('click', function () {
@@ -5375,6 +5404,8 @@
     bgOverlaySlider.value = settings.overlay;
     bgCardSlider.value = settings.card;
     bgBlurSlider.value = settings.blur;
+    currentBgPosition = settings.position;
+    document.querySelectorAll('#bg-pos-row button').forEach(function (b) { b.classList.toggle('active', b.dataset.v === currentBgPosition); });
     updateBgSlidersUi();
     loadBgImage().then(function (blob) {
       if (blob) {
