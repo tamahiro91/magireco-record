@@ -1017,7 +1017,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-21a</div>
+    <div class="app-version">v2026-10-21b</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1442,7 +1442,6 @@
         <button type="button" data-v="TrueEnding" id="e-result-true-ending" hidden>True Ending</button>
       </div>
     </div>
-    <button type="button" class="ghost-btn detail-toggle-btn" id="epibo-detail-toggle-btn" hidden>詳細をたたむ ▲</button>
     <div class="field" id="field-epibo-char" hidden>
       <label>キャラクター</label>
       <div class="cat-select" id="e-epibo-char">
@@ -3886,32 +3885,27 @@
   var fieldResult = document.getElementById('field-result');
   var detailToggleBtn = document.getElementById('detail-toggle-btn');
   var detailsCollapsed = false;
-  // エピボのキャラクター〜ビッグ終了後のボイスまでの一括開閉(エントリーごとに開閉状態を保存し、再度編集を開いた時も復元する)
-  var epiboDetailToggleBtn = document.getElementById('epibo-detail-toggle-btn');
-  var epiboDetailCollapsed = false;
-  var EPIBO_DETAIL_CLOSED_PREFIX = 'magireko.epiboDetailClosed.';
-  function isEpiboDetailClosed(id) {
-    return localStorage.getItem(EPIBO_DETAIL_CLOSED_PREFIX + id) === '1';
+  // 一括開閉の開閉状態はエントリーごとに保存し、再度編集を開いた時も復元する
+  var DETAILS_CLOSED_PREFIX = 'magireko.epiboDetailClosed.';
+  function isDetailsClosed(id) {
+    return localStorage.getItem(DETAILS_CLOSED_PREFIX + id) === '1';
   }
-  function setEpiboDetailClosed(id, closed) {
-    if (closed) { localStorage.setItem(EPIBO_DETAIL_CLOSED_PREFIX + id, '1'); }
-    else { localStorage.removeItem(EPIBO_DETAIL_CLOSED_PREFIX + id); }
+  function setDetailsClosed(id, closed) {
+    if (closed) { localStorage.setItem(DETAILS_CLOSED_PREFIX + id, '1'); }
+    else { localStorage.removeItem(DETAILS_CLOSED_PREFIX + id); }
   }
-  epiboDetailToggleBtn.addEventListener('click', function () {
-    epiboDetailCollapsed = !epiboDetailCollapsed;
-    if (state.editingEntryId) { setEpiboDetailClosed(state.editingEntryId, epiboDetailCollapsed); }
-    updateConditionalFields();
-  });
   // 魔法少女モード〜結果までは常に一括開閉の対象、BIG選択時はビッグ終了後の画面まで、
-  // エンブリオ選択時は上乗せ(+)を含む帯色までを対象に加える
-  function detailToggleFields(hasBig, hasEmbryo) {
+  // エンブリオ選択時は上乗せ(+)を含む帯色まで、エピボ選択時はキャラクター〜ビッグ終了後のボイスまでを対象に加える
+  function detailToggleFields(hasBig, hasEmbryo, hasEpibo) {
     var fields = [fieldMode, elKegareSummary, fieldBighp, fieldResult];
     if (hasBig) fields.push(fieldBigVoice, fieldBigScreen);
     if (hasEmbryo) fields.push(fieldCardChances, fieldStartGame, fieldBand);
+    if (hasEpibo) fields.push(fieldEpiboChar, fieldEpiboKuroeCase, fieldEpiboSuggestion, fieldBigVoice);
     return fields;
   }
   detailToggleBtn.addEventListener('click', function () {
     detailsCollapsed = !detailsCollapsed;
+    if (state.editingEntryId) { setDetailsClosed(state.editingEntryId, detailsCollapsed); }
     updateConditionalFields();
   });
   function updateConditionalFields() {
@@ -3989,13 +3983,7 @@
     fieldResult.hidden = false;
     detailToggleBtn.textContent = detailsCollapsed ? '詳細を開く ▼' : '詳細をたたむ ▲';
     if (detailsCollapsed) {
-      detailToggleFields(hasBig, hasEmbryo).forEach(function (f) { f.hidden = true; });
-    }
-    // エピボのキャラクター〜ビッグ終了後のボイスまでの一括開閉(エピボ選択時のみボタンを表示する)
-    epiboDetailToggleBtn.hidden = !hasEpibo;
-    epiboDetailToggleBtn.textContent = epiboDetailCollapsed ? '詳細を開く ▾' : '詳細をたたむ ▲';
-    if (hasEpibo && epiboDetailCollapsed) {
-      [fieldEpiboChar, fieldEpiboKuroeCase, fieldEpiboSuggestion, fieldBigVoice].forEach(function (f) { f.hidden = true; });
+      detailToggleFields(hasBig, hasEmbryo, hasEpibo).forEach(function (f) { f.hidden = true; });
     }
     applyEntryFieldCustomization();
   }
@@ -4914,8 +4902,7 @@
 
   function openEntrySheet(entryId) {
     state.editingEntryId = entryId || null;
-    detailsCollapsed = false;
-    epiboDetailCollapsed = entryId ? isEpiboDetailClosed(entryId) : false;
+    detailsCollapsed = entryId ? isDetailsClosed(entryId) : false;
     var title = document.getElementById('entry-sheet-title');
     if (entryId) {
       var v = currentVisit();
@@ -5145,7 +5132,7 @@
         kegareSmall: kegareSmall, kegareMid: kegareMid, kegareLarge: kegareLarge,
         winTrigger: state.selectedWinTrigger
       });
-      setEpiboDetailClosed(newEntryId, epiboDetailCollapsed);
+      setDetailsClosed(newEntryId, detailsCollapsed);
     }
     save();
     overlayEntry.classList.add('hidden');
