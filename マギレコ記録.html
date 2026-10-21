@@ -288,7 +288,7 @@
   /* みたまボーナスの選択ボタンの右に+αカウンターを並べる(ボタンを狭めてスペースを確保する) */
   .mikazuki-bonus-row { display: flex; align-items: center; gap: 8px; }
   .mikazuki-bonus-row .picker-trigger { flex: 1; min-width: 0; }
-  .mikazuki-bonus-extra {
+  .mikazuki-bonus-extra, .mikazuki-bonus-adjuster {
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -297,9 +297,10 @@
     border-radius: 12px;
     padding: 8px 10px;
   }
-  .mikazuki-bonus-extra .counter-label { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; white-space: nowrap; }
+  .mikazuki-bonus-extra .counter-label, .mikazuki-bonus-adjuster .counter-label { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 6px; white-space: nowrap; }
   .mikazuki-bonus-extra .counter-controls .counter-btn { width: 28px; height: 28px; font-size: 15px; }
   .mikazuki-bonus-extra .counter-value { min-width: 16px; font-size: 16px; }
+  .mikazuki-bonus-adjuster input[type="number"] { width: 52px; text-align: center; background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px 2px; font-size: 15px; }
   /* BIG中の高確ゲーム数は4枚を1行に収めるため、カードの余白・＋－ボタン・数値を一回り小さくする */
   #bighp-counters .counter-card { padding: 8px 2px; }
   #bighp-counters .counter-controls { gap: 3px; }
@@ -1016,7 +1017,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-16m</div>
+    <div class="app-version">v2026-10-21a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1357,7 +1358,7 @@
         <label>当選契機</label>
         <div class="cat-select" id="e-win-trigger">
           <button type="button" data-v="PT">PT</button>
-          <button type="button" data-v="小役">小役</button>
+          <button type="button" id="e-win-trigger-koyaku-trigger">小役 ▾</button>
         </div>
       </div>
     </div>
@@ -1441,6 +1442,7 @@
         <button type="button" data-v="TrueEnding" id="e-result-true-ending" hidden>True Ending</button>
       </div>
     </div>
+    <button type="button" class="ghost-btn detail-toggle-btn" id="epibo-detail-toggle-btn" hidden>詳細をたたむ ▲</button>
     <div class="field" id="field-epibo-char" hidden>
       <label>キャラクター</label>
       <div class="cat-select" id="e-epibo-char">
@@ -1570,6 +1572,10 @@
       <label>みたまボーナス</label>
       <div class="mikazuki-bonus-row">
         <button type="button" class="picker-trigger" id="e-mikazuki-stage-trigger">未選択 ▾</button>
+        <div class="mikazuki-bonus-adjuster">
+          <div class="counter-label">調整屋G数</div>
+          <input type="number" inputmode="numeric" id="e-adjuster-game" placeholder="例: 50">
+        </div>
         <div class="mikazuki-bonus-extra">
           <div class="counter-label">+αG数</div>
           <div class="counter-controls">
@@ -1979,6 +1985,12 @@
     return v ? (v + (MIKAZUKI_STAGE_SUGGESTION[v] ? '(' + MIKAZUKI_STAGE_SUGGESTION[v] + ')' : '')) : '未選択';
   }
 
+  // 当選契機(PT/小役)の、小役側のさらに詳しい内訳(プルダウンで選択する)
+  var WIN_TRIGGER_KOYAKU_VALUES = ['強チェ', 'チャン目'];
+  var WIN_TRIGGER_KOYAKU_OPTIONS = [{ v: '', text: '未選択(解除)' }].concat(
+    WIN_TRIGGER_KOYAKU_VALUES.map(function (v) { return { v: v, text: v }; })
+  );
+
   // うぃチャンス(at中のストーリー示唆)の選択肢
   var WEE_TRIGGER_OPTIONS = ['ゲーム数', '小役当選'];
   var WEE_STORY_TYPES = ['ストーリー', 'SP', '神浜', 'マギアボーナス'];
@@ -2359,6 +2371,7 @@
       if (typeof e.point === 'number') point += e.point;
       if (typeof e.game === 'number') game += e.game;
       game += e.magiaCzGame || 0;
+      game += e.adjusterGame || 0;
       atGame += atGameTotalOf(e);
       bonusGame += bonusGameTotalOf(e);
       if (e.results && e.results.length) hits++;
@@ -3818,6 +3831,11 @@
   eMagiaCzGame.addEventListener('input', function () {
     state.magiaCzGame = eMagiaCzGame.value === '' ? null : Number(eMagiaCzGame.value);
   });
+  // 調整屋ゲーム数(みたま選択時のみ入力できる、通常総ゲーム数に合算する)
+  var eAdjusterGame = document.getElementById('e-adjuster-game');
+  eAdjusterGame.addEventListener('input', function () {
+    state.adjusterGame = eAdjusterGame.value === '' ? null : Number(eAdjusterGame.value);
+  });
   var eStartGame = document.getElementById('e-start-game');
   var eBandBonus = document.getElementById('e-band-bonus');
   var eEmbryoGameCount = document.getElementById('e-embryo-game-count');
@@ -3868,6 +3886,22 @@
   var fieldResult = document.getElementById('field-result');
   var detailToggleBtn = document.getElementById('detail-toggle-btn');
   var detailsCollapsed = false;
+  // エピボのキャラクター〜ビッグ終了後のボイスまでの一括開閉(エントリーごとに開閉状態を保存し、再度編集を開いた時も復元する)
+  var epiboDetailToggleBtn = document.getElementById('epibo-detail-toggle-btn');
+  var epiboDetailCollapsed = false;
+  var EPIBO_DETAIL_CLOSED_PREFIX = 'magireko.epiboDetailClosed.';
+  function isEpiboDetailClosed(id) {
+    return localStorage.getItem(EPIBO_DETAIL_CLOSED_PREFIX + id) === '1';
+  }
+  function setEpiboDetailClosed(id, closed) {
+    if (closed) { localStorage.setItem(EPIBO_DETAIL_CLOSED_PREFIX + id, '1'); }
+    else { localStorage.removeItem(EPIBO_DETAIL_CLOSED_PREFIX + id); }
+  }
+  epiboDetailToggleBtn.addEventListener('click', function () {
+    epiboDetailCollapsed = !epiboDetailCollapsed;
+    if (state.editingEntryId) { setEpiboDetailClosed(state.editingEntryId, epiboDetailCollapsed); }
+    updateConditionalFields();
+  });
   // 魔法少女モード〜結果までは常に一括開閉の対象、BIG選択時はビッグ終了後の画面まで、
   // エンブリオ選択時は上乗せ(+)を含む帯色までを対象に加える
   function detailToggleFields(hasBig, hasEmbryo) {
@@ -3956,6 +3990,12 @@
     detailToggleBtn.textContent = detailsCollapsed ? '詳細を開く ▼' : '詳細をたたむ ▲';
     if (detailsCollapsed) {
       detailToggleFields(hasBig, hasEmbryo).forEach(function (f) { f.hidden = true; });
+    }
+    // エピボのキャラクター〜ビッグ終了後のボイスまでの一括開閉(エピボ選択時のみボタンを表示する)
+    epiboDetailToggleBtn.hidden = !hasEpibo;
+    epiboDetailToggleBtn.textContent = epiboDetailCollapsed ? '詳細を開く ▾' : '詳細をたたむ ▲';
+    if (hasEpibo && epiboDetailCollapsed) {
+      [fieldEpiboChar, fieldEpiboKuroeCase, fieldEpiboSuggestion, fieldBigVoice].forEach(function (f) { f.hidden = true; });
     }
     applyEntryFieldCustomization();
   }
@@ -4836,7 +4876,21 @@
   var embryoConnectButtons = setupSingleSelect('#e-embryo-connect button', 'selectedEmbryoConnect');
   var epiboCharButtons = setupSingleSelect('#e-epibo-char button', 'selectedEpiboChar', function () { updateConditionalFields(); });
   var epiboKuroeCaseButtons = setupSingleSelect('#e-epibo-kuroe-case button', 'selectedEpiboKuroeCase', function () { updateConditionalFields(); });
-  var winTriggerButtons = setupSingleSelect('#e-win-trigger button', 'selectedWinTrigger');
+  var winTriggerButtons = setupSingleSelect('#e-win-trigger button[data-v]', 'selectedWinTrigger', function () { syncWinTriggerUi(); });
+  // 当選契機の「PT」ボタンと「小役」プルダウンの見た目(active状態・表示ラベル)をstateに合わせて揃える
+  function syncWinTriggerUi() {
+    winTriggerButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedWinTrigger); });
+    var isKoyaku = WIN_TRIGGER_KOYAKU_VALUES.indexOf(state.selectedWinTrigger) !== -1;
+    eWinTriggerKoyakuTrigger.textContent = (isKoyaku ? state.selectedWinTrigger : '小役') + ' ▾';
+    eWinTriggerKoyakuTrigger.classList.toggle('active', isKoyaku);
+  }
+  var eWinTriggerKoyakuTrigger = document.getElementById('e-win-trigger-koyaku-trigger');
+  eWinTriggerKoyakuTrigger.addEventListener('click', function () {
+    openPicker('当選契機(小役)', WIN_TRIGGER_KOYAKU_OPTIONS, state.selectedWinTrigger, function (v) {
+      state.selectedWinTrigger = v || null;
+      syncWinTriggerUi();
+    });
+  });
 
   // 複数選択(ON/OFFをそれぞれ独立して切り替え)のボタングループを作る共通ヘルパー
   function setupMultiSelect(selector, stateKey, onChange) {
@@ -4861,6 +4915,7 @@
   function openEntrySheet(entryId) {
     state.editingEntryId = entryId || null;
     detailsCollapsed = false;
+    epiboDetailCollapsed = entryId ? isEpiboDetailClosed(entryId) : false;
     var title = document.getElementById('entry-sheet-title');
     if (entryId) {
       var v = currentVisit();
@@ -4891,6 +4946,8 @@
       eBigHighProbExtra2.value = (typeof state.bigHighProbExtra2 === 'number') ? state.bigHighProbExtra2 : '';
       state.magiaCzGame = (typeof e.magiaCzGame === 'number') ? e.magiaCzGame : null;
       eMagiaCzGame.value = (typeof state.magiaCzGame === 'number') ? state.magiaCzGame : '';
+      state.adjusterGame = (typeof e.adjusterGame === 'number') ? e.adjusterGame : null;
+      eAdjusterGame.value = (typeof state.adjusterGame === 'number') ? state.adjusterGame : '';
       eStartGame.value = (typeof e.startGame === 'number') ? e.startGame : '';
       eBandBonus.value = (typeof e.bandBonus === 'number') ? e.bandBonus : '';
       eEmbryoGameCount.value = (typeof e.embryoGameCount === 'number') ? e.embryoGameCount : '';
@@ -4941,6 +4998,8 @@
       eBigHighProbExtra2.value = '';
       state.magiaCzGame = null;
       eMagiaCzGame.value = '';
+      state.adjusterGame = null;
+      eAdjusterGame.value = '';
       eStartGame.value = '';
       eBandBonus.value = '';
       eEmbryoGameCount.value = '';
@@ -4970,7 +5029,7 @@
     embryoConnectButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEmbryoConnect); });
     epiboCharButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEpiboChar); });
     epiboKuroeCaseButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedEpiboKuroeCase); });
-    winTriggerButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === state.selectedWinTrigger); });
+    syncWinTriggerUi();
     eModeTrigger.textContent = modeShortText(state.selectedMode) + ' ▾';
     eEmbryoPatternTrigger.textContent = embryoPatternShortLabel(state.selectedEmbryoPattern) + ' ▾';
     eBigVoiceTrigger.textContent = bigVoiceFullLabel(state.selectedBigVoice, eAtWin.checked) + ' ▾';
@@ -5022,6 +5081,7 @@
     var hasMitama = results.indexOf('みたま') !== -1;
     var mikazukiStage = hasMitama ? state.selectedMikazukiStage : null;
     var mikazukiBonusExtra = hasMitama ? state.mikazukiBonusExtra : 0;
+    var adjusterGame = hasMitama ? state.adjusterGame : null;
     var atScreens = (atWin || results.indexOf('エンブリオ') !== -1) ? state.atScreens.filter(function (item) { return item && item.screen; }) : [];
     var univaPlates = (atWin || results.indexOf('エンブリオ') !== -1) ? state.univaPlates.filter(function (p) { return p && p.plate; }) : [];
     // 帯色・初期ゲーム数・エンブリオが選ばれていない時は関連する選択を保存しない(表示と矛盾しないように)
@@ -5062,7 +5122,7 @@
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.bigHighProbExtra1 = bigHighProbExtra1; e.bigHighProbExtra2 = bigHighProbExtra2; e.magiaCzGame = magiaCzGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
-      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.mikazukiStage = mikazukiStage; e.mikazukiBonusExtra = mikazukiBonusExtra; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
+      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.mikazukiStage = mikazukiStage; e.mikazukiBonusExtra = mikazukiBonusExtra; e.adjusterGame = adjusterGame; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
       e.weeBonusExtra1 = weeBonusExtra1; e.weeBonusExtra2 = weeBonusExtra2;
@@ -5072,9 +5132,10 @@
       e.winTrigger = state.selectedWinTrigger;
       e.kegareSmall = kegareSmall; e.kegareMid = kegareMid; e.kegareLarge = kegareLarge;
     } else {
+      var newEntryId = uid();
       v.entries.push({
-        id: uid(), game: game, point: point, atStartGame: atStartGame, bigHighProbExtra1: bigHighProbExtra1, bigHighProbExtra2: bigHighProbExtra2, magiaCzGame: magiaCzGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
-        bigVoice: bigVoice, bigScreen: bigScreen, mikazukiStage: mikazukiStage, mikazukiBonusExtra: mikazukiBonusExtra, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
+        id: newEntryId, game: game, point: point, atStartGame: atStartGame, bigHighProbExtra1: bigHighProbExtra1, bigHighProbExtra2: bigHighProbExtra2, magiaCzGame: magiaCzGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
+        bigVoice: bigVoice, bigScreen: bigScreen, mikazukiStage: mikazukiStage, mikazukiBonusExtra: mikazukiBonusExtra, adjusterGame: adjusterGame, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
         weeBonusExtra1: weeBonusExtra1, weeBonusExtra2: weeBonusExtra2,
@@ -5084,6 +5145,7 @@
         kegareSmall: kegareSmall, kegareMid: kegareMid, kegareLarge: kegareLarge,
         winTrigger: state.selectedWinTrigger
       });
+      setEpiboDetailClosed(newEntryId, epiboDetailCollapsed);
     }
     save();
     overlayEntry.classList.add('hidden');
