@@ -526,7 +526,7 @@
   .tag.AT { background: var(--at); }
   .tag.メモ { background: var(--memo); color: #000; }
   .entry .entry-num { flex-shrink: 0; width: 28px; text-align: center; font-size: 13px; font-weight: 700; color: var(--sub); margin-top: 4px; }
-  .entry .entry-num-sub { font-size: 10px; font-weight: 700; color: var(--accent); margin-top: 3px; }
+  .entry .entry-num-sub { font-size: 10px; font-weight: 700; color: var(--accent); margin-top: 3px; white-space: nowrap; }
   .entry .entry-side { flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; }
   .entry .entry-toggle {
     width: 34px;
@@ -1017,7 +1017,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-21b</div>
+    <div class="app-version">v2026-10-24a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -3060,14 +3060,21 @@
     localStorage.setItem(SUGGESTION_SUMMARY_OPEN_KEY, open ? '1' : '0');
     elSuggestionSummary.classList.toggle('closed', !open);
   });
+  // BIG終了画面/at終了画面は「× N回」の代わりに合計に対する割合(N/合計 ◯%)だけを表示する
+  var SUGGESTION_RATIO_ONLY_GROUPS = ['BIG終了画面', 'at終了画面'];
   function renderSuggestionSummary(visit) {
     var summary = visitSuggestionSummary(visit);
     var html = '';
     summary.groups.forEach(function (g) {
       if (!g.items.length) return;
+      var ratioOnly = SUGGESTION_RATIO_ONLY_GROUPS.indexOf(g.title) !== -1;
+      var groupTotal = g.items.reduce(function (sum, item) { return sum + item.count; }, 0);
       html += '<div class="suggestion-group"><div class="suggestion-group-title">' + g.title + '</div>';
       g.items.forEach(function (item) {
-        html += '<div class="suggestion-line"><span class="suggestion-line-label">' + item.label + '</span><span class="suggestion-line-count">× ' + item.count + ' 回</span></div>';
+        var countText = ratioOnly
+          ? (item.count + '/' + groupTotal + '　' + fmtPercent(item.count, groupTotal))
+          : ('× ' + item.count + ' 回');
+        html += '<div class="suggestion-line"><span class="suggestion-line-label">' + item.label + '</span><span class="suggestion-line-count">' + countText + '</span></div>';
       });
       html += '</div>';
     });
