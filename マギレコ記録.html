@@ -844,7 +844,8 @@
   }
   .suggestion-group { padding: 10px 0; border-bottom: 1px solid var(--border); }
   .suggestion-group:last-child, .suggestion-simple-row:last-child { border-bottom: none; }
-  .suggestion-group-title { font-size: 12px; color: var(--sub); font-weight: 700; margin-bottom: 4px; }
+  .suggestion-group-title { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: var(--sub); font-weight: 700; margin-bottom: 4px; }
+  .suggestion-group-total { color: var(--accent); }
   .suggestion-line { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--text); line-height: 1.6; }
   .suggestion-line-label { flex: 1; }
   .suggestion-line-count { flex-shrink: 0; white-space: nowrap; }
@@ -1017,7 +1018,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-24a</div>
+    <div class="app-version">v2026-10-24b</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1139,13 +1140,14 @@
         <div class="card"><div class="label">at当選</div><div class="value" id="d-atwin">0</div><div class="prob" id="d-atwin-prob"></div></div>
       </div>
       <div class="counters">
-        <div class="counter-card">
+        <div class="counter-card" id="d-suika-card">
           <div class="counter-label">スイカ</div>
-          <div class="counter-controls">
+          <div class="counter-controls" id="d-suika-controls">
             <button type="button" class="counter-btn" id="d-suika-minus">−</button>
             <div class="counter-value" id="d-suika-value">0</div>
             <button type="button" class="counter-btn" id="d-suika-plus">＋</button>
           </div>
+          <div class="prob" id="d-suika-prob"></div>
         </div>
         <div class="counter-card">
           <div class="counter-label">CZ</div>
@@ -1359,6 +1361,32 @@
         <div class="cat-select" id="e-win-trigger">
           <button type="button" data-v="PT">PT</button>
           <button type="button" id="e-win-trigger-koyaku-trigger">小役 ▾</button>
+        </div>
+      </div>
+    </div>
+    <div class="field" id="field-entry-suika" hidden>
+      <div class="counters">
+        <div class="counter-card">
+          <div class="counter-label">スイカ</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="e-suika-minus">−</button>
+            <div class="counter-value" id="e-suika-value">0</div>
+            <button type="button" class="counter-btn" id="e-suika-plus">＋</button>
+          </div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">CZ</div>
+          <div class="counter-controls">
+            <button type="button" class="counter-btn" id="e-cz-minus">−</button>
+            <div class="counter-value" id="e-cz-value">0</div>
+            <button type="button" class="counter-btn" id="e-cz-plus">＋</button>
+          </div>
+          <div class="prob" id="e-cz-prob"></div>
+        </div>
+        <div class="counter-card">
+          <div class="counter-label">CZ成功</div>
+          <div class="counter-value" id="e-czwin-value">0</div>
+          <div class="prob" id="e-czwin-prob"></div>
         </div>
       </div>
     </div>
@@ -1696,6 +1724,14 @@
     <div class="field" style="margin-top:20px;">
       <label>表示項目のカスタマイズ</label>
       <button class="ghost-btn" id="btn-custom-open" style="width:100%;">詳細カスタム</button>
+    </div>
+
+    <div class="field" style="margin-top:20px;">
+      <label>スイカカウンター切り替え</label>
+      <div class="cat-select" id="e-suika-mode">
+        <button type="button" data-v="existing">①既存のスイカカウンター</button>
+        <button type="button" data-v="entry">②記録を編集にスイカカウンター</button>
+      </div>
     </div>
 
     <div class="sheet-actions">
@@ -2564,9 +2600,14 @@
       totalAtGame += s.atGame;
       totalBonus += s.total;
       totalAtWin += s.atWin;
-      totalCz += counters.cz || 0;
       totalCzWin += czWinCountOf(v);
-      totalSuika += counters.suika || 0;
+      if (getSuikaMode() === 'entry') {
+        totalSuika += (v.entries || []).reduce(function (sum, e) { return sum + (e.suikaCount || 0); }, 0);
+        totalCz += (v.entries || []).reduce(function (sum, e) { return sum + (e.czCount || 0); }, 0);
+      } else {
+        totalSuika += counters.suika || 0;
+        totalCz += counters.cz || 0;
+      }
       totalBalance += investBalanceOf(v);
     });
     elSumVisits.textContent = state.visits.length;
@@ -2655,7 +2696,12 @@
   var elDHeaderBonusGame = document.getElementById('d-header-bonusgame');
   var elDHeaderAtGame = document.getElementById('d-header-atgame');
   var elDSuikaValue = document.getElementById('d-suika-value');
+  var elDSuikaProb = document.getElementById('d-suika-prob');
+  var elDSuikaMinus = document.getElementById('d-suika-minus');
+  var elDSuikaPlus = document.getElementById('d-suika-plus');
   var elDCzValue = document.getElementById('d-cz-value');
+  var elDCzMinus = document.getElementById('d-cz-minus');
+  var elDCzPlus = document.getElementById('d-cz-plus');
   var elDCzWinValue = document.getElementById('d-czwin-value');
   var elDHp10Value = document.getElementById('d-hp10-value');
   var elDHp20Value = document.getElementById('d-hp20-value');
@@ -3060,8 +3106,10 @@
     localStorage.setItem(SUGGESTION_SUMMARY_OPEN_KEY, open ? '1' : '0');
     elSuggestionSummary.classList.toggle('closed', !open);
   });
-  // BIG終了画面/at終了画面は「× N回」の代わりに合計に対する割合(N/合計 ◯%)だけを表示する
+  // BIG終了画面/at終了画面は「× N回」の代わりに「N回 ◯%」(グループ見出しの右に合計回数)だけを表示し、
+  // デフォルト/基本パターンの項目を常に先頭に並べる
   var SUGGESTION_RATIO_ONLY_GROUPS = ['BIG終了画面', 'at終了画面'];
+  var SUGGESTION_DEFAULT_LABEL = { 'BIG終了画面': 'デフォルト', 'at終了画面': '城背景(基本パターン)' };
   function renderSuggestionSummary(visit) {
     var summary = visitSuggestionSummary(visit);
     var html = '';
@@ -3069,10 +3117,18 @@
       if (!g.items.length) return;
       var ratioOnly = SUGGESTION_RATIO_ONLY_GROUPS.indexOf(g.title) !== -1;
       var groupTotal = g.items.reduce(function (sum, item) { return sum + item.count; }, 0);
-      html += '<div class="suggestion-group"><div class="suggestion-group-title">' + g.title + '</div>';
-      g.items.forEach(function (item) {
+      var items = g.items;
+      if (ratioOnly) {
+        var defaultLabel = SUGGESTION_DEFAULT_LABEL[g.title];
+        items = items.slice().sort(function (a, b) {
+          return (a.label === defaultLabel ? 0 : 1) - (b.label === defaultLabel ? 0 : 1);
+        });
+      }
+      var titleRight = ratioOnly ? ('<span class="suggestion-group-total">計' + groupTotal + '回</span>') : '';
+      html += '<div class="suggestion-group"><div class="suggestion-group-title"><span>' + g.title + '</span>' + titleRight + '</div>';
+      items.forEach(function (item) {
         var countText = ratioOnly
-          ? (item.count + '/' + groupTotal + '　' + fmtPercent(item.count, groupTotal))
+          ? (item.count + '回　' + fmtPercent(item.count, groupTotal))
           : ('× ' + item.count + ' 回');
         html += '<div class="suggestion-line"><span class="suggestion-line-label">' + item.label + '</span><span class="suggestion-line-count">' + countText + '</span></div>';
       });
@@ -3406,8 +3462,19 @@
     elDAtWinProb.textContent = fmtProb(s.game, s.atWin);
 
     var counters = v.counters || { suika: 0, cz: 0, czWin: 0 };
-    elDSuikaValue.textContent = counters.suika || 0;
-    elDCzValue.textContent = counters.cz || 0;
+    // スイカカウンター切り替えが②の時は、記録ごとに入力したスイカ数の合計を表示し手動カウンターは隠す(①は従来通り手動カウンター)
+    var suikaMode = getSuikaMode();
+    var suikaFromEntries = (v.entries || []).reduce(function (sum, e) { return sum + (e.suikaCount || 0); }, 0);
+    var suikaValue = (suikaMode === 'entry') ? suikaFromEntries : (counters.suika || 0);
+    elDSuikaValue.textContent = suikaValue;
+    elDSuikaProb.textContent = (suikaMode === 'entry') ? fmtProb(s.game, suikaValue) : '';
+    elDSuikaMinus.hidden = (suikaMode === 'entry');
+    elDSuikaPlus.hidden = (suikaMode === 'entry');
+    var czFromEntries = (v.entries || []).reduce(function (sum, e) { return sum + (e.czCount || 0); }, 0);
+    var czValue = (suikaMode === 'entry') ? czFromEntries : (counters.cz || 0);
+    elDCzValue.textContent = czValue;
+    elDCzMinus.hidden = (suikaMode === 'entry');
+    elDCzPlus.hidden = (suikaMode === 'entry');
     elDCzWinValue.textContent = czWinCountOf(v);
     elDHp10Value.textContent = counters.highProb10 || 0;
     elDHp20Value.textContent = counters.highProb20 || 0;
@@ -3416,8 +3483,8 @@
     elDHp10Prob.textContent = fmtPercent(counters.highProb10 || 0, hpBase);
     elDHp20Prob.textContent = fmtPercent(counters.highProb20 || 0, hpBase);
     elDHp30Prob.textContent = fmtPercent(counters.highProb30 || 0, hpBase);
-    elDCzProb.textContent = fmtPercent(counters.cz, counters.suika);
-    elDCzWinProb.textContent = fmtPercent(czWinCountOf(v), counters.cz);
+    elDCzProb.textContent = fmtPercent(czValue, suikaValue);
+    elDCzWinProb.textContent = fmtPercent(czWinCountOf(v), czValue);
 
     var invest = v.invest || { rate: 46, count: 0 };
     elDInvestRate.value = String(invest.rate);
@@ -3864,6 +3931,7 @@
   var fieldBigVoice = document.getElementById('field-big-voice');
   var fieldBigScreen = document.getElementById('field-big-screen');
   var fieldMikazukiStage = document.getElementById('field-mikazuki-stage');
+  var fieldEntrySuika = document.getElementById('field-entry-suika');
   var fieldAtScreen = document.getElementById('field-at-screen');
   var fieldUnivaPlates = document.getElementById('field-univa-plates');
   var fieldStoryOrder = document.getElementById('field-story-order');
@@ -3928,6 +3996,8 @@
     fieldBigVoice.hidden = !(hasBig || hasEpibo);
     fieldBigScreen.hidden = !hasBig;
     fieldMikazukiStage.hidden = !hasMitama;
+    fieldEntrySuika.hidden = getSuikaMode() !== 'entry';
+    renderEntrySuika();
     // ドッペル選択時は、うぃチャンスと同等の項目を各ドッペルチャンスカード側で入力するため、
     // at当選〜うぃチャンス一式(at終了画面/ストーリー順番示唆/キャラ紹介の示唆を含む)を丸ごと隠す
     fieldAtScreen.hidden = !(eAtWin.checked || hasEmbryo) || hasDoppel;
@@ -4110,6 +4180,52 @@
   document.getElementById('mikazuki-bonus-extra-minus').addEventListener('click', function () {
     state.mikazukiBonusExtra = Math.max(0, state.mikazukiBonusExtra - 1);
     renderMikazukiBonusExtra();
+  });
+
+  // スイカカウンター切り替えで②を選んだ時、記録ごとにスイカ/CZ数を入力できるカウンター(CZ成功は結果の選択から自動算出)
+  var eSuikaValue = document.getElementById('e-suika-value');
+  var eCzValue = document.getElementById('e-cz-value');
+  var eCzProb = document.getElementById('e-cz-prob');
+  var eCzWinValue = document.getElementById('e-czwin-value');
+  var eCzWinProb = document.getElementById('e-czwin-prob');
+  // この来店の他の記録(編集中のものを除く)に、今編集中の値を足した合計を返す(保存前でもリアルタイムに確認できるように)
+  function entrySuikaCzTotals() {
+    var v = currentVisit();
+    var suika = 0, cz = 0, czWin = 0;
+    (v && v.entries || []).forEach(function (e) {
+      if (e.id === state.editingEntryId) return;
+      suika += e.suikaCount || 0;
+      cz += e.czCount || 0;
+      if (e.results && (e.results.indexOf('マギアCZ') !== -1 || e.results.indexOf('黒江CZ') !== -1)) czWin++;
+    });
+    suika += state.entrySuika || 0;
+    cz += state.entryCz || 0;
+    if (state.selectedResults && (state.selectedResults.indexOf('マギアCZ') !== -1 || state.selectedResults.indexOf('黒江CZ') !== -1)) czWin++;
+    return { suika: suika, cz: cz, czWin: czWin };
+  }
+  function renderEntrySuika() {
+    eSuikaValue.textContent = state.entrySuika;
+    eCzValue.textContent = state.entryCz;
+    var t = entrySuikaCzTotals();
+    eCzProb.textContent = fmtPercent(t.cz, t.suika);
+    eCzWinValue.textContent = t.czWin;
+    eCzWinProb.textContent = fmtPercent(t.czWin, t.cz);
+  }
+  document.getElementById('e-suika-plus').addEventListener('click', function () {
+    state.entrySuika += 1;
+    renderEntrySuika();
+  });
+  document.getElementById('e-suika-minus').addEventListener('click', function () {
+    state.entrySuika = Math.max(0, state.entrySuika - 1);
+    renderEntrySuika();
+  });
+  document.getElementById('e-cz-plus').addEventListener('click', function () {
+    state.entryCz += 1;
+    renderEntrySuika();
+  });
+  document.getElementById('e-cz-minus').addEventListener('click', function () {
+    state.entryCz = Math.max(0, state.entryCz - 1);
+    renderEntrySuika();
   });
 
   // うぃチャンス(at中のストーリー示唆)の入力欄を組み立てる小さなヘルパー群
@@ -4921,6 +5037,8 @@
       state.selectedBigScreen = e.bigScreen || null;
       state.selectedMikazukiStage = e.mikazukiStage || null;
       state.mikazukiBonusExtra = (typeof e.mikazukiBonusExtra === 'number') ? e.mikazukiBonusExtra : 0;
+      state.entrySuika = (typeof e.suikaCount === 'number') ? e.suikaCount : 0;
+      state.entryCz = (typeof e.czCount === 'number') ? e.czCount : 0;
       state.atScreens = (e.atScreens || []).map(function (item) { return Object.assign({}, item); });
       state.univaPlates = (e.univaPlates || []).map(function (p) { return Object.assign({ id: uid() }, p); });
       state.selectedBand = e.bandColor || null;
@@ -4973,6 +5091,8 @@
       state.selectedBigScreen = null;
       state.selectedMikazukiStage = null;
       state.mikazukiBonusExtra = 0;
+      state.entrySuika = 0;
+      state.entryCz = 0;
       state.atScreens = [];
       state.univaPlates = [];
       state.selectedBand = null;
@@ -5036,6 +5156,7 @@
     renderKegareCounters();
     renderBigHighProbTotal();
     renderMikazukiBonusExtra();
+    renderEntrySuika();
     updateConditionalFields();
     overlayEntry.classList.remove('hidden');
     document.body.classList.add('entry-sheet-open');
@@ -5075,6 +5196,8 @@
     var hasMitama = results.indexOf('みたま') !== -1;
     var mikazukiStage = hasMitama ? state.selectedMikazukiStage : null;
     var mikazukiBonusExtra = hasMitama ? state.mikazukiBonusExtra : 0;
+    var suikaCount = state.entrySuika;
+    var czCount = state.entryCz;
     var adjusterGame = hasMitama ? state.adjusterGame : null;
     var atScreens = (atWin || results.indexOf('エンブリオ') !== -1) ? state.atScreens.filter(function (item) { return item && item.screen; }) : [];
     var univaPlates = (atWin || results.indexOf('エンブリオ') !== -1) ? state.univaPlates.filter(function (p) { return p && p.plate; }) : [];
@@ -5116,7 +5239,7 @@
     if (state.editingEntryId) {
       var e = v.entries.find(function (x) { return x.id === state.editingEntryId; });
       e.game = game; e.point = point; e.atStartGame = atStartGame; e.bigHighProbExtra1 = bigHighProbExtra1; e.bigHighProbExtra2 = bigHighProbExtra2; e.magiaCzGame = magiaCzGame; e.startGame = startGame; e.results = results; e.mode = mode; e.atWin = atWin; e.atMemo = atMemo;
-      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.mikazukiStage = mikazukiStage; e.mikazukiBonusExtra = mikazukiBonusExtra; e.adjusterGame = adjusterGame; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
+      e.bigVoice = bigVoice; e.bigScreen = bigScreen; e.mikazukiStage = mikazukiStage; e.mikazukiBonusExtra = mikazukiBonusExtra; e.adjusterGame = adjusterGame; e.suikaCount = suikaCount; e.czCount = czCount; e.atScreens = atScreens; e.univaPlates = univaPlates; e.bandColor = bandColor; e.bandBonus = bandBonus;
       e.embryoTriggers = embryoTriggers; e.embryoGameCount = embryoGameCount; e.embryoBellLevel = embryoBellLevel; e.embryoBonus = embryoBonus;
       e.embryoConnect = embryoConnect; e.embryoConnectBonus = embryoConnectBonus; e.embryoPattern = embryoPattern; e.weeChances = weeChances;
       e.weeBonusExtra1 = weeBonusExtra1; e.weeBonusExtra2 = weeBonusExtra2;
@@ -5129,7 +5252,7 @@
       var newEntryId = uid();
       v.entries.push({
         id: newEntryId, game: game, point: point, atStartGame: atStartGame, bigHighProbExtra1: bigHighProbExtra1, bigHighProbExtra2: bigHighProbExtra2, magiaCzGame: magiaCzGame, startGame: startGame, results: results, mode: mode, atWin: atWin, atMemo: atMemo,
-        bigVoice: bigVoice, bigScreen: bigScreen, mikazukiStage: mikazukiStage, mikazukiBonusExtra: mikazukiBonusExtra, adjusterGame: adjusterGame, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
+        bigVoice: bigVoice, bigScreen: bigScreen, mikazukiStage: mikazukiStage, mikazukiBonusExtra: mikazukiBonusExtra, adjusterGame: adjusterGame, suikaCount: suikaCount, czCount: czCount, atScreens: atScreens, univaPlates: univaPlates, bandColor: bandColor, bandBonus: bandBonus,
         embryoTriggers: embryoTriggers, embryoGameCount: embryoGameCount, embryoBellLevel: embryoBellLevel, embryoBonus: embryoBonus,
         embryoConnect: embryoConnect, embryoConnectBonus: embryoConnectBonus, embryoPattern: embryoPattern, weeChances: weeChances,
         weeBonusExtra1: weeBonusExtra1, weeBonusExtra2: weeBonusExtra2,
@@ -5280,6 +5403,28 @@
     customPanel.classList.add('hidden');
   });
   applyDetailViewCustomization();
+
+  // --- スイカカウンター切り替え(①来店ごとの手動カウンター/②記録ごとに入力して自動集計) ---
+  var SUIKA_MODE_KEY = 'magireko.suikaMode';
+  function getSuikaMode() {
+    return localStorage.getItem(SUIKA_MODE_KEY) === 'entry' ? 'entry' : 'existing';
+  }
+  function setSuikaMode(mode) {
+    localStorage.setItem(SUIKA_MODE_KEY, mode);
+  }
+  var suikaModeButtons = document.querySelectorAll('#e-suika-mode button');
+  function updateSuikaModeButtonsUi() {
+    var mode = getSuikaMode();
+    suikaModeButtons.forEach(function (b) { b.classList.toggle('active', b.dataset.v === mode); });
+  }
+  suikaModeButtons.forEach(function (b) {
+    b.addEventListener('click', function () {
+      setSuikaMode(b.dataset.v);
+      updateSuikaModeButtonsUi();
+      if (currentVisit()) { renderDetail(); }
+    });
+  });
+  updateSuikaModeButtonsUi();
 
   // --- 背景カスタマイズ(画像はIndexedDB、オーバーレイ/カード透明度/ぼかしの設定値はlocalStorageに保存) ---
   var BG_SETTINGS_KEY = 'magireko.bgSettings';
