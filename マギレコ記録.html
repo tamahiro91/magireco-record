@@ -849,6 +849,9 @@
   .suggestion-line { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--text); line-height: 1.6; }
   .suggestion-line-label { flex: 1; }
   .suggestion-line-count { flex-shrink: 0; white-space: nowrap; }
+  .suggestion-line-ratio { flex-shrink: 0; display: flex; gap: 10px; white-space: nowrap; }
+  .suggestion-line-pct { min-width: 46px; text-align: right; }
+  .suggestion-line-times { min-width: 34px; text-align: right; }
   .suggestion-simple-row {
     display: flex;
     justify-content: space-between;
@@ -1018,7 +1021,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-24b</div>
+    <div class="app-version">v2026-10-24c</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -3127,10 +3130,10 @@
       var titleRight = ratioOnly ? ('<span class="suggestion-group-total">計' + groupTotal + '回</span>') : '';
       html += '<div class="suggestion-group"><div class="suggestion-group-title"><span>' + g.title + '</span>' + titleRight + '</div>';
       items.forEach(function (item) {
-        var countText = ratioOnly
-          ? (item.count + '回　' + fmtPercent(item.count, groupTotal))
-          : ('× ' + item.count + ' 回');
-        html += '<div class="suggestion-line"><span class="suggestion-line-label">' + item.label + '</span><span class="suggestion-line-count">' + countText + '</span></div>';
+        var countHtml = ratioOnly
+          ? ('<span class="suggestion-line-ratio"><span class="suggestion-line-pct">' + fmtPercent(item.count, groupTotal) + '</span><span class="suggestion-line-times">' + item.count + '回</span></span>')
+          : ('<span class="suggestion-line-count">× ' + item.count + ' 回</span>');
+        html += '<div class="suggestion-line"><span class="suggestion-line-label">' + item.label + '</span>' + countHtml + '</div>';
       });
       html += '</div>';
     });
