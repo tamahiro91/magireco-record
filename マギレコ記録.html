@@ -337,6 +337,7 @@
   .visit-header .summary .value { font-size: 22px; }
   .visit-header .summary .prob,
   .counter-card .prob { font-size: 10px; color: var(--sub); margin-top: 3px; white-space: nowrap; }
+  .counter-card .prob-row { display: flex; flex-direction: column; align-items: center; gap: 1px; }
   .visit-header .summary .card:nth-child(1) { background: rgba(255, 107, 107, 0.16); border: 1px solid rgba(255, 107, 107, 0.45); }
   .visit-header .summary .card:nth-child(1) .label,
   .visit-header .summary .card:nth-child(1) .value { color: var(--big); }
@@ -1025,7 +1026,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-10-24e</div>
+    <div class="app-version">v2026-11-02a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1388,12 +1389,18 @@
             <div class="counter-value" id="e-cz-value">0</div>
             <button type="button" class="counter-btn" id="e-cz-plus">＋</button>
           </div>
-          <div class="prob" id="e-cz-prob"></div>
+          <div class="prob prob-row">
+            <span id="e-cz-this-prob"></span>
+            <span id="e-cz-prob"></span>
+          </div>
         </div>
         <div class="counter-card">
           <div class="counter-label">CZ成功</div>
           <div class="counter-value" id="e-czwin-value">0</div>
-          <div class="prob" id="e-czwin-prob"></div>
+          <div class="prob prob-row">
+            <span id="e-czwin-this-prob"></span>
+            <span id="e-czwin-prob"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -4195,6 +4202,8 @@
   var eCzProb = document.getElementById('e-cz-prob');
   var eCzWinValue = document.getElementById('e-czwin-value');
   var eCzWinProb = document.getElementById('e-czwin-prob');
+  var eCzThisProb = document.getElementById('e-cz-this-prob');
+  var eCzWinThisProb = document.getElementById('e-czwin-this-prob');
   // この来店の他の記録(編集中のものを除く)に、今編集中の値を足した合計を返す(保存前でもリアルタイムに確認できるように)
   function entrySuikaCzTotals() {
     var v = currentVisit();
@@ -4217,6 +4226,10 @@
     eCzProb.textContent = fmtPercent(t.cz, t.suika);
     eCzWinValue.textContent = t.czWin;
     eCzWinProb.textContent = fmtPercent(t.czWin, t.cz);
+    // テスト表示: 当記録単体の比率/回数(来店全体の集計とは別に、今開いている記録だけの数値)
+    var thisIsCzWin = (state.selectedResults && (state.selectedResults.indexOf('マギアCZ') !== -1 || state.selectedResults.indexOf('黒江CZ') !== -1)) ? 1 : 0;
+    eCzThisProb.textContent = '当記録: ' + fmtPercent(state.entryCz, state.entrySuika);
+    eCzWinThisProb.textContent = '当記録: ' + thisIsCzWin + '回';
   }
   document.getElementById('e-suika-plus').addEventListener('click', function () {
     state.entrySuika += 1;
