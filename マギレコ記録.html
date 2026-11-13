@@ -1027,7 +1027,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-11-10a</div>
+    <div class="app-version">v2026-11-13a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2044,6 +2044,11 @@
   // うぃチャンス(at中のストーリー示唆)の選択肢
   var WEE_TRIGGER_OPTIONS = ['ゲーム数', '小役当選'];
   var WEE_STORY_TYPES = ['ストーリー', 'SP', '神浜', 'マギアボーナス'];
+  // 神浜のベルレベルはボタンだと横幅が足りないため、プルダウン(ピッカー)形式にする試作
+  var BELL_LEVEL_OPTIONS = [{ v: '', text: '未選択(解除)' }, { v: '1', text: '1' }, { v: '2', text: '2' }, { v: '3', text: '3' }];
+  function bellLevelShortLabel(v) {
+    return v || '未選択';
+  }
   var WEE_NORMAL_NUMBERS = ['1', '2', '3', '4', '5', '6', '7', '8'];
   // SPストーリーごとの示唆(コネクトチャンスアイコン色の期待値)
   var WEE_SP_STORY_SUGGESTION = {
@@ -4286,6 +4291,42 @@
     field.appendChild(input);
     return field;
   }
+  // +/-で増減するカウンター欄(神浜のベルレベル突破回数などで使う、下に割合を表示するprob要素も一緒に返す)
+  function buildCounterField(labelText, obj, key) {
+    var field = document.createElement('div');
+    field.className = 'field';
+    var label = document.createElement('label');
+    label.textContent = labelText;
+    field.appendChild(label);
+    var controls = document.createElement('div');
+    controls.className = 'counter-controls';
+    var minus = document.createElement('button');
+    minus.type = 'button';
+    minus.className = 'counter-btn';
+    minus.textContent = '−';
+    var value = document.createElement('div');
+    value.className = 'counter-value';
+    value.textContent = obj[key] || 0;
+    var plus = document.createElement('button');
+    plus.type = 'button';
+    plus.className = 'counter-btn';
+    plus.textContent = '＋';
+    var prob = document.createElement('div');
+    prob.className = 'prob';
+    function update() {
+      value.textContent = obj[key] || 0;
+      if (field.onCountChange) field.onCountChange();
+    }
+    minus.addEventListener('click', function () { obj[key] = Math.max(0, (obj[key] || 0) - 1); update(); });
+    plus.addEventListener('click', function () { obj[key] = (obj[key] || 0) + 1; update(); });
+    controls.appendChild(minus);
+    controls.appendChild(value);
+    controls.appendChild(plus);
+    field.appendChild(controls);
+    field.appendChild(prob);
+    field.probEl = prob;
+    return field;
+  }
   function buildTimeField(labelText, obj, key) {
     var field = document.createElement('div');
     field.className = 'field';
@@ -4422,11 +4463,19 @@
       } else if (chance.storyType === '神浜') {
         var kamihamaRow = document.createElement('div');
         kamihamaRow.className = 'field-row';
-        kamihamaRow.appendChild(buildToggleField('ベルレベル', ['1', '2', '3'], chance.bellLevel, function (v) {
-          chance.bellLevel = (chance.bellLevel === v) ? null : v;
-          renderWeeChances();
-        }));
-        kamihamaRow.appendChild(buildNumberField('◯戦', chance, 'senNumber', '例: 3'));
+        kamihamaRow.appendChild(buildOptionsPickerField('ベルレベル', BELL_LEVEL_OPTIONS, bellLevelShortLabel, chance, 'bellLevel', renderWeeChances));
+        var breakCountField = buildCounterField('ベル突破回数', chance, 'bellBreakCount');
+        var senField = buildNumberField('◯戦', chance, 'senNumber', '例: 3');
+        var senInput = senField.querySelector('input');
+        senInput.maxLength = 3;
+        var updateBreakProb = function () {
+          breakCountField.probEl.textContent = fmtPercent(chance.bellBreakCount || 0, chance.senNumber || 0);
+        };
+        breakCountField.onCountChange = updateBreakProb;
+        senInput.addEventListener('input', updateBreakProb);
+        updateBreakProb();
+        kamihamaRow.appendChild(breakCountField);
+        kamihamaRow.appendChild(senField);
         body.appendChild(kamihamaRow);
       }
 
@@ -4647,11 +4696,19 @@
       } else if (chance.storyType === '神浜') {
         var kamihamaRow = document.createElement('div');
         kamihamaRow.className = 'field-row';
-        kamihamaRow.appendChild(buildToggleField('ベルレベル', ['1', '2', '3'], chance.bellLevel, function (v) {
-          chance.bellLevel = (chance.bellLevel === v) ? null : v;
-          renderDoppelChances();
-        }));
-        kamihamaRow.appendChild(buildNumberField('◯戦', chance, 'senNumber', '例: 3'));
+        kamihamaRow.appendChild(buildOptionsPickerField('ベルレベル', BELL_LEVEL_OPTIONS, bellLevelShortLabel, chance, 'bellLevel', renderDoppelChances));
+        var breakCountField = buildCounterField('ベル突破回数', chance, 'bellBreakCount');
+        var senField = buildNumberField('◯戦', chance, 'senNumber', '例: 3');
+        var senInput = senField.querySelector('input');
+        senInput.maxLength = 3;
+        var updateBreakProb = function () {
+          breakCountField.probEl.textContent = fmtPercent(chance.bellBreakCount || 0, chance.senNumber || 0);
+        };
+        breakCountField.onCountChange = updateBreakProb;
+        senInput.addEventListener('input', updateBreakProb);
+        updateBreakProb();
+        kamihamaRow.appendChild(breakCountField);
+        kamihamaRow.appendChild(senField);
         body.appendChild(kamihamaRow);
       }
 
