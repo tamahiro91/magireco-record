@@ -1027,7 +1027,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-11-13a</div>
+    <div class="app-version">v2026-11-18a</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1744,8 +1744,8 @@
     <div class="field" style="margin-top:20px;">
       <label>スイカカウンター切り替え</label>
       <div class="cat-select" id="e-suika-mode">
-        <button type="button" data-v="existing">①既存のスイカカウンター</button>
-        <button type="button" data-v="entry">②記録を編集にスイカカウンター</button>
+        <button type="button" data-v="entry">①記録を編集にスイカカウンター</button>
+        <button type="button" data-v="existing">②旧スイカカウンター</button>
       </div>
     </div>
 
@@ -2621,13 +2621,14 @@
       totalBonus += s.total;
       totalAtWin += s.atWin;
       totalCzWin += czWinCountOf(v);
-      if (getSuikaMode() === 'entry') {
-        totalSuika += (v.entries || []).reduce(function (sum, e) { return sum + (e.suikaCount || 0); }, 0);
-        totalCz += (v.entries || []).reduce(function (sum, e) { return sum + (e.czCount || 0); }, 0);
-      } else {
-        totalSuika += counters.suika || 0;
-        totalCz += counters.cz || 0;
-      }
+      var hasSuikaEntryData = getSuikaMode() === 'entry' && (v.entries || []).some(function (e) { return typeof e.suikaCount === 'number'; });
+      var hasCzEntryData = getSuikaMode() === 'entry' && (v.entries || []).some(function (e) { return typeof e.czCount === 'number'; });
+      totalSuika += hasSuikaEntryData
+        ? (v.entries || []).reduce(function (sum, e) { return sum + (e.suikaCount || 0); }, 0)
+        : (counters.suika || 0);
+      totalCz += hasCzEntryData
+        ? (v.entries || []).reduce(function (sum, e) { return sum + (e.czCount || 0); }, 0)
+        : (counters.cz || 0);
       totalBalance += investBalanceOf(v);
     });
     elSumVisits.textContent = state.visits.length;
@@ -3482,19 +3483,24 @@
     elDAtWinProb.textContent = fmtProb(s.game, s.atWin);
 
     var counters = v.counters || { suika: 0, cz: 0, czWin: 0 };
-    // スイカカウンター切り替えが②の時は、記録ごとに入力したスイカ数の合計を表示し手動カウンターは隠す(①は従来通り手動カウンター)
+    // スイカカウンター切り替えが①(記録ごと)の時は、記録ごとに入力したスイカ/CZ数の合計を表示し手動カウンターは隠す。
+    // ただしこの来店の記録に1件もその方式のデータがなければ(旧方式のみで運用していた来店)、旧来のcountersの値に自動フォールバックする。
     var suikaMode = getSuikaMode();
+    var hasSuikaEntryData = (v.entries || []).some(function (e) { return typeof e.suikaCount === 'number'; });
+    var hasCzEntryData = (v.entries || []).some(function (e) { return typeof e.czCount === 'number'; });
+    var useEntrySuika = suikaMode === 'entry' && hasSuikaEntryData;
+    var useEntryCz = suikaMode === 'entry' && hasCzEntryData;
     var suikaFromEntries = (v.entries || []).reduce(function (sum, e) { return sum + (e.suikaCount || 0); }, 0);
-    var suikaValue = (suikaMode === 'entry') ? suikaFromEntries : (counters.suika || 0);
+    var suikaValue = useEntrySuika ? suikaFromEntries : (counters.suika || 0);
     elDSuikaValue.textContent = suikaValue;
-    elDSuikaProb.textContent = (suikaMode === 'entry') ? fmtProb(s.game, suikaValue) : '';
-    elDSuikaMinus.hidden = (suikaMode === 'entry');
-    elDSuikaPlus.hidden = (suikaMode === 'entry');
+    elDSuikaProb.textContent = useEntrySuika ? fmtProb(s.game, suikaValue) : '';
+    elDSuikaMinus.hidden = useEntrySuika;
+    elDSuikaPlus.hidden = useEntrySuika;
     var czFromEntries = (v.entries || []).reduce(function (sum, e) { return sum + (e.czCount || 0); }, 0);
-    var czValue = (suikaMode === 'entry') ? czFromEntries : (counters.cz || 0);
+    var czValue = useEntryCz ? czFromEntries : (counters.cz || 0);
     elDCzValue.textContent = czValue;
-    elDCzMinus.hidden = (suikaMode === 'entry');
-    elDCzPlus.hidden = (suikaMode === 'entry');
+    elDCzMinus.hidden = useEntryCz;
+    elDCzPlus.hidden = useEntryCz;
     elDCzWinValue.textContent = czWinCountOf(v);
     elDHp10Value.textContent = counters.highProb10 || 0;
     elDHp20Value.textContent = counters.highProb20 || 0;
@@ -5482,10 +5488,10 @@
   });
   applyDetailViewCustomization();
 
-  // --- スイカカウンター切り替え(①来店ごとの手動カウンター/②記録ごとに入力して自動集計) ---
+  // --- スイカカウンター切り替え(①記録ごとに入力して自動集計/②来店ごとの手動カウンター。未設定(デフォルト)は①) ---
   var SUIKA_MODE_KEY = 'magireko.suikaMode';
   function getSuikaMode() {
-    return localStorage.getItem(SUIKA_MODE_KEY) === 'entry' ? 'entry' : 'existing';
+    return localStorage.getItem(SUIKA_MODE_KEY) === 'existing' ? 'existing' : 'entry';
   }
   function setSuikaMode(mode) {
     localStorage.setItem(SUIKA_MODE_KEY, mode);
