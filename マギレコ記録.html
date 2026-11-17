@@ -1027,7 +1027,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-11-18a</div>
+    <div class="app-version">v2026-11-18b</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -1172,6 +1172,12 @@
           <div class="counter-value" id="d-czwin-value">0</div>
           <div class="prob" id="d-czwin-prob"></div>
         </div>
+      </div>
+      <div class="suggestion-summary closed" id="trigger-summary">
+        <button type="button" class="suggestion-summary-toggle" id="trigger-summary-toggle">
+          <span>当選ゲーム数/ポイント/契機</span><span class="chevron" id="trigger-summary-chevron">▾</span>
+        </button>
+        <div class="suggestion-summary-body" id="trigger-summary-body"></div>
       </div>
       <div class="suggestion-summary" id="rare-role-summary">
         <button type="button" class="suggestion-summary-toggle" id="rare-role-toggle">
@@ -2443,6 +2449,35 @@
   var EMBRYO_PATTERN_TEXT = {};
   EMBRYO_PATTERN_OPTIONS.forEach(function (o) { if (o.v) EMBRYO_PATTERN_TEXT[o.v] = o.text; });
 
+  // 来店1日分のエントリーから、当選ゲーム数(100G刻み)/当選ポイント(100P刻み)/当選契機(PT・レア役)を集計する
+  // 結果(BIG/みたま/マギアCZ等)が選ばれている記録のみを対象にする(メモのみの記録は除外)
+  function visitTriggerSummary(visit) {
+    var gameBinMap = {}, pointBinMap = {};
+    var triggerCounts = { 'PT': 0, 'レア役': 0 };
+    (visit.entries || []).forEach(function (e) {
+      if (!e.results || !e.results.length) return;
+      if (typeof e.game === 'number' && e.game >= 0) {
+        var gBin = Math.floor(e.game / 100) * 100;
+        gameBinMap[gBin] = (gameBinMap[gBin] || 0) + 1;
+      }
+      if (typeof e.point === 'number' && e.point >= 0) {
+        var pBin = Math.floor(e.point / 100) * 100;
+        pointBinMap[pBin] = (pointBinMap[pBin] || 0) + 1;
+      }
+      if (e.winTrigger === 'PT') { triggerCounts['PT']++; }
+      else if (e.winTrigger === '強チェ' || e.winTrigger === 'チャン目') { triggerCounts['レア役']++; }
+    });
+    function binsToList(map, unit) {
+      return Object.keys(map).map(Number).sort(function (a, b) { return a - b; }).map(function (b) {
+        return { label: b + '〜' + (b + 99) + unit, count: map[b] };
+      });
+    }
+    return {
+      gameBins: binsToList(gameBinMap, 'G'),
+      pointBins: binsToList(pointBinMap, 'P'),
+      triggerCounts: triggerCounts
+    };
+  }
   // 来店1日分のエントリーから、各種示唆情報を集計する(示唆一覧セクション用)
   function visitSuggestionSummary(visit) {
     var bigScreen = {}, atScreen = {}, epibo = {}, cards = {}, storyOrder = {}, embryoPattern = {}, univaPlate = {}, mikazuki = {};
@@ -3087,6 +3122,30 @@
     localStorage.setItem(HIGHPROB_SUMMARY_OPEN_KEY, open ? '1' : '0');
     elHighProbSummary.classList.toggle('closed', !open);
   });
+  // 当選ゲーム数/ポイント/契機の集計(開閉状態はアプリ全体で共通、デフォルトは閉じておく)
+  var elTriggerSummary = document.getElementById('trigger-summary');
+  var elTriggerSummaryBody = document.getElementById('trigger-summary-body');
+  var TRIGGER_SUMMARY_OPEN_KEY = 'magireko.triggerSummaryOpen';
+  function isTriggerSummaryOpen() {
+    return localStorage.getItem(TRIGGER_SUMMARY_OPEN_KEY) === '1';
+  }
+  elTriggerSummary.classList.toggle('closed', !isTriggerSummaryOpen());
+  document.getElementById('trigger-summary-toggle').addEventListener('click', function () {
+    var open = !isTriggerSummaryOpen();
+    localStorage.setItem(TRIGGER_SUMMARY_OPEN_KEY, open ? '1' : '0');
+    elTriggerSummary.classList.toggle('closed', !open);
+  });
+  function renderTriggerSummary(visit) {
+    var summary = visitTriggerSummary(visit);
+    var html = '';
+    html += renderRatioGroupHtml('当選ゲーム数', summary.gameBins);
+    html += renderRatioGroupHtml('当選ポイント', summary.pointBins);
+    var triggerItems = [];
+    if (summary.triggerCounts['PT']) triggerItems.push({ label: 'PT', count: summary.triggerCounts['PT'] });
+    if (summary.triggerCounts['レア役']) triggerItems.push({ label: 'レア役', count: summary.triggerCounts['レア役'] });
+    html += renderRatioGroupHtml('当選契機', triggerItems);
+    elTriggerSummaryBody.innerHTML = html || '<div class="suggestion-simple-row"><span>対象の記録がありません</span></div>';
+  }
   // 穢れ小・中・大のタップカウンター(記録ごとに保持)
   var elKegareSummary = document.getElementById('kegare-summary');
   var elKegareSmallValue = document.getElementById('e-kegare-small-value');
@@ -3127,8 +3186,18 @@
     localStorage.setItem(SUGGESTION_SUMMARY_OPEN_KEY, open ? '1' : '0');
     elSuggestionSummary.classList.toggle('closed', !open);
   });
-  // BIG終了画面/at終了画面は「× N回」の代わりに「N回 ◯%」(グループ見出しの右に合計回数)だけを表示し、
-  // デフォルト/基本パターンの項目を常に先頭に並べる
+  // 項目ごとに「N回 ◯%」(グループ見出しの右に合計回数)だけを表示するグループ描画(示唆一覧のBIG/at終了画面や当選ゲーム数集計などで使う共通処理)
+  function renderRatioGroupHtml(title, items) {
+    if (!items.length) return '';
+    var groupTotal = items.reduce(function (sum, item) { return sum + item.count; }, 0);
+    var html = '<div class="suggestion-group"><div class="suggestion-group-title"><span>' + title + '</span><span class="suggestion-group-total">計' + groupTotal + '回</span></div>';
+    items.forEach(function (item) {
+      html += '<div class="suggestion-line"><span class="suggestion-line-label">' + item.label + '</span><span class="suggestion-line-ratio"><span class="suggestion-line-pct">' + fmtPercent(item.count, groupTotal) + '</span><span class="suggestion-line-times">' + item.count + '回</span></span></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+  // BIG終了画面/at終了画面は上記のN回/◯%表示にし、デフォルト/基本パターンの項目を常に先頭に並べる
   var SUGGESTION_RATIO_ONLY_GROUPS = ['BIG終了画面', 'at終了画面'];
   var SUGGESTION_DEFAULT_LABEL = { 'BIG終了画面': 'デフォルト', 'at終了画面': '城背景(基本パターン)' };
   function renderSuggestionSummary(visit) {
@@ -3137,21 +3206,17 @@
     summary.groups.forEach(function (g) {
       if (!g.items.length) return;
       var ratioOnly = SUGGESTION_RATIO_ONLY_GROUPS.indexOf(g.title) !== -1;
-      var groupTotal = g.items.reduce(function (sum, item) { return sum + item.count; }, 0);
-      var items = g.items;
       if (ratioOnly) {
         var defaultLabel = SUGGESTION_DEFAULT_LABEL[g.title];
-        items = items.slice().sort(function (a, b) {
+        var items = g.items.slice().sort(function (a, b) {
           return (a.label === defaultLabel ? 0 : 1) - (b.label === defaultLabel ? 0 : 1);
         });
+        html += renderRatioGroupHtml(g.title, items);
+        return;
       }
-      var titleRight = ratioOnly ? ('<span class="suggestion-group-total">計' + groupTotal + '回</span>') : '';
-      html += '<div class="suggestion-group"><div class="suggestion-group-title"><span>' + g.title + '</span>' + titleRight + '</div>';
-      items.forEach(function (item) {
-        var countHtml = ratioOnly
-          ? ('<span class="suggestion-line-ratio"><span class="suggestion-line-pct">' + fmtPercent(item.count, groupTotal) + '</span><span class="suggestion-line-times">' + item.count + '回</span></span>')
-          : ('<span class="suggestion-line-count">× ' + item.count + ' 回</span>');
-        html += '<div class="suggestion-line"><span class="suggestion-line-label">' + item.label + '</span>' + countHtml + '</div>';
+      html += '<div class="suggestion-group"><div class="suggestion-group-title">' + g.title + '</div>';
+      g.items.forEach(function (item) {
+        html += '<div class="suggestion-line"><span class="suggestion-line-label">' + item.label + '</span><span class="suggestion-line-count">× ' + item.count + ' 回</span></div>';
       });
       html += '</div>';
     });
@@ -3521,6 +3586,7 @@
     elDExchangeRate.value = String(v.exchangeRate || 46);
     updateExchangeResult(v);
 
+    renderTriggerSummary(v);
     renderSuggestionSummary(v);
     renderRareRoleSummary(v);
     renderRareRoleList(v);
