@@ -1027,7 +1027,7 @@
       <button class="icon-btn" id="btn-bg-open-direct">背景</button>
       <button class="icon-btn" id="btn-backup">⋯</button>
     </header>
-    <div class="app-version">v2026-11-18b</div>
+    <div class="app-version">v2026-11-18c</div>
 
     <div class="summary">
       <div class="card"><div class="label">記録回数</div><div class="value" id="sum-visits">0</div></div>
@@ -2391,9 +2391,11 @@
     }, 0);
     return cardTotal + (e.weeBonusExtra1 || 0) + (e.weeBonusExtra2 || 0);
   }
-  // atゲーム数の合計(at初期＋うぃチャンス上乗せ＋at継続40ゲーム1件につき40G＋at当選時+10G)
+  // atゲーム数の合計(at初期(エンブリオイブ選択時は初期ゲーム数で代用)＋うぃチャンス上乗せ＋at継続40ゲーム1件につき40G＋at当選時+10G)
   function atGameTotalOf(e) {
-    return (e.atStartGame || 0) + weeBonusTotalOf(e) + (e.atContinue40 || []).length * 40 + (e.atWin ? 10 : 0);
+    var isEmbryo = e.results && e.results.indexOf('エンブリオ') !== -1;
+    var startGame = isEmbryo ? (e.startGame || 0) : 0;
+    return (e.atStartGame || 0) + startGame + weeBonusTotalOf(e) + (e.atContinue40 || []).length * 40 + (e.atWin ? 10 : 0);
   }
   // ボーナスゲーム数(結果にBIGがあれば+30、エピボがあれば+50、アリナがあれば+30、みたまがあれば基本+8、
   // うぃチャンス/ドッペルチャンスでマギアボーナスを選んだカード1件につき+30、
